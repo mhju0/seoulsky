@@ -1,7 +1,9 @@
 "use client";
 
+import { useInView } from "framer-motion";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatClock, formatHeaderDate } from "@/lib/format";
 import type { ProviderAvailability, WeatherIntelligence } from "@/lib/types";
 import CinematicDiagnostics from "@/components/CinematicDiagnostics";
@@ -10,17 +12,30 @@ import ProviderComparison from "@/components/ProviderComparison";
 import { HairlineRule, MetricLabel } from "../EtchedType";
 import { ScrollReveal } from "../descentMotion";
 import { useWeatherField } from "../WeatherFieldContext";
-import { DailyHorizon, HourlyRidge } from "./ForecastHorizon";
 
 /**
  * Band 5 — Ground Station. The data deck where the descent lands: cross-provider
- * confidence and comparison, the forecast (rendered as the horizon in T4.2), and
- * the cinematic-engine diagnostics — all as quiet etched readouts, no cards. It
- * owns the one heavier /api/weather intelligence fetch (the live sky snapshot is
- * shared from context, never re-fetched). The lean Seoul snapshot already covers
- * current conditions, air and radar (bands 1–4), so this band stays focused on
- * provenance + the forecast horizon.
+ * confidence and comparison, the forecast horizon, and the cinematic-engine
+ * diagnostics — all as quiet etched readouts, no cards. It owns the one heavier
+ * /api/weather intelligence fetch (the live sky snapshot is shared from context,
+ * never re-fetched). The lean Seoul snapshot already covers current conditions,
+ * air and radar (bands 1–4), so this band stays focused on provenance + horizon.
+ *
+ * PERF: the heavy /api/weather fetch AND the Recharts charts are both deferred
+ * until the ground band scrolls near (useInView, ~400px early), and the charts
+ * are code-split via next/dynamic so the Recharts chunk only loads on the descent.
  */
+
+// Recharts is heavy — split it into its own chunk, loaded only when the charts
+// actually mount (i.e. when the ground band is near and data has arrived).
+const HourlyRidge = dynamic(() => import("./ForecastHorizon").then((m) => ({ default: m.HourlyRidge })), {
+  ssr: false,
+  loading: () => <div className="h-[200px] w-full animate-pulse rounded bg-white/[0.03]" />,
+});
+const DailyHorizon = dynamic(() => import("./ForecastHorizon").then((m) => ({ default: m.DailyHorizon })), {
+  ssr: false,
+  loading: () => <div className="h-[180px] w-full" />,
+});
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -61,6 +76,11 @@ export default function GroundBand() {
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Defer the heavy fetch + charts until the ground band is approaching (~400px
+  // early so data is ready on arrival). `once` keeps it mounted after first reveal.
+  const deckRef = useRef<HTMLDivElement>(null);
+  const near = useInView(deckRef, { once: true, margin: "0px 0px 400px 0px" });
+
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -76,17 +96,21 @@ export default function GroundBand() {
   }, []);
 
   useEffect(() => {
+    if (!near) return;
     queueMicrotask(load);
     const id = setInterval(load, REFRESH_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [load]);
+  }, [near, load]);
 
   const anyLive = data?.providers.some((p) => p.status.availability === "ok") ?? false;
   const primary = data?.providers.find((p) => p.id === data.primaryId) ?? null;
 
   return (
     <>
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-[clamp(1.25rem,5vw,4.5rem)] pb-10 pt-[clamp(3rem,9vh,6rem)] text-white">
+      <div
+        ref={deckRef}
+        className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-[clamp(1.25rem,5vw,4.5rem)] pb-10 pt-[clamp(3rem,9vh,6rem)] text-white"
+      >
       {/* Etched header — provenance, time, source status. */}
       <ScrollReveal amount={0.1}>
         <Link
@@ -140,7 +164,13 @@ export default function GroundBand() {
         )}
       </ScrollReveal>
 
-      {!data && !failed && (
+      {!near && (
+        <div className="py-10 font-mono text-[11px] uppercase tracking-[0.25em] text-white/30">
+          ↓ 스크롤하여 지상 관측소 데이터를 불러옵니다
+        </div>
+      )}
+
+      {near && !data && !failed && (
         <div className="flex items-center gap-3 py-10">
           <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white/70" />
           <span className="font-mono text-xs uppercase tracking-[0.25em] text-white/50">
