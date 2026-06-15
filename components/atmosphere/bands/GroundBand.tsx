@@ -10,6 +10,7 @@ import ProviderComparison from "@/components/ProviderComparison";
 import { HairlineRule, MetricLabel } from "../EtchedType";
 import { ScrollReveal } from "../descentMotion";
 import { useWeatherField } from "../WeatherFieldContext";
+import { DailyHorizon, HourlyRidge } from "./ForecastHorizon";
 
 /**
  * Band 5 — Ground Station. The data deck where the descent lands: cross-provider
@@ -81,9 +82,11 @@ export default function GroundBand() {
   }, [load]);
 
   const anyLive = data?.providers.some((p) => p.status.availability === "ok") ?? false;
+  const primary = data?.providers.find((p) => p.id === data.primaryId) ?? null;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-[clamp(1.25rem,5vw,4.5rem)] py-[clamp(3rem,9vh,6rem)] text-white">
+    <>
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-[clamp(1.25rem,5vw,4.5rem)] pb-10 pt-[clamp(3rem,9vh,6rem)] text-white">
       {/* Etched header — provenance, time, source status. */}
       <ScrollReveal amount={0.1}>
         <Link
@@ -184,10 +187,13 @@ export default function GroundBand() {
             <ProviderComparison snapshots={data.providers} comparison={data.comparison} />
           </DeckSection>
 
-          {/* Forecast horizon — rendered as hairline ridge/area charts in T4.2. */}
-          <DeckSection label="예보" sub="시간별 · 주간 — 능선으로 표시 (T4.2)" delay={0.1}>
-            <p className="text-sm leading-relaxed text-white/40">예보 능선 준비 중…</p>
-          </DeckSection>
+          {/* Forecast — the hourly ridge sits in the deck; the daily ridge is the
+              horizon, rendered full-bleed at the very bottom below. */}
+          {primary && primary.hourly.length > 0 && (
+            <DeckSection label="시간별 예보" sub="향후 24시간" delay={0.1}>
+              <HourlyRidge hourly={primary.hourly} />
+            </DeckSection>
+          )}
 
           <DeckSection label="시네마틱 엔진" sub="영상 플레이트 · 렌더 모드 · 폴백" delay={0.1}>
             <CinematicDiagnostics sky={snapshot} />
@@ -199,6 +205,15 @@ export default function GroundBand() {
           </footer>
         </>
       )}
-    </div>
+      </div>
+
+      {/* The horizon — the daily ridge sits full-bleed at the very bottom of the
+          page, reading as the field's horizon line. */}
+      {primary && primary.daily.length > 0 && (
+        <div className="w-full px-1 pb-[clamp(1.5rem,5vh,3.5rem)]">
+          <DailyHorizon daily={primary.daily} />
+        </div>
+      )}
+    </>
   );
 }
