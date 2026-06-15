@@ -2,7 +2,6 @@
 
 import { useInView } from "framer-motion";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatClock, formatHeaderDate } from "@/lib/format";
 import type { ProviderAvailability, WeatherIntelligence } from "@/lib/types";
@@ -113,13 +112,7 @@ export default function GroundBand() {
       >
       {/* Etched header — provenance, time, source status. */}
       <ScrollReveal amount={0.1}>
-        <Link
-          href="/"
-          className="font-mono text-[11px] tracking-[0.16em] text-white/40 transition hover:text-white/70"
-        >
-          ← 시네마틱 모드 (Esc) · 상공 (A)
-        </Link>
-        <div className="mt-5 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
           <div>
             <MetricLabel tone="muted">Ground Station · 지상 관측소</MetricLabel>
             <p className="mt-2 font-sans text-[clamp(1.6rem,4vw,2.4rem)] font-light text-white/95">

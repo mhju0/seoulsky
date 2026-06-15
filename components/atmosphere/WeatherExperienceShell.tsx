@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLiveSeoulWeather } from "@/hooks/useLiveSeoulWeather";
 import { useSeoulClock } from "@/hooks/useSeoulClock";
-import { useWeatherViewShortcuts } from "@/hooks/useWeatherViewShortcuts";
 import {
   detectQuality,
   hasWebGL,
@@ -61,12 +60,11 @@ function applyReviewCond(snapshot: SkySnapshot | null, cond?: WeatherCondition):
 }
 
 /**
- * The single page shell for the weather experience. It owns one live data
- * source and ONE atmospheric field (raw-WebGL, or a CSS fallback) that persists
- * across the /atmosphere ↔ /diagnostics route boundary — both routes share this
- * layout, so navigating between them swaps only the foreground, never the GL
- * context. The readable foreground (AtmosphereView / DiagnosticsView) is passed
- * in as `children` and reads the shared state from {@link WeatherFieldProvider}.
+ * The single page shell for the weather experience at /sky. It owns one live
+ * data source and ONE atmospheric field (raw-WebGL, or a CSS fallback). Both are
+ * created once in the /sky layout and never remount, because the experience is a
+ * single non-navigating scroll. The readable foreground (the scroll content) is
+ * passed in as `children` and reads the shared state from {@link WeatherFieldProvider}.
  */
 
 // The raw-WebGL field loads client-side only (it touches the GL context on mount).
@@ -97,24 +95,9 @@ function Loader() {
   );
 }
 
-function KeyboardHint() {
-  return (
-    <div className="pointer-events-none fixed left-1/2 top-4 z-40 hidden -translate-x-1/2 items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-white/35 lg:flex">
-      <span>
-        <span className="rounded border border-white/15 px-1.5 py-0.5 text-white/55">A</span> 상공
-      </span>
-      <span className="text-white/15">·</span>
-      <span>
-        <span className="rounded border border-white/15 px-1.5 py-0.5 text-white/55">D</span> 지상
-      </span>
-    </div>
-  );
-}
-
 export default function WeatherExperienceShell({ children }: { children: ReactNode }) {
   const { snapshot, status, lastUpdatedAt } = useLiveSeoulWeather();
   const clock = useSeoulClock();
-  useWeatherViewShortcuts();
 
   const [quality, setQuality] = useState<QualitySettings | null>(null);
   const [reduced, setReduced] = useState(false);
@@ -193,10 +176,8 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
         )}
       </div>
 
-      <KeyboardHint />
-
-      {/* The active view (AtmosphereView / DiagnosticsView) renders its own scrim
-          + readable foreground above the shared field. */}
+      {/* The scroll content renders its own scrim + readable foreground above
+          the shared field. */}
       {children}
     </WeatherFieldProvider>
   );
