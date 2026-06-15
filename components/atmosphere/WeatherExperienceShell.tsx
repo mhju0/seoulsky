@@ -1,7 +1,6 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLiveSeoulWeather } from "@/hooks/useLiveSeoulWeather";
 import { useSeoulClock } from "@/hooks/useSeoulClock";
 import {
@@ -13,7 +12,7 @@ import {
 import { computeSunPhase } from "@/lib/cinematic/seoulTime";
 import { buildVisualConfig, readAtmosphere } from "@/lib/atmosphere/weatherVisualConfig";
 import type { SkySnapshot, WeatherCondition } from "@/lib/types";
-import AtmosphericFieldFallback from "./AtmosphericFieldFallback";
+import SceneStage from "./scene/SceneStage";
 import { WeatherFieldProvider } from "./WeatherFieldContext";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
@@ -61,31 +60,13 @@ function applyReviewCond(snapshot: SkySnapshot | null, cond?: WeatherCondition):
 
 /**
  * The single page shell for the weather experience at /sky. It owns one live
- * data source and ONE atmospheric field (raw-WebGL, or a CSS fallback). Both are
- * created once in the /sky layout and never remount, because the experience is a
- * single non-navigating scroll. The readable foreground (the scroll content) is
- * passed in as `children` and reads the shared state from {@link WeatherFieldProvider}.
+ * data source and ONE persistent {@link SceneStage} (the shuffling video gallery,
+ * live FX, spaceship canopy, and the procedural atmospheric-field fallback).
+ * Both are created once in the /sky layout and never remount, because the
+ * experience is a single non-navigating scroll. The readable foreground (the
+ * scroll content) is passed in as `children` and reads the shared state from
+ * {@link WeatherFieldProvider}.
  */
-
-// The raw-WebGL field loads client-side only (it touches the GL context on mount).
-const AtmosphericFieldBackground = dynamic(() => import("./AtmosphericFieldBackground"), {
-  ssr: false,
-  loading: () => null,
-});
-
-/** Swap to the CSS field if the WebGL background throws at runtime. */
-class FieldBoundary extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  componentDidCatch() {
-    this.props.onError();
-  }
-  render() {
-    return this.state.failed ? null : this.props.children;
-  }
-}
 
 function Loader() {
   return (
@@ -155,29 +136,22 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
   // Pre-detection (and SSR): a calm loader — no canvas, no hydration mismatch.
   if (!quality) return <Loader />;
 
-  const useFallback = !webgl || canvasFailed;
-
   return (
     <WeatherFieldProvider value={{ snapshot, status, lastUpdatedAt, readout, target, clock }}>
-      {/* Layer 0 — the persistent atmospheric field (WebGL, or CSS fallback). */}
-      <div className="fixed inset-0 z-0 bg-[#04060d]">
-        {useFallback ? (
-          <AtmosphericFieldFallback config={target} reducedMotion={reduced} />
-        ) : (
-          <FieldBoundary onError={() => setCanvasFailed(true)}>
-            <AtmosphericFieldBackground
-              target={target}
-              quality={quality}
-              reducedMotion={reduced}
-              paused={hidden}
-              pointerEnabled={pointerEnabled}
-            />
-          </FieldBoundary>
-        )}
-      </div>
+      {/* Layer 0 — the persistent moving scene (canopy + shuffling video gallery
+          + live FX, with the procedural field as the never-blank fallback). */}
+      <SceneStage
+        quality={quality}
+        reducedMotion={reduced}
+        hidden={hidden}
+        pointerEnabled={pointerEnabled}
+        webgl={webgl}
+        canvasFailed={canvasFailed}
+        onCanvasError={() => setCanvasFailed(true)}
+      />
 
       {/* The scroll content renders its own scrim + readable foreground above
-          the shared field. */}
+          the shared scene. */}
       {children}
     </WeatherFieldProvider>
   );
