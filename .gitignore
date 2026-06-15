@@ -15,7 +15,6 @@
 
 # generated cinematic video assets — large binaries. Host via Git LFS, object
 # storage (Vercel Blob / S3) or a CDN; keep the README + manifest tracked.
-/public/cinematic/generated/*.mp4
 /public/cinematic/generated/*.webm
 /public/cinematic/generated/*.mov
 /public/cinematic/generated/*.png

@@ -45,8 +45,10 @@ async function kmaWarningsOrEmpty(): Promise<NormalizedWarning[]> {
 
 export async function GET() {
   try {
-    const [current, daily, status, air, radar, kmaCurrent, warnings] = await Promise.all([
+    const [current, hourly, daily, status, air, radar, kmaCurrent, warnings] = await Promise.all([
       openMeteoProvider.getCurrentWeather(),
+      // Already part of the same cached Open-Meteo snapshot — no extra upstream call.
+      openMeteoProvider.getHourlyForecast?.() ?? Promise.resolve([]),
       openMeteoProvider.getDailyForecast(),
       openMeteoProvider.getProviderStatus(),
       getFusedAirQuality(),
@@ -100,6 +102,7 @@ export async function GET() {
         sunrise: todaySun?.sunrise ?? null,
         sunset: todaySun?.sunset ?? null,
       },
+      hourly,
       air,
       radar,
       warnings,

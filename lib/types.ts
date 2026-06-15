@@ -285,6 +285,12 @@ export interface SkySnapshot {
     sunrise: string | null;
     sunset: string | null;
   };
+  /**
+   * Next ~24h of Open-Meteo hourly forecast (from "now"), used by the data
+   * experience's thermal ribbon and forecast orbit. Always present (possibly
+   * empty); the cinematic homepage simply ignores it.
+   */
+  hourly: HourlyForecast[];
   /** Fused current air quality (AirKorea → Open-Meteo AQ → null). */
   air: NormalizedAirQuality | null;
   /** Lean radar approach signal (RainViewer), or null when unavailable. */
