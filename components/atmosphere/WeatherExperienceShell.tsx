@@ -110,6 +110,21 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
+  // Keep reduced-motion live: a DevTools/OS toggle re-gates the shuffle, FX,
+  // parallax and sheen without a reload, since every consumer reacts to the
+  // prop (VideoGallery rebuilds its controller, SceneStage drops the FX layer,
+  // the canopy/sheen listeners detach). Pointer parallax follows the same gate.
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => {
+      setReduced(mq.matches);
+      setPointerEnabled(!mq.matches && window.matchMedia("(pointer: fine)").matches);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   // A dev review override (?cond=&hour=) recolours the field for visual audits;
   // in production `review` is always empty, so these collapse to the live values.
   const readout = useMemo(
