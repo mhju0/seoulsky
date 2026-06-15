@@ -1,7 +1,7 @@
 "use client";
 
-import DiagnosticsView from "./DiagnosticsView";
 import CloudDeckBand from "./bands/CloudDeckBand";
+import GroundBand from "./bands/GroundBand";
 import SurfaceBand from "./bands/SurfaceBand";
 import TitleBand from "./bands/TitleBand";
 import UpperAirBand from "./bands/UpperAirBand";
@@ -13,10 +13,9 @@ import { Band } from "./descentMotion";
  * data deck (band 5), and the field's altitude ramp (driven by its own damped
  * scroll ref) re-grades the sky as you go.
  *
- * Bands 1–4 are live etched readouts over the field; band 5 wires the existing
- * diagnostics content as a placeholder (restyled in T4.1). A soft directional
- * scrim keeps the foreground type readable across the whole scroll without a
- * hard divider.
+ * All five bands are etched readouts over the field — no cards. A soft directional
+ * scrim protects the upper-band type; the dense ground band gets its own deepening
+ * local scrim so the data deck stays readable over the near-ground glow.
  */
 
 export default function DescentView() {
@@ -56,10 +55,20 @@ export default function DescentView() {
         </Band>
 
         {/* Band 5 — ground station. The #ground deep-link / "D" jump lands here.
-            DiagnosticsView is wired in as a placeholder and is restyled into the
-            etched aesthetic in T4.1. */}
+            A local scrim (transparent at the top so the descent into it is smooth)
+            deepens under the dense data deck for readability. */}
         <section id="ground" className="relative scroll-mt-0">
-          <DiagnosticsView />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, transparent 0%, rgba(2,3,8,0.72) 14%, rgba(4,6,13,0.9) 100%)",
+            }}
+          />
+          <div className="relative">
+            <GroundBand />
+          </div>
         </section>
       </div>
     </>

@@ -31,10 +31,16 @@ const MODE_KO: Record<string, string> = {
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-white/5 py-2 last:border-0">
-      <span className="shrink-0 text-xs text-slate-400">{label}</span>
-      <span className="text-right text-xs font-medium text-slate-200">{value}</span>
+    <div className="flex items-start justify-between gap-3 border-b border-white/10 py-2 last:border-0">
+      <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.16em] text-white/45">{label}</span>
+      <span className="text-right font-sans text-sm font-light text-white/85">{value}</span>
     </div>
+  );
+}
+
+function ColumnLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">{children}</p>
   );
 }
 
@@ -68,11 +74,9 @@ export default function CinematicDiagnostics({ sky: skyProp }: { sky?: SkySnapsh
     t ? new Date(t).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul" }) : "—";
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-      <div className="glass rounded-2xl p-5">
-        <p className="mb-3 text-[11px] font-semibold tracking-[0.2em] text-violet-300">
-          현재 선택 · 실시간 규칙
-        </p>
+    <div className="grid grid-cols-1 gap-x-14 gap-y-9 lg:grid-cols-2">
+      <div>
+        <ColumnLabel>현재 선택 · 실시간 규칙</ColumnLabel>
         <Row label="선택 플레이트" value={current.key} />
         <Row label="선택 근거" value={current.reason} />
         <Row label="시간대 (태양 위상)" value={current.phase} />
@@ -84,10 +88,8 @@ export default function CinematicDiagnostics({ sky: skyProp }: { sky?: SkySnapsh
         />
       </div>
 
-      <div className="glass rounded-2xl p-5">
-        <p className="mb-3 text-[11px] font-semibold tracking-[0.2em] text-violet-300">
-          런타임 상태 · 마지막 ‘/’ 방문
-        </p>
+      <div>
+        <ColumnLabel>런타임 상태 · 마지막 ‘/’ 방문</ColumnLabel>
         {runtime ? (
           <>
             <Row label="렌더 모드" value={MODE_KO[runtime.renderMode] ?? runtime.renderMode} />
@@ -100,24 +102,22 @@ export default function CinematicDiagnostics({ sky: skyProp }: { sky?: SkySnapsh
             <Row label="재생 오류" value={runtime.lastError ?? "없음"} />
           </>
         ) : (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs leading-relaxed text-white/40">
             아직 시네마틱 페이지(/) 방문 기록이 없습니다. 홈을 한 번 열면 표시됩니다.
           </p>
         )}
       </div>
 
-      <div className="glass rounded-2xl p-5 lg:col-span-2">
-        <p className="mb-3 text-[11px] font-semibold tracking-[0.2em] text-violet-300">
+      <div className="lg:col-span-2">
+        <ColumnLabel>
           플레이트 라이브러리 · {generated.length}/{CINEMATIC_PLATE_KEYS.length} 생성됨
-        </p>
-        <div className="flex flex-wrap gap-2">
+        </ColumnLabel>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
           {CINEMATIC_PLATE_KEYS.map((k) => (
             <span
               key={k}
-              className={`rounded-full px-2.5 py-1 text-[11px] ${
-                isPlateGenerated(k)
-                  ? "bg-emerald-500/15 text-emerald-200"
-                  : "bg-white/5 text-slate-500"
+              className={`font-mono text-[11px] tracking-wide ${
+                isPlateGenerated(k) ? "text-emerald-300/90" : "text-white/30"
               }`}
             >
               {k}
@@ -125,7 +125,7 @@ export default function CinematicDiagnostics({ sky: skyProp }: { sky?: SkySnapsh
             </span>
           ))}
         </div>
-        <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+        <p className="mt-4 max-w-2xl text-[11px] leading-relaxed text-white/40">
           영상 플레이트는 오프라인(Claude CLI의 Higgsfield 도구)에서 생성되어
           public/cinematic/generated/에 저장됩니다. 런타임에는 Higgsfield를 호출하지
           않으며, 파일이 없거나 재생에 실패하면 실시간 절차적 3D 씬으로 자동 대체됩니다.
