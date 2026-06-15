@@ -1,6 +1,6 @@
 /**
  * Automatic quality tiers. Picks a reasonable tier from the device, caps the
- * device-pixel-ratio, and scales cloud/particle/star/building counts.
+ * device-pixel-ratio, and scales cloud/particle/star counts.
  * `prefersReducedMotion` is reported separately: reduced motion keeps the full
  * atmosphere but calms the camera and precipitation (handled in the rig).
  *
@@ -21,7 +21,6 @@ export interface QualitySettings {
   rainCount: number;
   snowCount: number;
   stars: number;
-  buildings: number;
   antialias: boolean;
 }
 
@@ -32,7 +31,6 @@ const HIGH: QualitySettings = {
   rainCount: 1500,
   snowCount: 900,
   stars: 1600,
-  buildings: 420,
   antialias: true,
 };
 
@@ -43,7 +41,6 @@ const BALANCED: QualitySettings = {
   rainCount: 850,
   snowCount: 520,
   stars: 1000,
-  buildings: 260,
   antialias: true,
 };
 
@@ -54,7 +51,6 @@ const REDUCED: QualitySettings = {
   rainCount: 380,
   snowCount: 240,
   stars: 520,
-  buildings: 140,
   antialias: false,
 };
 

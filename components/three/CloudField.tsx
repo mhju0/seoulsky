@@ -83,6 +83,14 @@ function CloudPoints({ spec, tex }: { spec: ZoneSpec; tex: THREE.Texture }) {
 
   useFrame(() => {
     const c = rt.current.config;
+    // In hybrid mode the video plate supplies the distant cloudscape — hide the
+    // far/mid point-sprites (only the near vapor planes are kept) and skip their
+    // per-frame streaming + recolour work entirely.
+    if (rt.current.renderMode === "hybrid") {
+      if (matRef.current) matRef.current.visible = false;
+      return;
+    }
+    if (matRef.current) matRef.current.visible = true;
     const span = spec.zFront - spec.zBack;
     const fwd = (rt.current.travel - prev.current.travel) * spec.speedMul;
     const dwx = (rt.current.windOffset[0] - prev.current.wx) * spec.speedMul;

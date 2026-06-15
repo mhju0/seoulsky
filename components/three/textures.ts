@@ -87,6 +87,39 @@ export function makeGlowTexture(size = 256): THREE.CanvasTexture {
   return tex;
 }
 
+/**
+ * Soft horizontal horizon-glow band — bright along the middle row, tapering
+ * smoothly up/down and at the left/right ends. Stretched across a wide plane it
+ * reads as atmospheric horizon light (city glow at night, pale haze by day) with
+ * NO structure, edges or recognizable shapes.
+ */
+export function makeHorizonGlowTexture(w = 512, h = 128): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  const img = ctx.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    const vy = y / (h - 1); // 0 top … 1 bottom
+    const band = Math.max(0, 1 - Math.abs(vy - 0.5) / 0.5);
+    const vAlpha = fade(band); // soft vertical bump peaking at the middle row
+    for (let x = 0; x < w; x++) {
+      const vx = x / (w - 1);
+      const e = Math.min(1, Math.min(vx, 1 - vx) / 0.18); // fade 18% at each end
+      const a = vAlpha * fade(e);
+      const i = (y * w + x) * 4;
+      img.data[i] = 255;
+      img.data[i + 1] = 255;
+      img.data[i + 2] = 255;
+      img.data[i + 3] = Math.round(a * 255);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 /** Tiny soft dot for stars and city lights. */
 export function makeDotTexture(size = 64): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");

@@ -5,139 +5,148 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { mulberry32 } from "@/lib/random";
 import { useSceneRuntime } from "./SceneDirector";
-import { makeDotTexture } from "./textures";
+import { makeDotTexture, makeHorizonGlowTexture } from "./textures";
 import type { QualitySettings } from "./quality";
 
 /**
- * Seoul, far below and far ahead. Procedural building clusters (no visible
- * repeated boxes — varied height/width/position), a faint Han River band, and
- * silhouettes of N Seoul Tower on a ridge + a tapering Lotte-style spire. At
- * night, warm window lights fade in; scene fog naturally dissolves the whole
- * city into the atmosphere as visibility drops (fog/rain hide it entirely).
+ * The far horizon — NO buildings, towers, river or recognizable skyline. Seoul
+ * itself lives in the cinematic video plate (hybrid mode); in the procedural
+ * fallback it is left to the atmosphere. All this layer ever draws is light:
+ *
+ *   • a soft horizon glow band, low and far (warm city-light dome at night, a
+ *     pale haze band by day) — additive, no edges, no structure,
+ *   • atmospheric horizon haze tinted by the live fog colour,
+ *   • optional tiny distant light specks at night — a faint, sparse scatter far
+ *     below the horizon, far too small and random to ever read as a building.
+ *
+ * Nothing sits near the centre of frame and nothing is opaque. In hybrid mode
+ * the whole group is hidden (the footage is the world); in procedural mode it
+ * keeps the lower frame dark, soft and alive without a single hard shape.
  */
 
-const CITY = { x: 0, y: -155, z: -745 };
+// Far away and low so it compresses onto the horizon line — never an object in
+// the camera's path. (The rig glides at altitude looking gently down, so the
+// true horizon sits high; this glow hugs it.)
+const HORIZON_Y = -160;
+const HORIZON_Z = -2400;
+const GLOW_W = 5200;
+const GLOW_H = 900;
 
 export default function SeoulHorizon({ quality }: { quality: QualitySettings }) {
   const rt = useSceneRuntime();
-  const buildingsRef = useRef<THREE.InstancedMesh>(null);
-  const cityMat = useMemo(() => new THREE.MeshBasicMaterial({ fog: true }), []);
-  const riverMat = useMemo(
-    () => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.3, fog: true }),
-    [],
-  );
-  const dot = useMemo(() => makeDotTexture(), []);
-  const lightsMat = useRef<THREE.PointsMaterial>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  const hazeMat = useRef<THREE.MeshBasicMaterial>(null);
+  const glowMat = useRef<THREE.MeshBasicMaterial>(null);
+  const specksMat = useRef<THREE.PointsMaterial>(null);
 
-  const boxGeo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
+  const glowTex = useMemo(() => makeHorizonGlowTexture(), []);
+  const dot = useMemo(() => makeDotTexture(), []);
   useEffect(
     () => () => {
-      cityMat.dispose();
-      riverMat.dispose();
-      boxGeo.dispose();
+      glowTex.dispose();
       dot.dispose();
     },
-    [cityMat, riverMat, boxGeo, dot],
+    [glowTex, dot],
   );
 
-  const count = quality.buildings;
-  // Stable args identity so R3F never reconstructs the InstancedMesh (which
-  // would drop the matrices we set in the effect below).
-  const args = useMemo(
-    () => [boxGeo, cityMat, count] as [THREE.BufferGeometry, THREE.Material, number],
-    [boxGeo, cityMat, count],
-  );
-
-  // Place the procedural skyline once.
-  useEffect(() => {
-    const mesh = buildingsRef.current;
-    if (!mesh) return;
-    const rand = mulberry32(5665);
-    const dummy = new THREE.Object3D();
-    for (let i = 0; i < count; i++) {
-      const w = 5 + rand() * 14;
-      const d = 5 + rand() * 14;
-      const h = 6 + rand() * rand() * 78; // mostly low, a few towers
-      dummy.position.set((rand() * 2 - 1) * 900, h / 2, (rand() * 2 - 1) * 130);
-      dummy.scale.set(w, h, d);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-  }, [count]);
-
-  // Night lights scattered through the city volume.
-  const lightsGeo = useMemo(() => {
-    const rand = mulberry32(127);
-    const n = Math.round(count * 3);
+  // A faint, sparse scatter of distant lights hugging the horizon band. Random
+  // placement + tiny size means it never aligns into anything skyline-like.
+  const specksGeo = useMemo(() => {
+    const n = Math.min(220, Math.max(60, Math.round(quality.stars * 0.12)));
+    const rand = mulberry32(7321);
     const pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      pos[i * 3] = (rand() * 2 - 1) * 880;
-      pos[i * 3 + 1] = rand() * 62;
-      pos[i * 3 + 2] = (rand() * 2 - 1) * 125;
+      pos[i * 3] = (rand() * 2 - 1) * GLOW_W * 0.42;
+      pos[i * 3 + 1] = HORIZON_Y - 30 + rand() * 90; // hug the horizon line
+      pos[i * 3 + 2] = HORIZON_Z + (rand() * 2 - 1) * 280;
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     return g;
-  }, [count]);
-  useEffect(() => () => lightsGeo.dispose(), [lightsGeo]);
+  }, [quality.stars]);
+  useEffect(() => () => specksGeo.dispose(), [specksGeo]);
 
   const tmp = useMemo(() => new THREE.Color(), []);
 
   useFrame(() => {
     const c = rt.current.config;
-    // Buildings read as silhouettes — a touch darker than the fog they sit in.
-    tmp.setRGB(c.fogColor[0] * 0.5, c.fogColor[1] * 0.5, c.fogColor[2] * 0.55, THREE.SRGBColorSpace);
-    cityMat.color.copy(tmp);
-    riverMat.color.setRGB(c.skyHorizon[0] * 0.7, c.skyHorizon[1] * 0.72, c.skyHorizon[2] * 0.85, THREE.SRGBColorSpace);
-    riverMat.opacity = 0.28 * c.cityVisibility;
+    // In hybrid mode the cinematic video plate IS Seoul — hide the whole layer
+    // and skip its per-frame work entirely. Never two worlds at once.
+    const hybrid = rt.current.renderMode === "hybrid";
+    if (groupRef.current) groupRef.current.visible = !hybrid;
+    if (hybrid) return;
 
-    if (lightsMat.current) {
-      lightsMat.current.color.setRGB(c.cityGlow[0], c.cityGlow[1], c.cityGlow[2], THREE.SRGBColorSpace);
-      lightsMat.current.opacity = c.cityLight * c.cityVisibility;
-      lightsMat.current.visible = c.cityLight * c.cityVisibility > 0.02;
+    // Horizon haze — a pale atmospheric band present day and night, scaled by
+    // how murky the air reads and faded out as visibility drops.
+    if (hazeMat.current) {
+      tmp.setRGB(c.fogColor[0], c.fogColor[1], c.fogColor[2], THREE.SRGBColorSpace);
+      hazeMat.current.color.copy(tmp);
+      hazeMat.current.opacity = (0.08 + c.haze * 0.3) * c.cityVisibility;
+    }
+
+    // City glow — a warm light-pollution dome at night, a whisper by day. Pure
+    // additive light, no geometry that could read as a building.
+    if (glowMat.current) {
+      tmp.setRGB(c.cityGlow[0], c.cityGlow[1], c.cityGlow[2], THREE.SRGBColorSpace);
+      glowMat.current.color.copy(tmp);
+      glowMat.current.opacity = (0.05 + c.cityLight * 0.5) * c.cityVisibility;
+    }
+
+    // Distant light specks — night only, tiny and faint.
+    if (specksMat.current) {
+      tmp.setRGB(c.cityGlow[0], c.cityGlow[1], c.cityGlow[2], THREE.SRGBColorSpace);
+      specksMat.current.color.copy(tmp);
+      const a = c.cityLight * c.cityVisibility;
+      specksMat.current.opacity = a * 0.75;
+      specksMat.current.visible = a > 0.03;
     }
   });
 
   return (
-    <group position={[CITY.x, CITY.y, CITY.z]}>
-      <instancedMesh ref={buildingsRef} args={args} frustumCulled={false} renderOrder={0} />
-
-      {/* Han River — a faint band threading the city. */}
-      <mesh material={riverMat} position={[40, 1, 60]} rotation={[-Math.PI / 2, 0, 0.12]}>
-        <planeGeometry args={[1500, 70]} />
+    <group ref={groupRef} renderOrder={0}>
+      {/* Warm city-glow dome — widest + softest, drawn first. */}
+      <mesh position={[0, HORIZON_Y, HORIZON_Z]}>
+        <planeGeometry args={[GLOW_W * 1.18, GLOW_H * 1.5]} />
+        <meshBasicMaterial
+          ref={glowMat}
+          map={glowTex}
+          transparent
+          depthWrite={false}
+          fog={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+          opacity={0}
+        />
       </mesh>
 
-      {/* N Seoul Tower on a ridge (left). */}
-      <group position={[-320, 0, -30]}>
-        <mesh material={cityMat} position={[0, 26, 0]}>
-          <coneGeometry args={[120, 56, 24]} />
-        </mesh>
-        <mesh material={cityMat} position={[0, 96, 0]}>
-          <cylinderGeometry args={[3.5, 6, 86, 12]} />
-        </mesh>
-        <mesh material={cityMat} position={[0, 132, 0]}>
-          <cylinderGeometry args={[11, 11, 16, 12]} />
-        </mesh>
-        <mesh material={cityMat} position={[0, 150, 0]}>
-          <cylinderGeometry args={[1.5, 2.5, 24, 8]} />
-        </mesh>
-      </group>
-
-      {/* Lotte-style tapering spire (right). */}
-      <mesh material={cityMat} position={[300, 82, 20]}>
-        <cylinderGeometry args={[5, 26, 164, 6]} />
+      {/* Atmospheric horizon haze band (fog-tinted). */}
+      <mesh position={[0, HORIZON_Y + 40, HORIZON_Z + 40]}>
+        <planeGeometry args={[GLOW_W, GLOW_H]} />
+        <meshBasicMaterial
+          ref={hazeMat}
+          map={glowTex}
+          transparent
+          depthWrite={false}
+          fog={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+          opacity={0}
+        />
       </mesh>
 
-      <points geometry={lightsGeo} renderOrder={0} frustumCulled={false}>
+      {/* Tiny distant light specks — night only. */}
+      <points geometry={specksGeo} frustumCulled={false}>
         <pointsMaterial
-          ref={lightsMat}
+          ref={specksMat}
           map={dot}
-          size={6}
+          size={5}
           sizeAttenuation
           transparent
-          opacity={0}
           depthWrite={false}
+          fog={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+          opacity={0}
         />
       </points>
     </group>

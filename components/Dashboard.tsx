@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { rainRiskNext12h } from "@/lib/compare";
 import { formatClock, formatHeaderDate, makeIsNightAt } from "@/lib/format";
 import type { ProviderAvailability, WeatherIntelligence } from "@/lib/types";
+import CinematicDiagnostics from "./CinematicDiagnostics";
 import ConfidencePanel from "./ConfidencePanel";
 import CurrentHero from "./CurrentHero";
 import DailyForecast from "./DailyForecast";
@@ -285,6 +286,11 @@ export default function Dashboard() {
           <Section delay={0.25}>
             <SectionTitle label="시스템 진단" sub="설정 · 캐시 · 상태" />
             <Diagnostics data={data} />
+          </Section>
+
+          <Section delay={0.28}>
+            <SectionTitle label="시네마틱 엔진" sub="영상 플레이트 · 렌더 모드 · 폴백" />
+            <CinematicDiagnostics />
           </Section>
 
           <footer className="pb-6 text-center text-xs text-slate-600">

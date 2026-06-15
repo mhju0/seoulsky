@@ -38,6 +38,12 @@ export interface SceneRuntime {
   immersion: number;
   reducedMotion: boolean;
   tier: QualityTier;
+  /**
+   * "hybrid" = a cinematic video plate is the distant world; the scene renders
+   * transparent ENHANCEMENT only (near vapor, precipitation, lightning, glow) —
+   * no opaque sky dome or city. "procedural" = the full self-contained scene.
+   */
+  renderMode: "procedural" | "hybrid";
   /** Accumulated cloud-streaming distance + lateral wind drift (world units). */
   travel: number;
   windOffset: [number, number];
@@ -60,10 +66,18 @@ interface Props {
   snapshot: SkySnapshot | null;
   tier: QualityTier;
   reducedMotion: boolean;
+  /** Defaults to the full procedural scene; "hybrid" renders transparent. */
+  renderMode?: "procedural" | "hybrid";
   children: ReactNode;
 }
 
-export default function SceneDirector({ snapshot, tier, reducedMotion, children }: Props) {
+export default function SceneDirector({
+  snapshot,
+  tier,
+  reducedMotion,
+  renderMode = "procedural",
+  children,
+}: Props) {
   const { scene, gl } = useThree();
   const snapshotRef = useRef<SkySnapshot | null>(snapshot);
   snapshotRef.current = snapshot;
@@ -80,12 +94,14 @@ export default function SceneDirector({ snapshot, tier, reducedMotion, children 
       immersion: 1,
       reducedMotion,
       tier,
+      renderMode,
       travel: 0,
       windOffset: [0, 0],
     };
   }
   runtime.current.reducedMotion = reducedMotion;
   runtime.current.tier = tier;
+  runtime.current.renderMode = renderMode;
 
   // Linear fog owned here; near/far/colour are written every frame.
   const fog = useMemo(() => new THREE.Fog(0x10131c, 10, 800), []);
@@ -137,6 +153,9 @@ export default function SceneDirector({ snapshot, tier, reducedMotion, children 
     } else {
       rt.immersion = 0;
     }
+    // The video plate carries its own cinematic opening; never bury the
+    // transparent enhancement layer in opening cloud-fog over it.
+    if (rt.renderMode === "hybrid") rt.immersion = 0;
 
     // 4. Forward streaming + lateral wind drift for the cloud field.
     const speed = (reducedMotion ? 8 : 22) * (0.7 + cfg.windStrength * 0.6);

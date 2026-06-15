@@ -75,41 +75,49 @@ export default function Atmosphere({ quality }: { quality: QualitySettings }) {
 
   useFrame(({ clock }) => {
     const c = rt.current.config;
+    const hybrid = rt.current.renderMode === "hybrid";
+
+    // In hybrid mode the cinematic video plate IS the sky: hide the dome (and,
+    // below, the stars and celestial glows — the footage already carries them)
+    // and skip the per-vertex dome recolour entirely.
+    if (domeRef.current) domeRef.current.visible = !hybrid;
 
     // --- sky gradient ---
-    const colAttr = domeGeo.getAttribute("color") as THREE.BufferAttribute;
-    const posAttr = domeGeo.getAttribute("position") as THREE.BufferAttribute;
-    const top = c.skyTop;
-    const mid = c.skyMid;
-    const hor = c.skyHorizon;
-    for (let i = 0; i < posAttr.count; i++) {
-      const ny = posAttr.getY(i) / DOME_R; // -1..1
-      let r: number, g: number, b: number;
-      if (ny >= 0) {
-        const t1 = smoothstep(0, 0.22, ny);
-        const lr = mix(hor[0], mid[0], t1);
-        const lg = mix(hor[1], mid[1], t1);
-        const lb = mix(hor[2], mid[2], t1);
-        const t2 = smoothstep(0.16, 0.78, ny);
-        r = mix(lr, top[0], t2);
-        g = mix(lg, top[1], t2);
-        b = mix(lb, top[2], t2);
-      } else {
-        const t = smoothstep(0, 0.55, -ny);
-        r = hor[0] * (1 - 0.32 * t);
-        g = hor[1] * (1 - 0.32 * t);
-        b = hor[2] * (1 - 0.32 * t);
+    if (!hybrid) {
+      const colAttr = domeGeo.getAttribute("color") as THREE.BufferAttribute;
+      const posAttr = domeGeo.getAttribute("position") as THREE.BufferAttribute;
+      const top = c.skyTop;
+      const mid = c.skyMid;
+      const hor = c.skyHorizon;
+      for (let i = 0; i < posAttr.count; i++) {
+        const ny = posAttr.getY(i) / DOME_R; // -1..1
+        let r: number, g: number, b: number;
+        if (ny >= 0) {
+          const t1 = smoothstep(0, 0.22, ny);
+          const lr = mix(hor[0], mid[0], t1);
+          const lg = mix(hor[1], mid[1], t1);
+          const lb = mix(hor[2], mid[2], t1);
+          const t2 = smoothstep(0.16, 0.78, ny);
+          r = mix(lr, top[0], t2);
+          g = mix(lg, top[1], t2);
+          b = mix(lb, top[2], t2);
+        } else {
+          const t = smoothstep(0, 0.55, -ny);
+          r = hor[0] * (1 - 0.32 * t);
+          g = hor[1] * (1 - 0.32 * t);
+          b = hor[2] * (1 - 0.32 * t);
+        }
+        tmp.setRGB(r, g, b, THREE.SRGBColorSpace);
+        colAttr.setXYZ(i, tmp.r, tmp.g, tmp.b);
       }
-      tmp.setRGB(r, g, b, THREE.SRGBColorSpace);
-      colAttr.setXYZ(i, tmp.r, tmp.g, tmp.b);
+      colAttr.needsUpdate = true;
     }
-    colAttr.needsUpdate = true;
 
     // --- stars ---
     if (starMat.current) {
       const twinkle = 0.9 + 0.1 * Math.sin(clock.elapsedTime * 1.7);
       starMat.current.opacity = c.starOpacity * twinkle;
-      starMat.current.visible = c.starOpacity > 0.01;
+      starMat.current.visible = !hybrid && c.starOpacity > 0.01;
     }
 
     // --- sun & moon glows along the key-light direction ---
@@ -122,17 +130,17 @@ export default function Atmosphere({ quality }: { quality: QualitySettings }) {
         c.sunGlowColor[0], c.sunGlowColor[1], c.sunGlowColor[2], THREE.SRGBColorSpace,
       );
       (sunRef.current.material as THREE.SpriteMaterial).opacity = c.sunGlow;
-      sunRef.current.visible = c.sunGlow > 0.01;
+      sunRef.current.visible = !hybrid && c.sunGlow > 0.01;
     }
     if (moonRef.current && moonCore.current) {
       moonRef.current.position.set(d[0] * 3300, d[1] * 3300, d[2] * 3300);
       moonRef.current.scale.set(380, 380, 1);
       (moonRef.current.material as THREE.SpriteMaterial).opacity = c.moonGlow * 0.7;
-      moonRef.current.visible = c.moonGlow > 0.01;
+      moonRef.current.visible = !hybrid && c.moonGlow > 0.01;
       moonCore.current.position.copy(moonRef.current.position);
       moonCore.current.scale.set(70, 70, 1);
       (moonCore.current.material as THREE.SpriteMaterial).opacity = c.moonGlow;
-      moonCore.current.visible = c.moonGlow > 0.01;
+      moonCore.current.visible = !hybrid && c.moonGlow > 0.01;
     }
   });
 

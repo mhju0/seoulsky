@@ -8,15 +8,14 @@ import {
   type RGB,
 } from "@/lib/cinematic/weatherSceneConfig";
 import type { SkySnapshot } from "@/lib/types";
-import SeoulSkyline from "./SeoulSkyline";
 import WeatherParticles from "./WeatherParticles";
 
 /**
  * Shown when WebGL is unavailable or the 3D scene fails to initialise. It reuses
  * the exact same {@link buildSceneConfig} palette as the 3D scene, so it still
  * reflects Seoul's current time-of-day, daylight phase and weather — just in 2D
- * (CSS gradient + glow + the existing CSS particles + SVG skyline). Never a
- * blank page, raw error, or stuck loader.
+ * (CSS gradient + glow + the existing CSS particles + a soft horizon glow). No
+ * buildings or skyline. Never a blank page, raw error, or stuck loader.
  */
 
 const rgb = (c: RGB) =>
@@ -64,17 +63,23 @@ export default function WebGLFallback({ snapshot }: { snapshot: SkySnapshot | nu
         windKmh={snapshot?.current.windSpeed ?? 0}
       />
 
-      <div className="absolute inset-x-0 bottom-0">
+      {/* Horizon glow + atmospheric haze — no buildings, no skyline. */}
+      <div className="absolute inset-x-0 bottom-0 h-[42vh]">
+        {/* warm city light-pollution glow, strongest at night */}
         <div
-          className="absolute inset-x-0 bottom-0 h-[30vh]"
+          className="absolute inset-x-0 bottom-0 h-full"
           style={{
-            background: `radial-gradient(ellipse 80% 60% at 50% 110%, ${rgb(cfg.cityGlow)}, transparent 70%)`,
+            background: `radial-gradient(ellipse 90% 72% at 50% 120%, ${rgb(cfg.cityGlow)}, transparent 68%)`,
             opacity: cfg.cityLight * cfg.cityVisibility * 0.6,
           }}
         />
-        <SeoulSkyline
-          className="relative h-[22vh] w-full text-[#05070f]"
-          lights={cfg.cityLight > 0.3}
+        {/* pale atmospheric haze band hugging the horizon */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-[62%]"
+          style={{
+            background: `linear-gradient(to top, ${rgb(cfg.fogColor)}, transparent)`,
+            opacity: (0.12 + cfg.haze * 0.3) * cfg.cityVisibility,
+          }}
         />
       </div>
 
