@@ -1,10 +1,11 @@
 "use client";
 
 import DiagnosticsView from "./DiagnosticsView";
+import CloudDeckBand from "./bands/CloudDeckBand";
+import SurfaceBand from "./bands/SurfaceBand";
 import TitleBand from "./bands/TitleBand";
 import UpperAirBand from "./bands/UpperAirBand";
-import { Band, ScrollReveal } from "./descentMotion";
-import { MetricLabel, PoeticLine } from "./EtchedType";
+import { Band } from "./descentMotion";
 
 /**
  * The Descent — the single banded foreground over the shared, fixed atmospheric
@@ -12,25 +13,11 @@ import { MetricLabel, PoeticLine } from "./EtchedType";
  * data deck (band 5), and the field's altitude ramp (driven by its own damped
  * scroll ref) re-grades the sky as you go.
  *
- * This is the SCAFFOLD: bands 1–4 hold placeholders (filled in T3.3/T3.4); band
- * 5 wires the existing diagnostics content as a placeholder (restyled in T4.1).
- * A soft directional scrim keeps the foreground type readable across the whole
- * scroll without a hard divider.
+ * Bands 1–4 are live etched readouts over the field; band 5 wires the existing
+ * diagnostics content as a placeholder (restyled in T4.1). A soft directional
+ * scrim keeps the foreground type readable across the whole scroll without a
+ * hard divider.
  */
-
-/** A labelled placeholder for a band that real content replaces in a later task. */
-function BandPlaceholder({ index, title }: { index: string; title: string }) {
-  return (
-    <ScrollReveal className="max-w-[640px]">
-      <div className="flex items-center gap-4">
-        <span className="font-mono text-[11px] tabular-nums tracking-[0.3em] text-white/35">{index}</span>
-        <span className="h-px w-12 bg-white/20" />
-        <MetricLabel tone="muted">{title}</MetricLabel>
-      </div>
-      <PoeticLine className="mt-6 text-white/40">콘텐츠 준비 중 — placeholder</PoeticLine>
-    </ScrollReveal>
-  );
-}
 
 export default function DescentView() {
   return (
@@ -62,10 +49,10 @@ export default function DescentView() {
           <UpperAirBand />
         </Band>
         <Band>
-          <BandPlaceholder index="03" title="Cloud Deck · 구름층" />
+          <CloudDeckBand />
         </Band>
         <Band>
-          <BandPlaceholder index="04" title="Surface Weather · 지표 기상" />
+          <SurfaceBand />
         </Band>
 
         {/* Band 5 — ground station. The #ground deep-link / "D" jump lands here.
