@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useInView } from "framer-motion";
+import { useRef } from "react";
 import { dayLabel, makeIsNightAt } from "@/lib/format";
 import GlassPanel from "../glass/GlassPanel";
 import WeatherGlyph from "../glass/WeatherGlyph";
@@ -20,14 +22,25 @@ import SunArc from "./SunArc";
 // Recharts is heavy — only pull its chunk in when the wind graph actually mounts.
 const WindGraph = dynamic(() => import("./WindGraph"), {
   ssr: false,
-  loading: () => <div className="h-[150px] w-full animate-pulse rounded-lg bg-white/[0.03]" />,
+  loading: () => <WindPlaceholder />,
 });
+
+/** The pulse shown before the wind graph is near + while its chunk loads. */
+function WindPlaceholder() {
+  return <div className="h-[150px] w-full animate-pulse rounded-lg bg-white/[0.03]" />;
+}
 
 const KST = "Asia/Seoul";
 const hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: KST, hour: "numeric", hour12: true });
 
 export default function ForecastSection() {
   const { snapshot, clock } = useWeatherField();
+
+  // Defer the heavy Recharts chunk until the wind panel is approaching — the
+  // dynamic import only fires once <WindGraph> first renders, so gating its
+  // mount here keeps Recharts off the initial /sky load entirely.
+  const windRef = useRef<HTMLDivElement>(null);
+  const windNear = useInView(windRef, { once: true, margin: "0px 0px 300px 0px" });
 
   const hourly = snapshot?.hourly ?? [];
   const daily = (snapshot?.daily ?? []).slice(0, 7);
@@ -45,7 +58,12 @@ export default function ForecastSection() {
           <GlassPanel className="px-4 py-4 sm:px-5 sm:py-5">
             <MetricLabel>Next 24 Hours · 시간별</MetricLabel>
             {hourly.length > 0 ? (
-              <div className="scroll-thin mt-4 flex gap-1 overflow-x-auto pb-1">
+              <div
+                className="scroll-thin mt-4 flex gap-1 overflow-x-auto rounded-lg pb-1 outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+                tabIndex={0}
+                role="group"
+                aria-label="시간별 예보 — 좌우 화살표로 스크롤"
+              >
                 {hourly.slice(0, 24).map((h, i) => (
                   <div
                     key={h.time}
@@ -103,13 +121,15 @@ export default function ForecastSection() {
           <ScrollReveal amount={0.2} delay={0.14}>
             <GlassPanel className="h-full px-5 py-5 sm:px-6 sm:py-6">
               <MetricLabel className="mb-4">Wind · 바람 · m/s</MetricLabel>
-              {hourly.length > 0 ? (
-                <WindGraph hourly={hourly} />
-              ) : (
-                <div className="flex h-[150px] items-center font-mono text-[11px] uppercase tracking-[0.2em] text-white/35">
-                  바람 예보 없음
-                </div>
-              )}
+              <div ref={windRef}>
+                {hourly.length > 0 ? (
+                  windNear ? <WindGraph hourly={hourly} /> : <WindPlaceholder />
+                ) : (
+                  <div className="flex h-[150px] items-center font-mono text-[11px] uppercase tracking-[0.2em] text-white/35">
+                    바람 예보 없음
+                  </div>
+                )}
+              </div>
             </GlassPanel>
           </ScrollReveal>
         </div>
