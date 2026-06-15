@@ -1,6 +1,8 @@
 "use client";
 
 import DiagnosticsView from "./DiagnosticsView";
+import TitleBand from "./bands/TitleBand";
+import UpperAirBand from "./bands/UpperAirBand";
 import { Band, ScrollReveal } from "./descentMotion";
 import { MetricLabel, PoeticLine } from "./EtchedType";
 
@@ -54,10 +56,10 @@ export default function DescentView() {
       {/* The five descent bands. */}
       <div className="relative z-20 text-white">
         <Band>
-          <BandPlaceholder index="01" title="Stratosphere · 성층권" />
+          <TitleBand />
         </Band>
         <Band>
-          <BandPlaceholder index="02" title="Upper Air · 상층 대기" />
+          <UpperAirBand />
         </Band>
         <Band>
           <BandPlaceholder index="03" title="Cloud Deck · 구름층" />
