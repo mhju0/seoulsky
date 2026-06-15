@@ -143,7 +143,16 @@ export default function MinimalWeatherOverlay({ snapshot, status, lastUpdatedAt 
             }`}
       </motion.p>
 
-      <motion.div className="absolute bottom-6 right-7" {...fadeUp(6)}>
+      <motion.div className="absolute bottom-6 right-7 flex items-center gap-5" {...fadeUp(6)}>
+        <Link
+          href="/atmosphere"
+          className="pointer-events-auto flex items-center gap-2 text-[10px] tracking-wider text-slate-300/70 transition hover:text-white"
+        >
+          색면
+          <kbd className="rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-[9px] text-slate-200">
+            A
+          </kbd>
+        </Link>
         <Link
           href="/diagnostics"
           className="pointer-events-auto flex items-center gap-2 text-[10px] tracking-wider text-slate-300/70 transition hover:text-white"

@@ -11,7 +11,7 @@
  * probability, so a 30% chance of rain does NOT summon a storm:
  *   1. thunderstorm                         → storm
  *   2. snow (condition or live snowfall)     → snow
- *   3. rain (rainy condition / heavy warning)→ rain
+ *   3. rain (rainy condition / heavy warning)→ rain (day) | night-rain (night)
  *   4. fog or very low visibility            → fog
  *   5. heavy cloud cover                     → cloudy (day) | overcast-night
  *   6. pre-dawn / sunrise                     → dawn
@@ -100,8 +100,11 @@ export function selectCinematicPlate(input: PlateSelectionInput): PlateSelection
   if (hasWarning(input.warnings, "대설")) return result("snow", "heavy-snow warning active");
 
   // 3. Rain — any wet condition, or a heavy-rain (호우) / typhoon (태풍) warning.
-  if (RAINY.includes(input.condition)) return result("rain", `${input.condition} observed`);
-  if (hasWarning(input.warnings, "호우", "태풍")) return result("rain", "rain/typhoon warning active");
+  //    Time-aware: a dedicated rainy-night plate at night, the daytime rain clip
+  //    otherwise (the live three.js grade adapts either to the exact conditions).
+  const rainKey: CinematicPlateKey = isDay ? "rain" : "night-rain";
+  if (RAINY.includes(input.condition)) return result(rainKey, `${input.condition} observed`);
+  if (hasWarning(input.warnings, "호우", "태풍")) return result(rainKey, "rain/typhoon warning active");
 
   // 4. Fog / very low visibility.
   if (input.condition === "fog") return result("fog", "fog condition observed");

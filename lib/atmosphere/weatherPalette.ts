@@ -84,10 +84,13 @@ export function buildSkyPalette(sun: SunPhase): SkyPalette {
   );
   const sunIntensity = clamp01(0.18 + day * 0.5 + sun.goldenFactor * 0.45);
 
-  // Sun sits to the east in the morning, west in the evening; height tracks elevation.
-  const sx = sun.rising ? 0.32 : 0.68;
-  const horizonY = clamp01(0.3 + day * 0.12 + sun.goldenFactor * 0.04);
-  const sy = clamp01(horizonY + Math.max(sun.elevation, -0.2) * 0.28);
+  // Keep the primary light in the RIGHT THIRD at all times: the left ~third is
+  // the protected typography zone, and the reference art keeps the event to the
+  // right. Morning leans toward centre-right, evening pushes further right.
+  const sx = sun.rising ? 0.66 : 0.76;
+  // A lower horizon gives more sky and a more dramatic field.
+  const horizonY = clamp01(0.26 + day * 0.12 + sun.goldenFactor * 0.04);
+  const sy = clamp01(horizonY + 0.06 + Math.max(sun.elevation, -0.2) * 0.24);
 
   return { skyTop, skyHorizon, skyBottom, sunColor, sunIntensity, sunPos: [sx, sy], horizonY };
 }

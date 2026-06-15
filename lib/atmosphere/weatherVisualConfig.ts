@@ -293,11 +293,15 @@ export interface AtmosphereReadout {
   condition: WeatherCondition;
   conditionKo: string;
   airBand: 1 | 2 | 3 | 4 | null;
+  /** Representative particulate value (PM2.5 → PM10), for the air-quality metric. */
+  airValue: number | null;
+  uvIndex: number | null;
 }
 
 /** Pull display-ready, null-safe values out of a snapshot for the HTML layers. */
 export function readAtmosphere(snapshot: SkySnapshot | null): AtmosphereReadout {
   const c = snapshot?.current;
+  const air = snapshot?.air ?? null;
   return {
     hasData: !!c,
     temperature: c?.temperature ?? null,
@@ -310,7 +314,9 @@ export function readAtmosphere(snapshot: SkySnapshot | null): AtmosphereReadout 
     visibility: c?.visibility ?? null,
     condition: c?.condition ?? "unknown",
     conditionKo: CONDITION_LABELS_KO[c?.condition ?? "unknown"],
-    airBand: snapshot?.air?.band ?? null,
+    airBand: air?.band ?? null,
+    airValue: air?.pm25 ?? air?.pm10 ?? null,
+    uvIndex: air?.uvIndex ?? null,
   };
 }
 
@@ -336,4 +342,14 @@ export function conditionLabelEn(condition: WeatherCondition): string {
 const AIR_BAND_EN = ["", "GOOD", "MODERATE", "POOR", "VERY POOR"] as const;
 export function airBandLabelEn(band: 1 | 2 | 3 | 4 | null): string | null {
   return band == null ? null : AIR_BAND_EN[band];
+}
+
+/** WHO UV-index exposure band, used as the small descriptor on the UV metric. */
+export function uvBandLabelEn(uv: number | null): string | null {
+  if (uv == null) return null;
+  if (uv < 3) return "LOW";
+  if (uv < 6) return "MODERATE";
+  if (uv < 8) return "HIGH";
+  if (uv < 11) return "VERY HIGH";
+  return "EXTREME";
 }

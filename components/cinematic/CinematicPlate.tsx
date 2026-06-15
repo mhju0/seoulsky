@@ -3,85 +3,73 @@
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { plateSources, type CinematicPlateKey } from "@/lib/cinematic/plateManifest";
+import SeamlessVideo from "./SeamlessVideo";
 
 /**
  * The cinematic BASE plate — the distant, photoreal aerial world.
  *
- * This is Layer 1 of the hybrid stack (z-0): a full-screen muted, looping
- * <video> selected from live Seoul time + weather. The real-time three.js scene
- * is composited transparently ON TOP (precipitation, near-cloud vapor, fog,
- * lightning, live tint), so the footage is the world and three.js is the live
- * adaptation. The footage is generated offline (Higgsfield in the Claude CLI)
- * and dropped into public/cinematic/generated/ — there is no runtime Higgsfield
- * call, account, or credential anywhere in the app.
+ * This is Layer 1 of the hybrid stack (z-0): a full-screen muted video selected
+ * from live Seoul time + weather. The real-time three.js scene is composited
+ * transparently ON TOP (precipitation, near-cloud vapor, fog, lightning, live
+ * tint), so the footage is the world and three.js is the live adaptation. The
+ * footage is generated offline (Higgsfield in the Claude CLI) and dropped into
+ * public/cinematic/generated/ — there is no runtime Higgsfield call, account, or
+ * credential anywhere in the app.
+ *
+ * Two independent crossfades stack here:
+ *   • LOOP seams — each {@link SeamlessVideo} runs a dual-buffer crossfade at the
+ *     clip boundary, so the loop never shows a hard jump (no reliance on a
+ *     perfectly seamless render).
+ *   • WEATHER/TIME family changes — when `activeKey` changes, the new family's
+ *     layer fades in fully on top of the still-opaque outgoing one over ~2.8 s
+ *     (no black flash); the old layer is unmounted only after the fade.
  *
  * Robustness is the whole point:
- *   • A missing/corrupt file errors the <video> → onFailed() → the page drops to
- *     the procedural scene. Never a broken box, never a black frame.
- *   • Weather/time changes crossfade over ~2.8 s with NO black flash: the new
- *     plate fades in fully on top of the still-opaque old one, which is only
- *     unmounted afterwards. At most two videos decode at once.
+ *   • A missing/corrupt file → onError → onFailed() → the page drops to the
+ *     procedural scene. Never a broken box, never a black frame.
  *   • Reduced motion shows the plate as a static first frame (no autoplay/loop).
- *
- * Looping uses the native `loop` attribute; the clips are authored loop-friendly
- * (steady forward flight, compatible first/last framing). See
- * public/cinematic/README.md for the seamless-vs-crossfade-loop note.
+ *   • Low-power / mobile tiers (`seamless={false}`) use a single native-loop
+ *     video so only one decoder is active.
  */
 
 const CROSSFADE_S = 2.8;
 
-interface PlateLayerProps {
+interface FamilyLayerProps {
   plateKey: CinematicPlateKey;
   reducedMotion: boolean;
+  seamless: boolean;
   onReady: () => void;
   onError: (message: string) => void;
   onFormat: (type: string | null) => void;
 }
 
-/** One <video> that fades itself in only once it can actually play. */
-function PlateLayer({ plateKey, reducedMotion, onReady, onError, onFormat }: PlateLayerProps) {
-  const ref = useRef<HTMLVideoElement>(null);
+/**
+ * One weather-family layer: a {@link SeamlessVideo} (which owns its own loop
+ * crossfade) wrapped in a div that fades the WHOLE family in once the video can
+ * play — that is the family/time crossfade.
+ */
+function FamilyLayer({ plateKey, reducedMotion, seamless, onReady, onError, onFormat }: FamilyLayerProps) {
   const [ready, setReady] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const sources = plateSources(plateKey);
-
-  const handleCanPlay = () => {
-    if (!ready) {
-      setReady(true);
-      const v = ref.current;
-      onFormat(v?.currentSrc?.endsWith(".webm") ? "video/webm" : v?.currentSrc ? "video/mp4" : null);
-      onReady();
-    }
-    // Muted autoplay is permitted everywhere, but stay defensive about rejection.
-    if (!reducedMotion) ref.current?.play().catch(() => {});
-  };
-
-  // No usable source (e.g. a dev-forced key with no file) or a runtime error:
-  // render nothing. The parent detects the no-source case via an effect so we
-  // never call setState during another component's render.
-  if (failed || sources.length === 0) return null;
+  if (plateSources(plateKey).length === 0) return null;
   return (
-    <motion.video
-      ref={ref}
-      className="absolute inset-0 h-full w-full object-cover"
-      autoPlay={!reducedMotion}
-      muted
-      loop={!reducedMotion}
-      playsInline
-      preload="metadata"
+    <motion.div
+      className="absolute inset-0"
       initial={{ opacity: 0 }}
       animate={{ opacity: ready ? 1 : 0 }}
       transition={{ duration: CROSSFADE_S, ease: "easeInOut" }}
-      onCanPlay={handleCanPlay}
-      onError={() => {
-        setFailed(true);
-        onError(`video error: ${plateKey}`);
-      }}
     >
-      {sources.map((s) => (
-        <source key={s.src} src={s.src} type={s.type} />
-      ))}
-    </motion.video>
+      <SeamlessVideo
+        plateKey={plateKey}
+        reducedMotion={reducedMotion}
+        seamless={seamless}
+        onReady={() => {
+          if (!ready) setReady(true);
+          onReady();
+        }}
+        onError={onError}
+        onFormat={onFormat}
+      />
+    </motion.div>
   );
 }
 
@@ -93,6 +81,8 @@ interface Layer {
 interface Props {
   activeKey: CinematicPlateKey;
   reducedMotion: boolean;
+  /** Use the dual-buffer seamless loop (desktop/high tiers) vs. native loop. */
+  seamless: boolean;
   /** First playable frame of any plate. */
   onReady?: () => void;
   /** The active plate has no usable source (file missing / codec / corrupt). */
@@ -106,6 +96,7 @@ interface Props {
 export default function CinematicPlate({
   activeKey,
   reducedMotion,
+  seamless,
   onReady,
   onFailed,
   onTransition,
@@ -167,10 +158,11 @@ export default function CinematicPlate({
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-black" aria-hidden>
       {layers.map((layer) => (
-        <PlateLayer
+        <FamilyLayer
           key={layer.uid}
           plateKey={layer.key}
           reducedMotion={reducedMotion}
+          seamless={seamless}
           onReady={() => handleReady(layer.uid)}
           onError={() => handleError(layer.uid)}
           onFormat={onFormat ?? (() => {})}

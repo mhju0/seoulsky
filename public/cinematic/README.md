@@ -42,25 +42,27 @@ included.
 | `cloudy`         | heavy cloud cover, daytime                             |
 | `overcast-night` | heavy cloud cover, night                               |
 | `fog`            | fog / very low visibility                              |
-| `rain`           | drizzle / rain / heavy-rain / sleet, or 호우·태풍 warning |
+| `rain`           | drizzle / rain / heavy-rain / sleet (daytime), or 호우·태풍 warning by day |
+| `night-rain`     | drizzle / rain / heavy-rain / sleet at night, or 호우·태풍 warning by night |
 | `storm`          | thunderstorm                                           |
 | `snow`           | snow / live snowfall, or 대설 warning                   |
 
 ## File locations
 
 Source-of-record clips live in `generated/` and are **git-ignored** (binaries).
-All 10 keys now have a source file (generated offline with Google Veo 3.1 Lite,
+All 11 keys have a source file (generated offline with Higgsfield's Veo 3.1 Lite,
 8 s · 16:9 · no audio · 1344×768):
 
 ```
-public/cinematic/generated/<key>-source.mp4         ← Higgsfield source (×10)
+public/cinematic/generated/<key>-source.mp4         ← Higgsfield source (×11)
 public/cinematic/generated/<key>.webm               ← (optional) optimized VP9/AV1
 public/cinematic/generated/<key>.mp4                ← (optional) optimized H.264
 ```
 
-`<key>` ∈ {clear-day, clear-night, dawn, sunset, cloudy, fog, rain, storm, snow,
-overcast-night}. The manifest points `mp4Src` / `webmSrc` at whichever files
-exist; with no `ffmpeg` on this machine it serves each `-source.mp4` directly.
+`<key>` ∈ {clear-day, clear-night, dawn, sunset, cloudy, fog, rain, night-rain,
+storm, snow, overcast-night}. The manifest points `mp4Src` / `webmSrc` at
+whichever files exist; with no `ffmpeg` on this machine it serves each
+`-source.mp4` directly.
 
 ## Encoding spec (recommended target)
 

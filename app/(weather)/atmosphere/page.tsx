@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AtmosphericFieldPage from "@/components/atmosphere/AtmosphericFieldPage";
+import AtmosphereView from "@/components/atmosphere/AtmosphereView";
 
 export const metadata: Metadata = {
   title: "SeoulSky — 서울 대기 색면",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function AtmospherePage() {
-  return <AtmosphericFieldPage />;
+  return <AtmosphereView />;
 }

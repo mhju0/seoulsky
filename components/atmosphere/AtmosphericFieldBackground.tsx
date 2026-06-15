@@ -92,76 +92,114 @@ float snowField(vec2 uv, float aspect){
 void main(){
   vec2 uv = gl_FragCoord.xy / u_res;            // 0..1, y up
   float aspect = u_res.x / u_res.y;
-  vec2 par = u_pointer * 0.014;                 // subtle pointer depth
+  vec2 par = u_pointer * 0.012;                 // subtle pointer depth
 
   // wind drift (flow direction over time)
-  vec2 drift = u_windDir * u_time * (0.004 + u_windSpeed * 0.022);
+  vec2 drift = u_windDir * u_time * (0.004 + u_windSpeed * 0.02);
 
-  // wet-glass refraction warp when raining
+  // wet-glass refraction warp when raining (stronger toward the lower frame)
   vec2 warp = vec2(0.0);
   if(u_rain > 0.001){
-    float streak = sin(uv.y * 38.0 - u_time * 2.0 + fbm(vec2(uv.x * 7.0, u_time * 0.3)) * 6.0);
+    float streak = sin(uv.y * 36.0 - u_time * 2.0 + fbm(vec2(uv.x * 7.0, u_time * 0.3)) * 6.0);
     warp.x += streak * 0.006 * u_rain;
-    float rivulet = fbm(vec2(uv.x * 24.0, uv.y * 3.0 - u_time * 0.7));
-    warp.x += (rivulet - 0.5) * 0.02 * u_rain;
+    float rivulet = fbm(vec2(uv.x * 22.0, uv.y * 3.0 - u_time * 0.7));
+    warp.x += (rivulet - 0.5) * 0.02 * u_rain * smoothstep(0.0, 0.55, uv.y);
   }
 
   vec2 p = vec2(uv.x * aspect, uv.y) + par + warp;
   float hb = u_horizonY;
-
-  // base vertical gradient with a bright horizon band
   float y = uv.y + warp.y;
+
+  // aspect-corrected sun vector — reused for cloud lighting, glow and reflection
+  vec2 sd = (uv - u_sunPos);
+  sd.x *= aspect;
+  float sunDist = length(sd);
+
+  // --- FAR SKY: three-stop vertical gradient -------------------------------
   vec3 sky = y < hb
     ? mix(u_skyBottom, u_skyHorizon, smoothstep(0.0, hb, y))
     : mix(u_skyHorizon, u_skyTop, smoothstep(hb, 1.0, y));
 
-  // drifting cloud shadows
-  float clouds = fbm(p * 1.4 + drift);
-  clouds = smoothstep(0.38, 0.82, clouds);
-  sky *= 1.0 - clouds * u_cloudShadow * 0.55;
+  // --- PLANE 1: far soft cloud masses (large, slow), lit toward the sun -----
+  float farN = fbm(p * 0.85 + drift * 0.7);
+  float farClouds = smoothstep(0.42, 0.95, farN) * smoothstep(0.05, 0.4, y);
+  float sunSide = exp(-sunDist * 1.3);
+  vec3 cloudLit = mix(u_skyHorizon * 0.78, u_sunColor, 0.2 + 0.55 * sunSide);
+  sky = mix(sky, cloudLit, farClouds * (0.22 + 0.4 * u_cloudShadow));
 
-  // haze / fog — low-freq lift toward pale grey, denser near the horizon band
-  float hazeN = fbm(p * 0.8 - drift * 0.6);
-  vec3 fogCol = mix(vec3(0.62, 0.66, 0.72), u_skyHorizon, 0.4);
-  float hazeAmt = u_haze * (0.45 + 0.55 * hazeN) * mix(0.85, 1.4, 1.0 - abs(y - hb));
-  sky = mix(sky, fogCol, clamp(hazeAmt * 0.6, 0.0, 0.85));
+  // --- PLANE 2: mid cloud shadows (smaller, faster, darker) → depth ---------
+  float midN = fbm(p * 1.9 - drift * 1.4 + 7.3);
+  float midClouds = smoothstep(0.55, 0.92, midN) * smoothstep(0.03, 0.32, y);
+  sky *= 1.0 - midClouds * u_cloudShadow * 0.5;
 
-  // sun / atmospheric light diffusion (wider with diffusion, but never blown out)
-  vec2 sd = (uv - u_sunPos);
-  sd.x *= aspect;
-  float glow = exp(-dot(sd, sd) * mix(11.0, 3.0, u_lightDiffusion));
-  sky += u_sunColor * glow * u_sunIntensity * 0.5;
+  // --- haze / fog: lift toward pale grey, densest low and along the horizon -
+  float hazeN = fbm(p * 0.7 - drift * 0.5);
+  vec3 fogCol = mix(vec3(0.60, 0.64, 0.70), u_skyHorizon, 0.5);
+  float lowBias = mix(1.5, 0.45, smoothstep(hb - 0.12, 1.0, y));
+  float hazeAmt = u_haze * (0.4 + 0.6 * hazeN) * lowBias;
+  sky = mix(sky, fogCol, clamp(hazeAmt * 0.5, 0.0, 0.82));
 
-  // horizontal scatter band along the horizon
-  float band = exp(-pow((y - hb) * mix(7.0, 3.0, u_lightDiffusion), 2.0));
-  sky += u_sunColor * band * u_sunIntensity * 0.16;
+  // --- PLANE 3: distant ridge silhouette just under the horizon -------------
+  float ridgeY = hb - 0.05 + (fbm(vec2(uv.x * 2.0 + 11.0, 5.0)) - 0.5) * 0.055;
+  float belowR = ridgeY - y;                                 // >0 below the ridge line
+  float ridgeMask = smoothstep(0.0, 0.005, belowR) * smoothstep(0.18, 0.0, belowR);
+  vec3 ridgeCol = mix(u_skyBottom, vec3(0.035, 0.045, 0.085), 0.72);
+  sky = mix(sky, ridgeCol, clamp(ridgeMask, 0.0, 1.0) * 0.6 * (1.0 - u_haze * 0.45));
+
+  // --- reflective foreground (river / wet ground): mirror the sun w/ ripple -
+  float foreMask = smoothstep(0.0, 0.03, ridgeY - y);        // strictly below the ridge
+  vec2 rsd = vec2(uv.x - u_sunPos.x, (2.0 * ridgeY - y) - u_sunPos.y);
+  rsd.x *= aspect;
+  float ripple = 0.55 + 0.45 * sin(uv.x * 54.0 + u_time * 0.5 + noise(vec2(uv.x * 8.0, u_time * 0.2)) * 6.0);
+  float refl = exp(-length(rsd) * mix(7.0, 3.5, u_lightDiffusion)) * ripple;
+  vec3 water = mix(u_skyBottom * 0.55, u_sunColor, clamp(refl * 0.6, 0.0, 0.8));
+  sky = mix(sky, water, foreMask * 0.45);
+
+  // --- SUN: tight directional core + soft halo + horizon band, SCREEN-blended
+  // so the highlight asymptotes toward (but never reaches) white — the gradient
+  // detail underneath survives and there is no flat blown-out blob.
+  float core = exp(-sunDist * sunDist * mix(95.0, 34.0, u_lightDiffusion));
+  float halo = exp(-sunDist * mix(10.0, 5.5, u_lightDiffusion));
+  float band = exp(-pow((y - hb) * mix(8.0, 3.5, u_lightDiffusion), 2.0));
+  vec3 hl = clamp(u_sunColor * (core * 0.7 + halo * 0.34 + band * 0.12) * u_sunIntensity, 0.0, 0.82);
+  sky = 1.0 - (1.0 - sky) * (1.0 - hl);
+
+  // distant city lights at dusk, sitting along the ridge line
+  float dusk = clamp(1.0 - u_sunIntensity * 1.7, 0.0, 1.0);
+  float cityCells = hash(vec2(floor(uv.x * 220.0), 3.0));
+  float cityLights = step(0.93, cityCells) * smoothstep(0.010, 0.0, abs(y - ridgeY));
+  sky += u_sunColor * cityLights * dusk * 0.4;
 
   // a whisper of the weather accent
-  sky = mix(sky, sky * (0.6 + u_accent * 0.7) + u_accent * 0.05, 0.1);
+  sky = mix(sky, sky * (0.62 + u_accent * 0.7) + u_accent * 0.04, 0.09);
 
   // warm / cool tint balance
-  sky *= mix(vec3(0.95, 1.0, 1.05), vec3(1.05, 1.0, 0.95), u_warmth);
+  sky *= mix(vec3(0.95, 1.0, 1.05), vec3(1.06, 1.0, 0.94), u_warmth);
 
   // slow bright snow
   if(u_snow > 0.001){
     sky += vec3(0.95, 0.97, 1.0) * snowField(uv, aspect) * u_snow;
   }
 
-  // vertical rain streaks running down the glass
+  // vertical rain streaks running down the glass + reflected light near the base
   if(u_rain > 0.001){
-    float col = fract(uv.x * 200.0);
-    float line = smoothstep(0.0, 0.06, col) * (1.0 - smoothstep(0.06, 0.12, col));
+    float colp = fract(uv.x * 200.0);
+    float line = smoothstep(0.0, 0.06, colp) * (1.0 - smoothstep(0.06, 0.12, colp));
     float fall = fract(uv.y * 1.6 + u_time * 1.8 + hash(vec2(floor(uv.x * 200.0), 1.0)));
     float drop = smoothstep(0.55, 1.0, fall);
-    sky -= line * drop * 0.11 * u_rain;
+    sky -= line * drop * 0.10 * u_rain;
+    sky += u_sunColor * band * u_rain * 0.05 * smoothstep(0.35, 0.0, y);
   }
 
+  // settle the very bottom into a calm dark foreground (grounds the composition)
+  sky *= mix(0.74, 1.0, smoothstep(0.0, 0.16, y));
+
   // depth / contrast around mid grey
-  sky = (sky - 0.5) * mix(0.92, 1.16, u_contrast) + 0.5;
+  sky = (sky - 0.5) * mix(0.94, 1.16, u_contrast) + 0.5;
 
   // gentle vignette to settle the edges
-  float vig = smoothstep(1.3, 0.45, length((uv - 0.5) * vec2(aspect, 1.0)));
-  sky *= mix(0.84, 1.0, vig);
+  float vig = smoothstep(1.32, 0.42, length((uv - 0.5) * vec2(aspect, 1.0)));
+  sky *= mix(0.82, 1.0, vig);
 
   // fine film grain
   float g = hash(uv * u_res + fract(u_time) * 97.0) - 0.5;

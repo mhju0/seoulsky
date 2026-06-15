@@ -38,25 +38,30 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export default function CinematicDiagnostics() {
-  const [sky, setSky] = useState<SkySnapshot | null>(null);
+export default function CinematicDiagnostics({ sky: skyProp }: { sky?: SkySnapshot | null }) {
+  const sharedSky = skyProp !== undefined;
+  const [fetchedSky, setFetchedSky] = useState<SkySnapshot | null>(null);
   const [runtime, setRuntime] = useState<CinematicRuntimeStatus | null>(null);
 
   useEffect(() => {
     queueMicrotask(() => setRuntime(readCinematicStatus()));
+    // The shell already loaded /api/sky and passes it in — only fetch as a
+    // standalone fallback (e.g. if this panel is ever used outside the shell).
+    if (sharedSky) return;
     let alive = true;
     fetch("/api/sky", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (alive) setSky(d as SkySnapshot | null);
+        if (alive) setFetchedSky(d as SkySnapshot | null);
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, []);
+  }, [sharedSky]);
 
-  const current = selectPlateFromSky(sky);
+  const sky = sharedSky ? skyProp : fetchedSky;
+  const current = selectPlateFromSky(sky ?? null);
   const def = CINEMATIC_PLATES[current.key];
   const generated = CINEMATIC_PLATE_KEYS.filter(isPlateGenerated);
   const fmtTime = (t: number | null) =>

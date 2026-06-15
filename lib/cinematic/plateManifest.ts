@@ -25,6 +25,7 @@ export type CinematicPlateKey =
   | "cloudy"
   | "fog"
   | "rain"
+  | "night-rain"
   | "storm"
   | "snow"
   | "overcast-night";
@@ -111,7 +112,15 @@ export const CINEMATIC_PLATES: Record<CinematicPlateKey, CinematicPlateDefinitio
     generated: true,
     durationSeconds: 8,
     weatherConditions: ["drizzle", "rain", "heavy-rain", "sleet"],
-    timePhases: ["any"],
+    timePhases: ["daytime", "early-morning", "late-afternoon"],
+  },
+  "night-rain": {
+    key: "night-rain",
+    mp4Src: `${GEN}/night-rain-source.mp4`,
+    generated: true,
+    durationSeconds: 8,
+    weatherConditions: ["drizzle", "rain", "heavy-rain", "sleet"],
+    timePhases: ["night", "deep-night", "blue-hour"],
   },
   storm: {
     key: "storm",

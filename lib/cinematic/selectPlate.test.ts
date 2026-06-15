@@ -53,6 +53,19 @@ test("rain: wet conditions and heavy-rain/typhoon warnings → rain", () => {
   );
 });
 
+test("rain is time-aware: rain by day, night-rain by night", () => {
+  assert.equal(selectCinematicPlate(input({ condition: "rain" })).key, "rain");
+  assert.equal(
+    selectCinematicPlate(input({ condition: "rain", now: NIGHT, isDay: false })).key,
+    "night-rain",
+  );
+  // a rain/typhoon warning at night also routes to the night-rain plate
+  assert.equal(
+    selectCinematicPlate(input({ condition: "clear", warnings: [{ type: "호우경보" }], now: NIGHT, isDay: false })).key,
+    "night-rain",
+  );
+});
+
 test("rain ranks below snow (sleet stays rain, but snowfall forces snow)", () => {
   assert.equal(selectCinematicPlate(input({ condition: "sleet" })).key, "rain");
   assert.equal(selectCinematicPlate(input({ condition: "sleet", snowfall: 0.2 })).key, "snow");

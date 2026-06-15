@@ -38,24 +38,44 @@ export default function AtmosphericFieldFallback({
           )} ${horizonPct}%, ${rgb(config.skyBottom)} 100%)`,
         }}
       />
-      {/* sun / light diffusion */}
+      {/* horizon scatter band — wide, soft, anchored to the right third */}
+      <div
+        className="absolute inset-x-0 h-[46%]"
+        style={{
+          top: `${horizonPct - 23}%`,
+          background: `radial-gradient(120% 90% at ${sunX}% 60%, ${rgb(
+            config.sunColor,
+            0.2 * config.sunIntensity,
+          )}, transparent 62%)`,
+        }}
+      />
+      {/* sun — small + directional, in the right third (no central blob) */}
       <div
         className="absolute inset-0"
         style={{
-          background: `radial-gradient(${40 + config.lightDiffusion * 45}% ${
-            30 + config.lightDiffusion * 35
-          }% at ${sunX}% ${sunY}%, ${rgb(config.sunColor, 0.5 * config.sunIntensity)}, transparent 70%)`,
+          background: `radial-gradient(${18 + config.lightDiffusion * 16}% ${
+            14 + config.lightDiffusion * 12
+          }% at ${sunX}% ${sunY}%, ${rgb(config.sunColor, 0.55 * config.sunIntensity)}, transparent 72%)`,
         }}
       />
-      {/* horizon scatter band */}
+      {/* one restrained distant ridge / landform just under the horizon */}
       <div
-        className="absolute inset-x-0 h-[42%]"
+        className="absolute inset-x-0"
         style={{
-          top: `${horizonPct - 21}%`,
-          background: `radial-gradient(120% 100% at 50% 50%, ${rgb(
+          top: `${horizonPct - 1}%`,
+          height: "10%",
+          background: `linear-gradient(to bottom, ${rgb([0.035, 0.045, 0.085], 0.7)} 0%, transparent 90%)`,
+        }}
+      />
+      {/* reflective foreground — a soft mirror of the light low in the frame */}
+      <div
+        className="absolute inset-x-0 bottom-0"
+        style={{
+          top: `${horizonPct + 9}%`,
+          background: `radial-gradient(60% 90% at ${sunX}% 0%, ${rgb(
             config.sunColor,
-            0.22 * config.sunIntensity,
-          )}, transparent 65%)`,
+            0.16 * config.sunIntensity,
+          )}, transparent 70%), linear-gradient(to bottom, ${rgb(config.skyBottom, 0.5)} 0%, rgba(3,5,11,0.55) 100%)`,
         }}
       />
       {/* drifting cloud-shadow masses */}

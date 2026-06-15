@@ -2,9 +2,9 @@
 
 import { AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLiveSeoulWeather } from "@/hooks/useLiveSeoulWeather";
+import { useWeatherViewShortcuts } from "@/hooks/useWeatherViewShortcuts";
 import {
   detectQuality,
   hasWebGL,
@@ -65,8 +65,9 @@ function parseOverride(search: string): Override {
 }
 
 export default function CinematicWeatherPage() {
-  const router = useRouter();
   const { snapshot, status, lastUpdatedAt } = useLiveSeoulWeather();
+  // Shared A → /atmosphere, D → /diagnostics navigation (Esc → / is a no-op here).
+  useWeatherViewShortcuts();
 
   // Client-only capability detection (avoids any SSR/hydration divergence).
   const [quality, setQuality] = useState<QualitySettings | null>(null);
@@ -177,17 +178,6 @@ export default function CinematicWeatherPage() {
     });
   }, [mode, activeKey, activeFormat, showVideo, plateFailed, selection, forcedKey, lastTransition, fallbackReason]);
 
-  // 'D' → diagnostics.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.key === "d" || e.key === "D") && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
-        router.push("/diagnostics");
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [router]);
-
   const onPlateReady = useCallback(() => setReveal(true), []);
   const onPlateFailed = useCallback(() => setPlateFailed(true), []);
   const onPlateTransition = useCallback(() => setLastTransition(Date.now()), []);
@@ -199,6 +189,9 @@ export default function CinematicWeatherPage() {
         <CinematicPlate
           activeKey={activeKey}
           reducedMotion={reduced}
+          // Dual-buffer seamless loop on capable tiers; a single native-loop
+          // video on the low-power/mobile tier (one decoder at a time).
+          seamless={quality.tier !== "reduced"}
           onReady={onPlateReady}
           onFailed={onPlateFailed}
           onTransition={onPlateTransition}
