@@ -42,6 +42,7 @@ uniform vec3 u_skyTop, u_skyHorizon, u_skyBottom, u_sunColor, u_accent;
 uniform vec2 u_sunPos, u_windDir;
 uniform float u_horizonY, u_sunIntensity, u_warmth, u_haze, u_cloudShadow;
 uniform float u_windSpeed, u_rain, u_snow, u_lightDiffusion, u_contrast, u_grain;
+uniform float u_scroll;   // damped altitude: 0 = top of atmosphere, 1 = ground (task 1.1)
 
 float hash(vec2 p){
   p = fract(p * vec2(123.34, 456.21));
@@ -205,6 +206,14 @@ void main(){
   float g = hash(uv * u_res + fract(u_time) * 97.0) - 0.5;
   sky += g * u_grain;
 
+  // === TEMP DEBUG (task 1.1) — REMOVE in task 1.2 ==========================
+  // Wiring check only: proves the damped u_scroll uniform reaches the shader.
+  // Pushes a magenta cast in proportionally as you descend (0 at the top, so
+  // the field is unchanged at altitude 0). The real altitude palette ramp
+  // replaces this entirely in task 1.2.
+  sky = mix(sky, vec3(0.9, 0.1, 0.7), u_scroll * 0.35);
+  // =========================================================================
+
   gl_FragColor = vec4(clamp(sky, 0.0, 1.0), 1.0);
 }
 `;
@@ -215,6 +224,7 @@ const UNIFORMS = [
   "u_sunPos", "u_windDir",
   "u_horizonY", "u_sunIntensity", "u_warmth", "u_haze", "u_cloudShadow",
   "u_windSpeed", "u_rain", "u_snow", "u_lightDiffusion", "u_contrast", "u_grain",
+  "u_scroll",
 ] as const;
 
 type UniformMap = Partial<Record<(typeof UNIFORMS)[number], WebGLUniformLocation | null>>;
@@ -265,6 +275,9 @@ export default function AtmosphericFieldBackground({
   const pausedRef = useRef(paused);
   const pointerEnabledRef = useRef(pointerEnabled);
   const loopRef = useRef<LoopControl | null>(null);
+  // Normalized page scroll (0..1), written by a passive listener, read by the
+  // rAF loop. The loop lerps toward it so the descent is damped, never raw.
+  const scrollTargetRef = useRef(0);
 
   // One persistent "live" config, lazily initialised (canonical ref pattern).
   const liveRef = useRef<VisualConfig | null>(null);
@@ -342,6 +355,18 @@ export default function AtmosphericFieldBackground({
     };
     window.addEventListener("pointermove", onPointer, { passive: true });
 
+    // scroll → altitude (task 1.1): a passive listener writes the normalized
+    // page scroll into a ref; the loop lerps `scrollSmooth` toward it so the
+    // descent is damped, never a raw 1:1 scrollTop. Held steady under reduced
+    // motion (renderStatic leaves scrollSmooth untouched).
+    const readScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      scrollTargetRef.current = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+    };
+    readScroll();
+    window.addEventListener("scroll", readScroll, { passive: true });
+    let scrollSmooth = scrollTargetRef.current;
+
     const setUniforms = (time: number) => {
       gl.uniform2f(u.u_res!, width, height);
       gl.uniform1f(u.u_time!, time);
@@ -364,6 +389,7 @@ export default function AtmosphericFieldBackground({
       gl.uniform1f(u.u_lightDiffusion!, live.lightDiffusion);
       gl.uniform1f(u.u_contrast!, live.backgroundContrast);
       gl.uniform1f(u.u_grain!, live.grain);
+      gl.uniform1f(u.u_scroll!, scrollSmooth);
     };
 
     let raf = 0;
@@ -381,12 +407,16 @@ export default function AtmosphericFieldBackground({
         pointerSmooth.x += (pointerTarget.x - pointerSmooth.x) * k;
         pointerSmooth.y += (pointerTarget.y - pointerSmooth.y) * k;
       }
+      // Damped descent: ease toward the scroll ref each frame (never raw).
+      scrollSmooth += (scrollTargetRef.current - scrollSmooth) * (1 - Math.exp(-dt * 6));
       setUniforms(now - start);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       raf = requestAnimationFrame(frame);
     };
 
     // Reduced motion: snap to the data target and draw one frozen, gorgeous frame.
+    // `scrollSmooth` is intentionally left untouched here so uScroll holds steady
+    // (no scroll-driven descent) under prefers-reduced-motion.
     const renderStatic = () => {
       lerpVisualConfig(live, targetRef.current, 1);
       copyDiscrete(live, targetRef.current);
@@ -430,6 +460,7 @@ export default function AtmosphericFieldBackground({
       stop();
       clearStatic();
       window.removeEventListener("pointermove", onPointer);
+      window.removeEventListener("scroll", readScroll);
       ro.disconnect();
       gl.deleteBuffer(buf);
       gl.deleteProgram(program);
