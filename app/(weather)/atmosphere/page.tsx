@@ -22,7 +22,12 @@ export default function AtmospherePage() {
   return (
     <div className="relative">
       <AtmosphereView />
-      <DiagnosticsView />
+      {/* The ground-station band. `#ground` is the deep-link target that
+          /diagnostics redirects to; scroll-margin keeps it clear of the
+          top keyboard hint when jumped to. */}
+      <div id="ground" className="scroll-mt-0">
+        <DiagnosticsView />
+      </div>
     </div>
   );
 }
