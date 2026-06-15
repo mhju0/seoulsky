@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import AtmosphereView from "@/components/atmosphere/AtmosphereView";
-import DiagnosticsView from "@/components/atmosphere/DiagnosticsView";
+import DescentView from "@/components/atmosphere/DescentView";
 
 export const metadata: Metadata = {
   title: "SeoulSky — 서울 대기 색면",
@@ -11,23 +10,11 @@ export const metadata: Metadata = {
 /**
  * The Descent — ONE continuous vertical-scroll page over the single persistent
  * atmospheric field owned by {@link WeatherExperienceShell}. The field stays
- * `fixed` behind everything; the foreground content flows in normal document
- * scroll (the document is the one scroll container). For now this simply stacks
- * the existing atmosphere foreground over the diagnostics data deck — the real
- * five descent bands arrive in Phase 3. There is still exactly one
+ * `fixed` behind everything; the five descent bands flow in normal document
+ * scroll (the document is the one scroll container). There is exactly one
  * `useLiveSeoulWeather()` fetch (in the shell) and one GL context (in the
  * layout); neither remounts on scroll, because nothing here navigates.
  */
 export default function AtmospherePage() {
-  return (
-    <div className="relative">
-      <AtmosphereView />
-      {/* The ground-station band. `#ground` is the deep-link target that
-          /diagnostics redirects to; scroll-margin keeps it clear of the
-          top keyboard hint when jumped to. */}
-      <div id="ground" className="scroll-mt-0">
-        <DiagnosticsView />
-      </div>
-    </div>
-  );
+  return <DescentView />;
 }
