@@ -10,8 +10,9 @@ const eslintConfig = defineConfig([
     // relies on the canonical lazy-ref-init pattern. Both are intentional and
     // both are flagged by the experimental React Compiler rules, which assume
     // pure-render semantics that don't hold for an imperative WebGL render loop.
-    // The data experience (SEOUL ATMOSPHERIC CORE) is the same kind of scene.
-    files: ["components/three/**/*.{ts,tsx}", "components/data-experience/**/*.{ts,tsx}"],
+    // The Atmospheric Color Field runs the same kind of imperative GL loop (a
+    // single fullscreen shader driven by mutable refs).
+    files: ["components/three/**/*.{ts,tsx}", "components/atmosphere/**/*.{ts,tsx}"],
     rules: {
       "react-hooks/immutability": "off",
       "react-hooks/refs": "off",
