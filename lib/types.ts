@@ -291,6 +291,14 @@ export interface SkySnapshot {
    * empty); the cinematic homepage simply ignores it.
    */
   hourly: HourlyForecast[];
+  /**
+   * Next ~7 days of Open-Meteo daily forecast (high/low, condition, sun times).
+   * Already computed by /api/sky for the sun-times pick, so it is shared here at
+   * no extra upstream cost; the /sky forecast section's 7-day row reads it
+   * directly instead of forcing the heavy /api/weather fetch early in the scroll.
+   * Always present (possibly empty).
+   */
+  daily: DailyForecast[];
   /** Fused current air quality (AirKorea → Open-Meteo AQ → null). */
   air: NormalizedAirQuality | null;
   /** Lean radar approach signal (RainViewer), or null when unavailable. */

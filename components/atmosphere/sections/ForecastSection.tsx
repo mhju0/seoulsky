@@ -1,0 +1,119 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import { dayLabel, makeIsNightAt } from "@/lib/format";
+import GlassPanel from "../glass/GlassPanel";
+import WeatherGlyph from "../glass/WeatherGlyph";
+import { MetricLabel } from "../EtchedType";
+import { ScrollReveal } from "../descentMotion";
+import { useWeatherField } from "../WeatherFieldContext";
+import { SectionHeading, SkySection } from "./SectionParts";
+import SunArc from "./SunArc";
+
+/**
+ * Section 3 — Forecast. The shared sky snapshot already carries the next 24h of
+ * hourly and ~7 days of daily forecast, so this reads from context with no extra
+ * fetch. Four glass instruments: a horizontally-scrollable hourly strip, a 7-day
+ * row, the sunrise/sunset arc, and the wind graph (lazy Recharts).
+ */
+
+// Recharts is heavy — only pull its chunk in when the wind graph actually mounts.
+const WindGraph = dynamic(() => import("./WindGraph"), {
+  ssr: false,
+  loading: () => <div className="h-[150px] w-full animate-pulse rounded-lg bg-white/[0.03]" />,
+});
+
+const KST = "Asia/Seoul";
+const hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: KST, hour: "numeric", hour12: true });
+
+export default function ForecastSection() {
+  const { snapshot, clock } = useWeatherField();
+
+  const hourly = snapshot?.hourly ?? [];
+  const daily = (snapshot?.daily ?? []).slice(0, 7);
+  // Per-hour day/night for the icon face, from the daily sun times (fixed-hour
+  // fallback inside makeIsNightAt when a provider has none).
+  const isNightAt = makeIsNightAt(snapshot?.daily ?? []);
+
+  return (
+    <SkySection>
+      <SectionHeading index="03" en="Forecast" ko="예보" />
+
+      <div className="flex flex-col gap-4 sm:gap-5">
+        {/* Hourly — a horizontally-scrollable strip of the next 24h. */}
+        <ScrollReveal amount={0.15}>
+          <GlassPanel className="px-4 py-4 sm:px-5 sm:py-5">
+            <MetricLabel>Next 24 Hours · 시간별</MetricLabel>
+            {hourly.length > 0 ? (
+              <div className="scroll-thin mt-4 flex gap-1 overflow-x-auto pb-1">
+                {hourly.slice(0, 24).map((h, i) => (
+                  <div
+                    key={h.time}
+                    className="flex min-w-[3.4rem] flex-col items-center gap-2.5 px-1.5 py-1"
+                  >
+                    <span className="font-mono text-[10px] tracking-[0.1em] text-white/50">
+                      {i === 0 ? "지금" : hourFmt.format(new Date(h.time))}
+                    </span>
+                    <WeatherGlyph condition={h.condition} night={isNightAt(h.time)} size={22} className="text-white/80" />
+                    <span className="font-sans text-base font-light tabular-nums text-white/90">
+                      {Math.round(h.temperature)}°
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.2em] text-white/35">
+                시간별 예보 없음
+              </p>
+            )}
+          </GlassPanel>
+        </ScrollReveal>
+
+        {/* Daily — a 7-day row, each day its own glass tile. */}
+        {daily.length > 0 && (
+          <ScrollReveal amount={0.15} delay={0.05}>
+            <MetricLabel className="mb-3 px-1">7-Day · 주간</MetricLabel>
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-7 sm:gap-3">
+              {daily.map((d) => (
+                <GlassPanel key={d.date} radius="rounded-[16px]" className="px-2 py-3.5">
+                  <div className="flex flex-col items-center gap-2.5">
+                    <span className="font-mono text-[10px] tracking-[0.08em] text-white/55">
+                      {dayLabel(d.date)}
+                    </span>
+                    <WeatherGlyph condition={d.condition} size={22} className="text-white/80" />
+                    <span className="flex items-baseline gap-1.5 font-sans tabular-nums">
+                      <span className="text-base font-light text-white/90">{Math.round(d.temperatureMax)}°</span>
+                      <span className="text-xs font-light text-white/45">{Math.round(d.temperatureMin)}°</span>
+                    </span>
+                  </div>
+                </GlassPanel>
+              ))}
+            </div>
+          </ScrollReveal>
+        )}
+
+        {/* Sun arc + wind graph. */}
+        <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
+          <ScrollReveal amount={0.2} delay={0.1}>
+            <GlassPanel className="h-full px-5 py-5 sm:px-6 sm:py-6">
+              <SunArc sunrise={snapshot?.sun.sunrise ?? null} sunset={snapshot?.sun.sunset ?? null} now={clock} />
+            </GlassPanel>
+          </ScrollReveal>
+
+          <ScrollReveal amount={0.2} delay={0.14}>
+            <GlassPanel className="h-full px-5 py-5 sm:px-6 sm:py-6">
+              <MetricLabel className="mb-4">Wind · 바람 · m/s</MetricLabel>
+              {hourly.length > 0 ? (
+                <WindGraph hourly={hourly} />
+              ) : (
+                <div className="flex h-[150px] items-center font-mono text-[11px] uppercase tracking-[0.2em] text-white/35">
+                  바람 예보 없음
+                </div>
+              )}
+            </GlassPanel>
+          </ScrollReveal>
+        </div>
+      </div>
+    </SkySection>
+  );
+}

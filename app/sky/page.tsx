@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
-import DescentView from "@/components/atmosphere/DescentView";
+import SkyView from "@/components/atmosphere/SkyView";
 
 export const metadata: Metadata = {
-  title: "SeoulSky — 서울 대기 색면",
+  title: "SeoulSky — 서울 하늘",
   description:
-    "서울의 실시간 날씨가 색, 빛, 안개, 비, 눈으로 살아 움직이는 하나의 대기 색면 작품 — 상공에서 지상까지 하나의 스크롤로 내려갑니다",
+    "실시간 서울 날씨를, 그 날씨 속 서울 명소의 시네마틱 영상 위에 떠 있는 리퀴드 글래스 HUD로 — 도착부터 지상 관측소까지 하나의 스크롤로",
 };
 
 /**
- * /sky — ONE continuous vertical-scroll page over the single persistent
- * atmospheric field owned by {@link WeatherExperienceShell}. The field stays
- * `fixed` behind everything; the bands flow in normal document scroll (the
- * document is the one scroll container). There is exactly one
- * `useLiveSeoulWeather()` fetch (in the shell) and one GL context (in the
- * layout); neither remounts on scroll, because nothing here navigates.
+ * /sky — ONE continuous vertical-scroll page. The liquid-glass HUD ({@link SkyView})
+ * floats in normal document scroll over the single persistent {@link SceneStage}
+ * (canopy + shuffling video gallery + FX + procedural fallback) owned by
+ * {@link WeatherExperienceShell}. There is exactly one `useLiveSeoulWeather()`
+ * fetch (in the shell) and one GL context (in the layout); neither remounts on
+ * scroll, because nothing here navigates.
  */
 export default function SkyPage() {
-  return <DescentView />;
+  return <SkyView />;
 }

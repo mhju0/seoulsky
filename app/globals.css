@@ -36,6 +36,73 @@ body {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 
+/* ---------- liquid glass (instrument glass, not iOS card) ----------
+
+   Apple "Liquid Glass" MATERIAL only: a translucent refractive pane, not a
+   floating widget. The legibility recipe, back-to-front inside one panel:
+     1. backdrop-filter blur + saturate samples & enriches the live scene behind.
+     2. a very low-opacity white fill gives the pane a faint body.
+     3. .liquid-glass-scrim — a soft dark wash that *auto-strengthens over bright
+        scenes*: a flat dark veil is plainly visible over a sunny clip (restoring
+        contrast) yet near-invisible over a dark/stormy one, with no scene
+        sampling needed.
+     4. a thin bright refractive border + a white top-edge inset highlight + a
+        soft inner base shadow read as real glass thickness.
+     5. .liquid-glass-sheen — a specular highlight that drifts a few px on scroll
+        (shared --sky-sheen var, written once by useScrollSheen; 0 under reduced
+        motion). mix-blend screen so it only ever brightens.
+   Deliberately NO outer drop-shadow — that is what reads as a Material card. */
+
+.liquid-glass {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 -24px 48px -30px rgba(0, 0, 0, 0.55);
+}
+
+.liquid-glass-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(3, 5, 12, 0.34) 0%,
+    rgba(3, 5, 12, 0.16) 46%,
+    rgba(3, 5, 12, 0.3) 100%
+  );
+}
+
+.liquid-glass-sheen {
+  position: absolute;
+  inset: -2px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.7;
+  mix-blend-mode: screen;
+  background: linear-gradient(
+    152deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.05) 16%,
+    transparent 40%
+  );
+  transform: translate3d(0, var(--sky-sheen, 0px), 0);
+  will-change: transform;
+}
+
+/* The readable contents always sit above both the scrim and the sheen. */
+.liquid-glass-content {
+  position: relative;
+  z-index: 1;
+}
+
 /* ---------- glow ---------- */
 
 .text-glow {

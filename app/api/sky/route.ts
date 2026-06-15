@@ -103,6 +103,7 @@ export async function GET() {
         sunset: todaySun?.sunset ?? null,
       },
       hourly,
+      daily,
       air,
       radar,
       warnings,
