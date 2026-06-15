@@ -44,6 +44,7 @@ function snap(overrides: Partial<SkySnapshot["current"]> = {}): SkySnapshot {
     },
     sun: { sunrise: "2026-06-15T05:11:00+09:00", sunset: "2026-06-15T19:57:00+09:00" },
     hourly: [],
+    daily: [],
     air: null,
     radar: null,
     warnings: [],
