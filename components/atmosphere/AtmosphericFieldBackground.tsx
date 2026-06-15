@@ -206,12 +206,34 @@ void main(){
   float g = hash(uv * u_res + fract(u_time) * 97.0) - 0.5;
   sky += g * u_grain;
 
-  // === TEMP DEBUG (task 1.1) — REMOVE in task 1.2 ==========================
-  // Wiring check only: proves the damped u_scroll uniform reaches the shader.
-  // Pushes a magenta cast in proportionally as you descend (0 at the top, so
-  // the field is unchanged at altitude 0). The real altitude palette ramp
-  // replaces this entirely in task 1.2.
-  sky = mix(sky, vec3(0.9, 0.1, 0.7), u_scroll * 0.35);
+  // === ALTITUDE RAMP (task 1.2) ============================================
+  // The descent. Driven by the damped u_scroll, all three zones are derived
+  // from the LIVE weather palette (u_sky*, u_sunColor, u_horizonY) and the
+  // field's own luminance, so this only RE-GRADES the existing field — it never
+  // overrides the weather colours. Rain-at-night still reads as rain-at-night at
+  // every altitude. Reuses the tier-gated hazeN fbm; adds no extra octaves.
+  float aHigh   = 1.0 - smoothstep(0.0, 0.42, u_scroll);          // crest at the top
+  float aDeck   = exp(-pow((u_scroll - 0.45) / 0.20, 2.0));       // soft peak near 0.45
+  float aGround = smoothstep(0.50, 1.0, u_scroll);                // settle to the ground
+
+  // High, thin air: a touch more clarity so the deep upper sky reads crisp/clean.
+  sky = mix(sky, (sky - 0.5) * 1.07 + 0.5, aHigh * 0.35);
+
+  // Cloud deck: lift toward a brighter, desaturated fog of the sky's OWN light
+  // (night stays a dim luminous haze, day becomes a bright whiteout), broken up
+  // by the existing haze noise. Apparent contrast falls as it approaches grey,
+  // then the gaussian clears it again below the deck.
+  float deckLum = dot(sky, vec3(0.299, 0.587, 0.114));
+  vec3 deckFog = mix(sky, vec3(clamp(deckLum * 1.5 + 0.10, 0.0, 1.0)), 0.7);
+  float deckAmt = aDeck * (0.60 + 0.30 * hazeN);
+  sky = mix(sky, deckFog, clamp(deckAmt, 0.0, 0.85));
+
+  // Ground: a warm horizon band + a faint distant urban glow along the bottom
+  // edge, tinted by the live sun colour so dusk/clear/overcast each glow true.
+  vec3 urban = mix(u_sunColor, vec3(1.0, 0.74, 0.45), 0.4);
+  float horizonBand = exp(-pow((uv.y - u_horizonY) * 5.0, 2.0));
+  sky = mix(sky, sky * vec3(1.10, 1.0, 0.88), horizonBand * aGround * 0.45);
+  sky += urban * smoothstep(0.34, 0.0, uv.y) * aGround * 0.10;
   // =========================================================================
 
   gl_FragColor = vec4(clamp(sky, 0.0, 1.0), 1.0);
