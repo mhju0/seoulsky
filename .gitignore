@@ -18,6 +18,9 @@
 /public/cinematic/generated/*.webm
 /public/cinematic/generated/*.mov
 /public/cinematic/generated/*.png
+/public/cinematic/locations/*.webm
+/public/cinematic/locations/*.mov
+/public/cinematic/locations/*.png
 
 # next.js
 /.next/
