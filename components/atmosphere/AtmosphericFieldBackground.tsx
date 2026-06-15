@@ -224,9 +224,12 @@ void main(){
   // by the existing haze noise. Apparent contrast falls as it approaches grey,
   // then the gaussian clears it again below the deck.
   float deckLum = dot(sky, vec3(0.299, 0.587, 0.114));
-  vec3 deckFog = mix(sky, vec3(clamp(deckLum * 1.5 + 0.10, 0.0, 1.0)), 0.7);
-  float deckAmt = aDeck * (0.60 + 0.30 * hazeN);
-  sky = mix(sky, deckFog, clamp(deckAmt, 0.0, 0.85));
+  vec3 deckFog = mix(sky, vec3(clamp(deckLum * 1.28 + 0.06, 0.0, 1.0)), 0.55);
+  float deckAmt = aDeck * (0.45 + 0.28 * hazeN);
+  // Softer cloud-deck haze (was a near-full whiteout, peak 0.85): tuned down so
+  // it reads as "passing through cloud" without washing out the overlaid type or
+  // disorienting on mobile, while still dropping apparent contrast mid-descent.
+  sky = mix(sky, deckFog, clamp(deckAmt, 0.0, 0.62));
 
   // Ground: a warm horizon band + a faint distant urban glow along the bottom
   // edge, tinted by the live sun colour so dusk/clear/overcast each glow true.

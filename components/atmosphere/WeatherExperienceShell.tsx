@@ -101,11 +101,11 @@ function KeyboardHint() {
   return (
     <div className="pointer-events-none fixed left-1/2 top-4 z-40 hidden -translate-x-1/2 items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-white/35 lg:flex">
       <span>
-        <span className="rounded border border-white/15 px-1.5 py-0.5 text-white/55">A</span> Atmosphere
+        <span className="rounded border border-white/15 px-1.5 py-0.5 text-white/55">A</span> 상공
       </span>
       <span className="text-white/15">·</span>
       <span>
-        <span className="rounded border border-white/15 px-1.5 py-0.5 text-white/55">D</span> Diagnostics
+        <span className="rounded border border-white/15 px-1.5 py-0.5 text-white/55">D</span> 지상
       </span>
     </div>
   );

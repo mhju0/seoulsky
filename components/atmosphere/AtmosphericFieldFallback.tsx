@@ -78,7 +78,7 @@ export default function AtmosphericFieldFallback({
   // Altitude palette stops, derived from the SAME live-weather config as the
   // WebGL ramp so the 2D look matches: a deep upper-sky deepen (sky-top hue), a
   // cloud-deck fog of the sky's own luminance, and a warm sun-tinted urban glow.
-  const fogTarget = clamp01(luma(config.skyHorizon) * 1.5 + 0.12);
+  const fogTarget = clamp01(luma(config.skyHorizon) * 1.3 + 0.08);
   const deckFog = rgb([0, 1, 2].map((i) => lerp(config.skyHorizon[i], fogTarget, 0.7)));
   const urban = rgb([0, 1, 2].map((i) => lerp(config.sunColor[i], [1, 0.74, 0.45][i], 0.4)));
   const deepUpper = rgb(config.skyTop);
@@ -192,10 +192,12 @@ export default function AtmosphericFieldFallback({
         className="absolute inset-0"
         style={{ background: deepUpper, opacity: "calc(var(--alt-high) * 0.06)", transition: altTransition }}
       />
-      {/* cloud deck: a soft whiteout fog of the sky's own light, peak mid-scroll */}
+      {/* cloud deck: a soft haze of the sky's own light, peak mid-scroll. Tuned
+          down (was 0.85) for parity with the gentler WebGL whiteout — readable,
+          not disorienting on mobile. */}
       <div
         className="absolute inset-0"
-        style={{ background: deckFog, opacity: "calc(var(--alt-deck) * 0.85)", transition: altTransition }}
+        style={{ background: deckFog, opacity: "calc(var(--alt-deck) * 0.6)", transition: altTransition }}
       />
       {/* ground: a warm horizon band, tinted by the live sun colour */}
       <div
