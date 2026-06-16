@@ -11,8 +11,13 @@
  * Selection contract (matches the runbook):
  *   1. Map the live {@link WeatherCondition} to one of the manifest's coarse
  *      gallery conditions.
- *   2. Take clips matching that condition. If FEWER THAN 2 match, broaden to the
- *      whole library so there is always something to shuffle between.
+ *   2. Take clips matching that condition. If FEWER THAN 2 match, broaden — but
+ *      WEATHER-FIRST: first to the visually-adjacent conditions (the dry/overcast
+ *      family, the precip family, fog→overcast, snow→overcast) and only then, if
+ *      that is still too small, to the whole library. A dry live sky (clear /
+ *      partly-cloudy) NEVER serves a snow or rain clip, even from that last
+ *      whole-library fallback — so the gallery can't cut to snow on a clear
+ *      morning.
  *   3. Within that pool, prefer the matching time-of-day (day|night) — but only
  *      when ≥2 such clips exist, so day/night preference never starves the
  *      shuffle. Otherwise keep the broader pool.
@@ -103,6 +108,27 @@ export function clipSources(clip: LocationClip): { src: string; type: string }[]
 }
 
 /**
+ * Weather-adjacent broadening. When the exact-condition pool has too few clips
+ * we widen to these visually-compatible conditions BEFORE opening to the whole
+ * library, so a sparse condition cuts to a related sky (not a jarring one). Each
+ * list leads with the condition itself.
+ */
+const RELATED_CONDITIONS: Record<GalleryCondition, GalleryCondition[]> = {
+  // Dry / overcast family — these three broaden among themselves.
+  clear: ["clear", "partly-cloudy", "overcast"],
+  "partly-cloudy": ["partly-cloudy", "clear", "overcast"],
+  overcast: ["overcast", "partly-cloudy", "clear"],
+  // Precip family (live thunderstorm already folds into `rain` upstream).
+  rain: ["rain"],
+  // Fog and snow widen to the calm overcast deck before the whole library.
+  fog: ["fog", "overcast"],
+  snow: ["snow", "overcast"],
+};
+
+/** Dry live skies that must NEVER show a precip clip (snow/rain) in their pool. */
+const DRY_TARGETS: readonly GalleryCondition[] = ["clear", "partly-cloudy"];
+
+/**
  * The usable shuffle pool for the current weather. Pure: given the same inputs
  * it returns the same clips (a stable subset of `clips`, never reordered).
  */
@@ -112,13 +138,33 @@ export function selectGalleryPool(
   isDay: boolean,
 ): LocationClip[] {
   const target = mapToGalleryCondition(condition);
-  const byCondition = target ? clips.filter((c) => c.condition === target) : [];
 
-  // Broaden to the whole library when too few clips match — guarantees ≥2 to
-  // shuffle between whenever the library itself has ≥2 clips.
-  const pool = byCondition.length >= 2 ? byCondition : clips.slice();
+  // 1. Exact-condition match.
+  const exact = target ? clips.filter((c) => c.condition === target) : [];
 
-  // Soft day/night preference — only applied while it keeps ≥2 clips.
+  // 2. Broaden when too few exact clips: first to the weather-adjacent family,
+  //    then (only if that is still too small) to the whole library — so there is
+  //    always ≥2 to shuffle between whenever the library itself has ≥2 clips.
+  let pool: LocationClip[];
+  if (exact.length >= 2) {
+    pool = exact;
+  } else if (target) {
+    const family = RELATED_CONDITIONS[target];
+    const related = clips.filter((c) => family.includes(c.condition));
+    pool = related.length >= 2 ? related : clips.slice();
+  } else {
+    pool = clips.slice();
+  }
+
+  // 3. Hard invariant: a dry live sky (clear / partly-cloudy) never serves a
+  //    snow or rain clip — even from the whole-library fallback above. Only
+  //    applied while it leaves something to show.
+  if (target && DRY_TARGETS.includes(target)) {
+    const dry = pool.filter((c) => c.condition !== "snow" && c.condition !== "rain");
+    if (dry.length > 0) pool = dry;
+  }
+
+  // 4. Soft day/night preference — only applied while it keeps ≥2 clips.
   const wantTime: GalleryTimeOfDay = isDay ? "day" : "night";
   const byTime = pool.filter((c) => c.timeOfDay === wantTime);
   return byTime.length >= 2 ? byTime : pool;

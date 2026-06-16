@@ -201,6 +201,33 @@ now in the library. Camera move in **bold**.
 
 ---
 
+## Batch 3 (generated) — 2026-06-16
+
+A targeted **partly-cloudy fill**. partly-cloudy had only a single clip
+(`gyeongui-forest__partly-cloudy__day`), so on a partly-cloudy day the gallery's
+`<2`-clip rule broadened to the *whole* library — which could cut to a **snow**
+clip on a clear-ish morning. Adding two more partly-cloudy day clips makes the
+condition self-sufficient (≥2), so it now shuffles within-condition. (The
+selection code was also hardened to broaden weather-first — see
+`selectGalleryPool` / `RELATED_CONDITIONS`.) **2 kept, 0 dropped**, both on
+Kling 3.0 pro (`kling3_0`, `mode:pro`, `sound:off`), 16:9, 1920×1080, 5 s. Camera
+move in **bold**.
+
+1. **`hangang__partly-cloudy__day`** · kling3_0 pro · **PARTLY-CLOUDY** —
+   *High banking aerial drift* over the Han River winding through Seoul by day,
+   arched bridges spanning the wide river, riverside skyline and modern apartment
+   towers along the banks, under dramatic scattered partly-cloudy skies with
+   dappled moving sunlight, patches of deep blue between drifting cumulus, cloud
+   shadows sweeping across the water. + suffix.
+2. **`namsan-tower__partly-cloudy__day`** · kling3_0 pro · **PARTLY-CLOUDY** —
+   *Slow orbiting crane* revealing N Seoul Tower atop forested Namsan hill by day,
+   the Seoul skyline and city sprawl spread far below, under dramatic scattered
+   partly-cloudy skies with dappled moving sunlight, patches of deep blue sky,
+   cloud shadows drifting across the city, distant mountains on the horizon.
+   + suffix.
+
+---
+
 ## Full matrix (expansion backlog)
 
 Mark cells `[done]` as they are generated and added to the manifest. ★ = signature
@@ -238,8 +265,8 @@ and camera POV.
 | gyeongui-forest | day · night | ★ day `[done]` · night | day · night | day · night | day `[done]` · night | day · night |
 | ~~gwanaksan~~ _(dropped)_ | day · night | day · night | day `[dropped]` · night | day · night | day · night | day · night |
 | ~~naksan-fortress~~ _(dropped)_ | day `[dropped]` · night | day · night | day · night | day · night | day · night | day · night |
-| namsan-tower | day · ★ night `[done]` | day · night | day · night | day · night `[done]` | day · night `[done]` | day `[done]` · night |
-| hangang | day · ★ night `[done]` | day · night | day · night | day · night `[done]` | day · night | day · night |
+| namsan-tower | day · ★ night `[done]` | day `[done]` · night | day · night | day · night `[done]` | day · night `[done]` | day `[done]` · night |
+| hangang | day · ★ night `[done]` | day `[done]` · night | day · night | day · night `[done]` | day · night | day · night |
 
 **Expansion priority order** (most common Seoul conditions first): remaining
 `clear` and `partly-cloudy` days → `overcast`/`rain` days → night variants of the
