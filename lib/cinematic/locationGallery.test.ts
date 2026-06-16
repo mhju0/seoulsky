@@ -62,11 +62,58 @@ test("selectGalleryPool keeps the condition pool when time-of-day has <2", () =>
 });
 
 test("selectGalleryPool broadens to the whole library when <2 match", () => {
-  // snow has a single clip → broaden to everything so there is ≥2 to shuffle.
+  // snow has a single clip and no overcast to widen to → broaden to everything
+  // so there is ≥2 to shuffle.
   const snow = selectGalleryPool(LIBRARY, "snow", true);
   assert.ok(snow.length >= 2);
   // Day preference then narrows the broadened pool to the day clips.
   assert.ok(snow.every((c) => c.timeOfDay === "day"));
+});
+
+// A richer library that lets the weather-adjacent broadening actually engage.
+const RICH: LocationClip[] = [
+  clip("clear-day", "clear", "day"),
+  clip("clear-night", "clear", "night"),
+  clip("pc-day", "partly-cloudy", "day"),
+  clip("overcast-day", "overcast", "day"),
+  clip("overcast-night", "overcast", "night"),
+  clip("fog-night", "fog", "night"),
+  clip("snow-day", "snow", "day"),
+  clip("rain-night", "rain", "night"),
+];
+
+test("selectGalleryPool broadens partly-cloudy to the dry family, not snow/rain", () => {
+  // Only one partly-cloudy clip → widen to clear + overcast (the dry family),
+  // never to snow or rain (the reported snow-on-a-partly-cloudy-morning bug).
+  const pc = selectGalleryPool(RICH, "partly-cloudy", true);
+  assert.ok(pc.length >= 2);
+  assert.ok(pc.every((c) => c.condition !== "snow" && c.condition !== "rain"));
+  assert.ok(pc.every((c) => ["clear", "partly-cloudy", "overcast"].includes(c.condition)));
+});
+
+test("selectGalleryPool never serves snow/rain for a dry sky, even from the whole library", () => {
+  // clear has 1 clip and no dry family to widen to → opens to the whole library,
+  // but the dry-sky invariant still strips every snow/rain clip out.
+  const sparseDry: LocationClip[] = [
+    clip("clear-day", "clear", "day"),
+    clip("snow-day", "snow", "day"),
+    clip("snow-night", "snow", "night"),
+    clip("rain-day", "rain", "day"),
+  ];
+  const clear = selectGalleryPool(sparseDry, "clear", true);
+  assert.ok(clear.every((c) => c.condition !== "snow" && c.condition !== "rain"));
+});
+
+test("selectGalleryPool widens fog and snow to overcast before the whole library", () => {
+  // fog at night → fog + overcast only (no clear/snow/rain bleed-in).
+  const fog = selectGalleryPool(RICH, "fog", false);
+  assert.ok(fog.length >= 2);
+  assert.ok(fog.every((c) => ["fog", "overcast"].includes(c.condition)));
+
+  // snow by day → snow + overcast only.
+  const snow = selectGalleryPool(RICH, "snow", true);
+  assert.ok(snow.length >= 2);
+  assert.ok(snow.every((c) => ["snow", "overcast"].includes(c.condition)));
 });
 
 test("selectGalleryPool broadens for unmappable conditions", () => {

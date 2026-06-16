@@ -1,6 +1,5 @@
 "use client";
 
-import { conditionLabelEn } from "@/lib/atmosphere/weatherVisualConfig";
 import { poeticSkyLine } from "@/lib/cinematic/poeticWeatherCopy";
 import { computeSunPhase } from "@/lib/cinematic/seoulTime";
 import { normalizeWeather } from "@/lib/cinematic/weatherSceneConfig";
@@ -12,7 +11,7 @@ import { LiveBadge, SkySection } from "./SectionParts";
 
 /**
  * Section 1 — Arrival. The hero: the live Seoul temperature in a tall liquid-glass
- * pane, the city, the condition (EN + KO), one deterministic Korean poetic line,
+ * pane, the city, the condition (Korean), one deterministic Korean poetic line,
  * a pulsing LIVE dot, and the current Seoul time. Big and unhurried — it owns the
  * first viewport over the shuffling view.
  */
@@ -59,11 +58,11 @@ export default function ArrivalSection() {
             className="inline-block h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: accentCss, boxShadow: `0 0 16px ${accentCss}` }}
           />
-          <span className="font-mono text-[11px] font-medium uppercase tracking-[0.46em] text-white/85">
+          <span className="font-mono text-sm font-medium uppercase tracking-[0.46em] text-white/85">
             Seoul · 서울
           </span>
           <span className="text-white/30">·</span>
-          <LiveBadge status={status} />
+          <LiveBadge status={status} labelClassName="text-sm" />
         </div>
 
         {/* The hero: temperature + condition in instrument glass, on a hair of
@@ -79,12 +78,6 @@ export default function ArrivalSection() {
               </Value>
             </div>
             <div className="mt-3 flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-              <span
-                className="font-sans font-light uppercase tracking-[0.16em] text-white"
-                style={{ fontSize: "clamp(1.2rem, 3vw, 1.85rem)" }}
-              >
-                {conditionLabelEn(readout.condition)}
-              </span>
               <span className="text-base font-light tracking-wide text-white/75">{readout.conditionKo}</span>
             </div>
           </GlassPanel>
@@ -94,7 +87,7 @@ export default function ArrivalSection() {
         <PoeticLine className="mt-9">{line}</PoeticLine>
 
         {/* Seoul time. */}
-        <div className="mt-10 flex flex-wrap items-center gap-x-5 font-mono text-sm tracking-[0.08em] text-white/75">
+        <div className="mt-10 flex flex-wrap items-center gap-x-5 font-mono text-base tracking-[0.08em] text-white/75">
           <span>{clock ? dateFmt.format(clock) : "—"}</span>
           <span className="tabular-nums text-white/60">{clock ? timeFmt.format(clock) : "--:--"}</span>
           <span className="text-white/40">KST</span>

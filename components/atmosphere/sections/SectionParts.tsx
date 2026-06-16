@@ -51,8 +51,16 @@ export function SectionHeading({ index, en, ko }: { index: string; en: string; k
   );
 }
 
-/** Live / cached / syncing badge with a pulsing dot, reused by arrival + ground. */
-export function LiveBadge({ status }: { status: WeatherStatus }) {
+/** Live / cached / syncing badge with a pulsing dot, reused by arrival + ground.
+ * `labelClassName` overrides the label's text size at the call site (arrival sizes
+ * it up to sit with its larger header). */
+export function LiveBadge({
+  status,
+  labelClassName = "text-[10px]",
+}: {
+  status: WeatherStatus;
+  labelClassName?: string;
+}) {
   const label = status === "live" ? "LIVE" : status === "error" ? "CACHED" : "SYNCING";
   const dot = status === "live" ? "bg-emerald-300" : status === "error" ? "bg-amber-300" : "bg-white/60";
   return (
@@ -62,7 +70,7 @@ export function LiveBadge({ status }: { status: WeatherStatus }) {
           status !== "error" ? "animate-pulse" : ""
         }`}
       />
-      <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/65">{label}</span>
+      <span className={`font-mono uppercase tracking-[0.3em] text-white/65 ${labelClassName}`}>{label}</span>
     </span>
   );
 }

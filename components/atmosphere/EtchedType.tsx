@@ -106,7 +106,7 @@ export function PoeticLine({
 }) {
   return (
     <p
-      className={`max-w-[36ch] font-sans text-lg font-light leading-relaxed tracking-wide text-white/85 [text-shadow:0_1px_16px_rgba(0,0,0,0.5)] ${className}`}
+      className={`max-w-[36ch] font-sans text-xl font-light leading-relaxed tracking-wide text-white/85 [text-shadow:0_1px_16px_rgba(0,0,0,0.5)] ${className}`}
     >
       {children}
     </p>
