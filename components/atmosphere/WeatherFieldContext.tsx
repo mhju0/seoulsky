@@ -10,6 +10,12 @@ import type { SkySnapshot } from "@/lib/types";
  * The shell fetches Seoul weather once and computes the visual target + readout;
  * AtmosphereView and DiagnosticsView read from here instead of re-fetching, so
  * the two routes drive the SAME atmospheric field from a single data source.
+ *
+ * This value updates only on a coarse cadence (weather refresh + the ~30s visual
+ * tick), NOT every second — the live per-second clock lives in its own
+ * {@link WeatherClockContext} so that consumers which only need the slow state
+ * (e.g. the SceneStage, which derives the day/night flag) don't re-render every
+ * tick. Components that actually display ticking time subscribe to the clock.
  */
 export interface WeatherFieldValue {
   snapshot: SkySnapshot | null;
@@ -18,8 +24,8 @@ export interface WeatherFieldValue {
   readout: AtmosphereReadout;
   /** The current clamped visual target (also exposes the weather accent colour). */
   target: VisualConfig;
-  /** Seoul clock instant, or null before first client tick. */
-  clock: Date | null;
+  /** Day/night flag from Seoul sun geometry, recomputed on the coarse tick. */
+  isDay: boolean;
 }
 
 const WeatherFieldContext = createContext<WeatherFieldValue | null>(null);
@@ -30,4 +36,19 @@ export function useWeatherField(): WeatherFieldValue {
   const v = useContext(WeatherFieldContext);
   if (!v) throw new Error("useWeatherField must be used inside <WeatherExperienceShell>");
   return v;
+}
+
+/**
+ * The live Seoul clock instant (or `null` before the first client tick), split
+ * into its own context because it changes every second. Only components that
+ * render ticking time should subscribe — subscribing here re-renders the
+ * consumer per second, which is why the heavy scene reads {@link useWeatherField}
+ * (coarse) instead.
+ */
+const WeatherClockContext = createContext<Date | null>(null);
+
+export const WeatherClockProvider = WeatherClockContext.Provider;
+
+export function useWeatherClock(): Date | null {
+  return useContext(WeatherClockContext);
 }

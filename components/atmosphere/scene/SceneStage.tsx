@@ -1,9 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Component, memo, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { QualitySettings } from "@/components/three/quality";
-import { computeSunPhase } from "@/lib/cinematic/seoulTime";
 import type { LocationManifest } from "@/lib/cinematic/locationGallery";
 import AtmosphericFieldFallback from "../AtmosphericFieldFallback";
 import { useWeatherField } from "../WeatherFieldContext";
@@ -59,7 +58,7 @@ export interface SceneStageProps {
   onCanvasError: () => void;
 }
 
-export default function SceneStage({
+function SceneStage({
   quality,
   reducedMotion,
   hidden,
@@ -68,7 +67,7 @@ export default function SceneStage({
   canvasFailed,
   onCanvasError,
 }: SceneStageProps) {
-  const { snapshot, readout, target, clock } = useWeatherField();
+  const { readout, target, isDay } = useWeatherField();
 
   const [manifest, setManifest] = useState<LocationManifest | null>(null);
   // True once a gallery clip is painting at full opacity — lets us pause the
@@ -89,18 +88,6 @@ export default function SceneStage({
       alive = false;
     };
   }, []);
-
-  // Time-of-day for clip selection, from Seoul sun geometry + the live snapshot.
-  const isDay = useMemo(
-    () =>
-      computeSunPhase({
-        now: clock ?? new Date(),
-        sunrise: snapshot?.sun.sunrise,
-        sunset: snapshot?.sun.sunset,
-        isDayHint: snapshot?.current.isDay,
-      }).isDay,
-    [clock, snapshot],
-  );
 
   // Live FX parameters, derived from the same clamped visual target as the field.
   const fx = useMemo<FxState>(
@@ -158,3 +145,8 @@ export default function SceneStage({
     </div>
   );
 }
+
+// Memoized: the shell re-renders every second (live clock), but SceneStage reads
+// only the coarse field context and takes referentially-stable props, so the
+// shuffling gallery + FX no longer re-run their render bodies each tick.
+export default memo(SceneStage);
