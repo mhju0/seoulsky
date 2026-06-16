@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 /**
  * /sky — ONE continuous vertical-scroll page. The liquid-glass HUD ({@link SkyView})
  * floats in normal document scroll over the single persistent {@link SceneStage}
- * (canopy + shuffling video gallery + FX + procedural fallback) owned by
+ * (edge-to-edge shuffling video gallery + FX + procedural fallback) owned by
  * {@link WeatherExperienceShell}. There is exactly one `useLiveSeoulWeather()`
  * fetch (in the shell) and one GL context (in the layout); neither remounts on
  * scroll, because nothing here navigates.

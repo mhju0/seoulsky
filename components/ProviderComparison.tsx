@@ -43,11 +43,11 @@ function MetricRow({
   const showDelta = delta !== null && Math.abs(delta) >= 0.05;
   return (
     <div className="flex items-baseline justify-between border-b border-white/10 py-2 last:border-0">
-      <MetricLabel className="!tracking-[0.18em] text-white/45">{label}</MetricLabel>
-      <span className="font-sans text-base font-light tabular-nums text-white/90">
+      <MetricLabel className="!tracking-[0.18em] text-white/55">{label}</MetricLabel>
+      <span className="font-sans text-base font-light tabular-nums text-white/95">
         {value !== null ? `${Math.round(value * 10) / 10}${unit}` : "—"}
         {showDelta && (
-          <span className={`ml-2 text-xs ${Math.abs(delta!) >= 1 ? "text-amber-300" : "text-white/35"}`}>
+          <span className={`ml-2 text-xs ${Math.abs(delta!) >= 1 ? "text-amber-300" : "text-white/45"}`}>
             {delta! > 0 ? "+" : ""}
             {Math.round(delta! * 10) / 10}
           </span>
@@ -77,12 +77,12 @@ export default function ProviderComparison({ snapshots, comparison }: Props) {
           return (
             <div key={s.id} className="flex flex-col">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <span className="truncate font-mono text-sm tracking-[0.12em] text-white/85">
+                <span className="truncate font-mono text-sm tracking-[0.12em] text-white/95">
                   {s.status.name}
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5">
                   <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
-                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/45">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/55">
                     {st.label}
                   </span>
                 </span>
@@ -116,13 +116,13 @@ export default function ProviderComparison({ snapshots, comparison }: Props) {
                   />
                 </div>
               ) : (
-                <p className="text-sm leading-relaxed text-white/45">{s.status.message}</p>
+                <p className="text-sm leading-relaxed text-white/55">{s.status.message}</p>
               )}
 
               {s.status.missingEnvVars.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
                   {s.status.missingEnvVars.map((v) => (
-                    <code key={v} className="font-mono text-[10px] text-white/40">
+                    <code key={v} className="font-mono text-[10px] text-white/50">
                       {v}
                     </code>
                   ))}
@@ -130,7 +130,7 @@ export default function ProviderComparison({ snapshots, comparison }: Props) {
               )}
 
               {s.current && (
-                <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-white/35">
+                <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-white/45">
                   업데이트 {timeAgoKo(s.status.lastUpdated)}
                   {s.status.fromCache && " · 캐시"}
                 </p>
@@ -143,7 +143,7 @@ export default function ProviderComparison({ snapshots, comparison }: Props) {
       {comparison && comparison.notes.length > 0 && (
         <div className="flex flex-col gap-1">
           {comparison.notes.map((note) => (
-            <p key={note} className="text-xs leading-relaxed text-white/40">
+            <p key={note} className="text-xs leading-relaxed text-white/50">
               · {note}
             </p>
           ))}

@@ -7,13 +7,13 @@ import { computeSunPhase } from "@/lib/cinematic/seoulTime";
 import type { LocationManifest } from "@/lib/cinematic/locationGallery";
 import AtmosphericFieldFallback from "../AtmosphericFieldFallback";
 import { useWeatherField } from "../WeatherFieldContext";
-import CanopyOverlay from "./CanopyOverlay";
 import FXOverlay, { type FxState } from "./FXOverlay";
 import VideoGallery from "./VideoGallery";
 
 /**
  * The one persistent SCENE that lives behind the /sky scroll content. It mounts
- * ONCE in the experience shell and never remounts on scroll. Back-to-front:
+ * ONCE in the experience shell and never remounts on scroll. The view fills the
+ * viewport edge-to-edge — there is no frame around it. Back-to-front:
  *
  *   1. Procedural atmospheric field (WebGL, or a CSS fallback) — the guaranteed
  *      never-blank base. It is always live until a video covers it, then it is
@@ -21,7 +21,6 @@ import VideoGallery from "./VideoGallery";
  *      clip is unavailable. This is the tail of the fallback chain.
  *   2. The condition-coupled shuffling video gallery (the "view").
  *   3. The live weather FX overlay (rain/snow/lightning/fog/god-rays).
- *   4. The spaceship canopy frame.
  *
  * Fallback chain (never a blank or frozen frame): matching clip → broadened clip
  * (both inside {@link VideoGallery}) → procedural field here. The video selection
@@ -156,9 +155,6 @@ export default function SceneStage({
 
       {/* 3 — live weather FX (off entirely under reduced motion). */}
       {!reducedMotion && <FXOverlay fx={fx} quality={quality} paused={hidden} />}
-
-      {/* 4 — the spaceship canopy frame. */}
-      <CanopyOverlay reducedMotion={reducedMotion} />
     </div>
   );
 }

@@ -34,7 +34,7 @@ function WindArrow({ fromDeg }: { fromDeg: number | null }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      className="text-white/55"
+      className="text-white/65"
       style={{ transform: `rotate(${fromDeg + 180}deg)` }}
     >
       <line x1="12" y1="4" x2="12" y2="20" />
@@ -71,7 +71,7 @@ function Tile({
               {value}
             </Value>
             {sub != null && (
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">{sub}</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">{sub}</span>
             )}
           </div>
         </div>

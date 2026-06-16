@@ -42,7 +42,7 @@ export function SkySection({
 export function SectionHeading({ index, en, ko }: { index: string; en: string; ko: string }) {
   return (
     <div className="mb-9 flex items-center gap-4">
-      <span className="font-mono text-[11px] tabular-nums tracking-[0.3em] text-white/35">{index}</span>
+      <span className="font-mono text-[11px] tabular-nums tracking-[0.3em] text-white/45">{index}</span>
       <span aria-hidden className="h-px w-12 bg-white/20" />
       <MetricLabel tone="muted">
         {en} · {ko}
@@ -62,7 +62,7 @@ export function LiveBadge({ status }: { status: WeatherStatus }) {
           status !== "error" ? "animate-pulse" : ""
         }`}
       />
-      <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/55">{label}</span>
+      <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/65">{label}</span>
     </span>
   );
 }

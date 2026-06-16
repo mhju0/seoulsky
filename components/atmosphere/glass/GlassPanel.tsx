@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  * `.liquid-glass` material (see globals.css) with its two internal layers — the
  * adaptive legibility scrim and the scroll-driven specular sheen — and lifts the
  * children above both. Everything visible to the visitor is built from this; the
- * canopy and the shuffling video live behind it.
+ * shuffling video gallery lives behind it.
  *
  * It is purely presentational: no data, no scroll state, no effects. The specular
  * drift is driven entirely by the shared `--sky-sheen` CSS variable (written once

@@ -11,7 +11,7 @@ import InstrumentsSection from "./sections/InstrumentsSection";
  * The floating liquid-glass HUD over the live scene at /sky. Four sections in one
  * continuous document scroll — arrival → instruments → forecast → ground station —
  * all reading the single shared snapshot from {@link WeatherExperienceShell}; the
- * canopy and the shuffling video gallery live behind, on the fixed SceneStage.
+ * shuffling video gallery lives behind, on the fixed SceneStage.
  *
  * The reveals + sheen here are pure foreground motion (Framer MotionValues +
  * IntersectionObserver, plus one shared scroll var for the specular drift). They

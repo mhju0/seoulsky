@@ -138,6 +138,69 @@ clouds (the first Kling 2.6 take had time-lapse-fast clouds). Camera move in **b
 
 ---
 
+## Batch 2 (generated) — 2026-06-16
+
+The expansion batch. **8 kept, 0 dropped** — every job came back clean on the
+first take (no regenerations needed). **All 8 on Kling 3.0 pro** (`kling3_0`,
+`mode:pro`, `sound:off`) per the brief, 16:9, 1920×1080, 5 s. Priority order
+**thunderstorm → snow → fog → overcast**, spread so **all six active landmarks
+gain a clip** and the two previously-uncovered conditions (**fog, overcast**) are
+now in the library. Camera move in **bold**.
+
+> **Thunderstorm bucketing:** there is no `thunderstorm` gallery condition — the
+> runtime maps live `thunderstorm` → the **`rain`** pool and the FX layer paints
+> the lightning flash on top (see `mapToGalleryCondition`). So the two storm clips
+> below are authored as **`rain`** (filename + manifest `condition: "rain"`),
+> prompted as heavy dramatic storms with **no baked-in lightning bolt** (a baked
+> bolt would wreck the loop and double up with the FX flash).
+
+1. **`namsan-tower__rain__night`** · kling3_0 pro · **THUNDERSTORM (hero)** —
+   *Slow orbiting crane* revealing N Seoul Tower atop forested Namsan hill, the
+   glittering skyline far below, in a dramatic night thunderstorm: dark turbulent
+   storm clouds, heavy driving rain, wet glistening tower, neon glow diffused in
+   the rain haze. + suffix (+ no visible lightning bolts).
+2. **`hangang__rain__night`** · kling3_0 pro · **THUNDERSTORM** — *High banking
+   aerial drift* over the Han River at night in a heavy thunderstorm: arched
+   illuminated bridges streaking light across the dark water, riverside skyline
+   through driving rain, turbulent low storm clouds, wet rippling reflections.
+   + suffix (+ no visible lightning bolts).
+3. **`namsan-tower__snow__night`** · kling3_0 pro · **SNOW** — *Slow aerial
+   push-in* toward N Seoul Tower in gentle night snowfall: flakes drifting through
+   the tower's lights, forested hill and rooftops dusted white, city lights below,
+   cold deep-blue winter night, soft halos. + suffix.
+4. **`gyeongui-forest__snow__day`** · kling3_0 pro · **SNOW** — *Steady forward
+   dolly* along Gyeongui Line Forest Park in gentle daytime snowfall: tree-lined
+   path and benches dusted white, bare branches edged with snow, low-rise cafes
+   and brick buildings, soft cold overcast light. + suffix.
+5. **`cheonggyecheon__fog__night`** · kling3_0 pro · **FOG (first fog clip)** —
+   *Low gliding camera* just above Cheonggyecheon Stream downtown at night in thick
+   drifting fog: stepping stones and stone embankments, footbridges, streetlights
+   haloed by mist, dim neon bleeding through, wet reflections on dark water.
+   + suffix.
+6. **`namsan-tower__fog__day`** · kling3_0 pro · **FOG** — *Slow forward drift*
+   revealing N Seoul Tower emerging from thick drifting fog by day: spire fading in
+   and out of pale mist, forested slopes wreathed in cloud, soft diffuse light, low
+   visibility, the muffled city barely visible below. + suffix.
+7. **`gyeongbokgung__overcast__day`** · kling3_0 pro · **OVERCAST (first overcast
+   clip)** — *Slow aerial push-in* over Gyeongbokgung Palace under a flat grey
+   heavy cloud deck: sweeping tiled hipped roofs and dancheong eaves, Geunjeongjeon
+   throne hall, wide stone courtyard, Gwanghwamun gate, misty Inwangsan behind,
+   diffuse shadowless light. + suffix.
+8. **`hangang-park__overcast__day`** · kling3_0 pro · **OVERCAST** — *Low-to-mid
+   altitude forward push* over Han River Park and the wide Han River on a heavily
+   overcast day: riverside lawns and paths, a long bridge over the grey river,
+   apartment towers fading into a low cloud deck, flat shadowless light, calm
+   water. + suffix.
+
+> **Still uncovered after Batch 2** (next expansion run, budget permitting): the
+> `clear`/`partly-cloudy` *night* tail for most landmarks, `rain`/`overcast`/`fog`
+> *day* for cheonggyecheon & gyeongui-forest, snow & fog for hangang/hangang-park,
+> and the gyeongbokgung `clear`/`fog`/`partly-cloudy` cells. Budget note: Batch 2
+> spent 70 credits (8 × 8.75 on Kling 3.0 pro); the full remaining matrix is far
+> larger than one starter-plan top-up.
+
+---
+
 ## Full matrix (expansion backlog)
 
 Mark cells `[done]` as they are generated and added to the manifest. ★ = signature
@@ -168,15 +231,15 @@ and camera POV.
 
 | Location | clear | partly-cloudy | overcast | rain | snow | fog |
 | --- | --- | --- | --- | --- | --- | --- |
-| hangang-park | ★ day `[done]` · night | day · night | day · night | day · night | day · night | day · night |
-| gyeongbokgung | day · night | day · night | day · night | ★ day `[done]` · night | ★ day `[done]` · night | day · night |
-| cheonggyecheon | day · night | day · night | day · night | day · ★ night `[done]` | day · night | day · night |
+| hangang-park | ★ day `[done]` · night | day · night | day `[done]` · night | day · night | day · night | day · night |
+| gyeongbokgung | day · night | day · night | day `[done]` · night | ★ day `[done]` · night | ★ day `[done]` · night | day · night |
+| cheonggyecheon | day · night | day · night | day · night | day · ★ night `[done]` | day · night | day · night `[done]` |
 | ~~inwangsan~~ _(dropped)_ | day · night | day · night | day · night | day · night | day · night | day `[dropped]` · night |
-| gyeongui-forest | day · night | ★ day `[done]` · night | day · night | day · night | day · night | day · night |
+| gyeongui-forest | day · night | ★ day `[done]` · night | day · night | day · night | day `[done]` · night | day · night |
 | ~~gwanaksan~~ _(dropped)_ | day · night | day · night | day `[dropped]` · night | day · night | day · night | day · night |
 | ~~naksan-fortress~~ _(dropped)_ | day `[dropped]` · night | day · night | day · night | day · night | day · night | day · night |
-| namsan-tower | day · ★ night `[done]` | day · night | day · night | day · night | day · night | day · night |
-| hangang | day · ★ night `[done]` | day · night | day · night | day · night | day · night | day · night |
+| namsan-tower | day · ★ night `[done]` | day · night | day · night | day · night `[done]` | day · night `[done]` | day `[done]` · night |
+| hangang | day · ★ night `[done]` | day · night | day · night | day · night `[done]` | day · night | day · night |
 
 **Expansion priority order** (most common Seoul conditions first): remaining
 `clear` and `partly-cloudy` days → `overcast`/`rain` days → night variants of the

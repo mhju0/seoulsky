@@ -21,7 +21,7 @@ const LEVEL_LABELS: Record<ConfidenceScore["level"], string> = {
 };
 
 function scoreColor(score: number | null): string {
-  if (score === null) return "text-white/45";
+  if (score === null) return "text-white/55";
   if (score >= 80) return "text-emerald-300";
   if (score >= 60) return "text-amber-300";
   return "text-rose-300";
@@ -37,7 +37,7 @@ function AgreementRow({ label, score }: { label: string; score: number | null })
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between">
-        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-white/50">{label}</span>
+        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-white/60">{label}</span>
         <span className={`font-sans text-sm font-light tabular-nums ${scoreColor(score)}`}>
           {score !== null ? `${score}%` : "—"}
         </span>
@@ -60,14 +60,14 @@ export default function ConfidencePanel({ confidence, comparison }: Props) {
         >
           {confidence.overall !== null ? confidence.overall : "—"}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">
+        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/55">
           Confidence · {LEVEL_LABELS[confidence.level]}
         </span>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-7">
         {comparison && (
-          <p className="font-sans text-lg font-light leading-snug text-white/90">{comparison.headline}</p>
+          <p className="font-sans text-lg font-light leading-snug text-white/95">{comparison.headline}</p>
         )}
 
         <div className="flex max-w-md flex-col gap-4">
@@ -76,13 +76,13 @@ export default function ConfidencePanel({ confidence, comparison }: Props) {
           <AgreementRow label="바람 일치도" score={confidence.wind} />
         </div>
 
-        <p className="max-w-xl text-sm leading-relaxed text-white/50">{confidence.explanation}</p>
+        <p className="max-w-xl text-sm leading-relaxed text-white/60">{confidence.explanation}</p>
 
         <div className="max-w-xl border-l border-white/20 pl-4">
-          <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-white/55">
+          <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-white/65">
             지금 무엇을 믿어야 할까요?
           </p>
-          <p className="text-sm leading-relaxed text-white/85">{confidence.recommendation}</p>
+          <p className="text-sm leading-relaxed text-white/95">{confidence.recommendation}</p>
         </div>
       </div>
     </div>
