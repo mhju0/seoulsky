@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLiveSeoulWeather } from "@/hooks/useLiveSeoulWeather";
 import { useSeoulClock } from "@/hooks/useSeoulClock";
 import {
@@ -13,7 +13,7 @@ import { computeSunPhase } from "@/lib/cinematic/seoulTime";
 import { buildVisualConfig, readAtmosphere } from "@/lib/atmosphere/weatherVisualConfig";
 import type { SkySnapshot, WeatherCondition } from "@/lib/types";
 import SceneStage from "./scene/SceneStage";
-import { WeatherFieldProvider } from "./WeatherFieldContext";
+import { WeatherClockProvider, WeatherFieldProvider, type WeatherFieldValue } from "./WeatherFieldContext";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
 
@@ -132,10 +132,13 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
     [snapshot, review.cond],
   );
 
-  // Rebuild the visual target on a coarse cadence (every 30s) + on every weather
-  // refresh. The background lerps toward it, so steps are invisibly smooth.
+  // Rebuild the visual target + day/night on a coarse cadence (every 30s) + on
+  // every weather refresh. The background lerps toward the target, so steps are
+  // invisibly smooth; `isDay` is derived from the SAME sun phase here (not the
+  // per-second clock) so it flips at sunrise/sunset without re-rendering the
+  // heavy scene every tick.
   const tick = clock ? Math.floor(clock.getTime() / 30000) : 0;
-  const target = useMemo(() => {
+  const { target, isDay } = useMemo(() => {
     const eff = applyReviewCond(snapshot, review.cond);
     const at =
       review.hour != null ? seoulAtHour(review.hour) : tick > 0 ? new Date(tick * 30000) : new Date();
@@ -145,16 +148,29 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
       sunset: snapshot?.sun.sunset,
       isDayHint: review.hour != null ? undefined : snapshot?.current.isDay,
     });
-    return buildVisualConfig(sun, eff);
+    return { target: buildVisualConfig(sun, eff), isDay: sun.isDay };
   }, [tick, snapshot, review.cond, review.hour]);
+
+  // Stable reference so the memoized SceneStage isn't re-rendered each tick.
+  const onCanvasError = useCallback(() => setCanvasFailed(true), []);
+
+  // The shared coarse state. Memoized so its identity is stable across the
+  // per-second clock ticks above — consumers (incl. the memoized SceneStage)
+  // re-render only when the weather/visual target actually changes.
+  const fieldValue = useMemo<WeatherFieldValue>(
+    () => ({ snapshot, status, lastUpdatedAt, readout, target, isDay }),
+    [snapshot, status, lastUpdatedAt, readout, target, isDay],
+  );
 
   // Pre-detection (and SSR): a calm loader — no canvas, no hydration mismatch.
   if (!quality) return <Loader />;
 
   return (
-    <WeatherFieldProvider value={{ snapshot, status, lastUpdatedAt, readout, target, clock }}>
+    <WeatherFieldProvider value={fieldValue}>
       {/* Layer 0 — the persistent moving scene (edge-to-edge shuffling video
-          gallery + live FX, with the procedural field as the never-blank fallback). */}
+          gallery + live FX, with the procedural field as the never-blank fallback).
+          It reads only the coarse field state, so the per-second clock never
+          re-renders it. */}
       <SceneStage
         quality={quality}
         reducedMotion={reduced}
@@ -162,12 +178,13 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
         pointerEnabled={pointerEnabled}
         webgl={webgl}
         canvasFailed={canvasFailed}
-        onCanvasError={() => setCanvasFailed(true)}
+        onCanvasError={onCanvasError}
       />
 
       {/* The scroll content renders its own scrim + readable foreground above
-          the shared scene. */}
-      {children}
+          the shared scene. The live clock is scoped here — only the sections that
+          display ticking time subscribe to it. */}
+      <WeatherClockProvider value={clock}>{children}</WeatherClockProvider>
     </WeatherFieldProvider>
   );
 }

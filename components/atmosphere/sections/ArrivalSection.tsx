@@ -6,7 +6,7 @@ import { normalizeWeather } from "@/lib/cinematic/weatherSceneConfig";
 import GlassPanel from "../glass/GlassPanel";
 import { PoeticLine, Value } from "../EtchedType";
 import { Parallax, ScrollReveal } from "../descentMotion";
-import { useWeatherField } from "../WeatherFieldContext";
+import { useWeatherClock, useWeatherField } from "../WeatherFieldContext";
 import { LiveBadge, SkySection } from "./SectionParts";
 
 /**
@@ -34,7 +34,8 @@ const round = (n: number | null) => (n == null ? "—" : `${Math.round(n)}`);
 const ch = (n: number) => Math.round(Math.max(0, Math.min(1, n)) * 255);
 
 export default function ArrivalSection() {
-  const { readout, status, target, clock, snapshot } = useWeatherField();
+  const { readout, status, target, snapshot } = useWeatherField();
+  const clock = useWeatherClock();
 
   // Sun phase + poetic line, quantized to the minute so per-second clock ticks
   // don't recompute (the React Compiler memoizes on minuteTick + snapshot).

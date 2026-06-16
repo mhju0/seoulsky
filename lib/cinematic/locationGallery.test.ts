@@ -104,6 +104,19 @@ test("selectGalleryPool never serves snow/rain for a dry sky, even from the whol
   assert.ok(clear.every((c) => c.condition !== "snow" && c.condition !== "rain"));
 });
 
+test("selectGalleryPool serves NO clip for a dry sky when only snow/rain exist", () => {
+  // A library with zero dry clips: the whole-library fallback would otherwise
+  // hand a clear/partly-cloudy sky a wet clip. The invariant must instead empty
+  // the pool so the caller falls back to the procedural field — never snow/rain.
+  const onlyWet: LocationClip[] = [
+    clip("snow-day", "snow", "day"),
+    clip("snow-night", "snow", "night"),
+    clip("rain-day", "rain", "day"),
+  ];
+  assert.deepEqual(selectGalleryPool(onlyWet, "clear", true), []);
+  assert.deepEqual(selectGalleryPool(onlyWet, "partly-cloudy", false), []);
+});
+
 test("selectGalleryPool widens fog and snow to overcast before the whole library", () => {
   // fog at night → fog + overcast only (no clear/snow/rain bleed-in).
   const fog = selectGalleryPool(RICH, "fog", false);

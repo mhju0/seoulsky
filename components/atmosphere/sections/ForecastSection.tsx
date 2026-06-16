@@ -8,7 +8,7 @@ import GlassPanel from "../glass/GlassPanel";
 import WeatherGlyph from "../glass/WeatherGlyph";
 import { MetricLabel } from "../EtchedType";
 import { ScrollReveal } from "../descentMotion";
-import { useWeatherField } from "../WeatherFieldContext";
+import { useWeatherClock, useWeatherField } from "../WeatherFieldContext";
 import { SectionHeading, SkySection } from "./SectionParts";
 import SunArc from "./SunArc";
 
@@ -34,7 +34,8 @@ const KST = "Asia/Seoul";
 const hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: KST, hour: "numeric", hour12: true });
 
 export default function ForecastSection() {
-  const { snapshot, clock } = useWeatherField();
+  const { snapshot } = useWeatherField();
+  const clock = useWeatherClock();
 
   // Defer the heavy Recharts chunk until the wind panel is approaching — the
   // dynamic import only fires once <WindGraph> first renders, so gating its

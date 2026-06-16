@@ -86,6 +86,11 @@ export default function VideoGallery({
   const onCoverageRef = useRef(onCoverageChange);
   onCoverageRef.current = onCoverageChange;
 
+  // Live tab-hidden flag, read by the controller so a rebuild (e.g. a
+  // reduced-motion toggle) never starts playback while the tab is hidden.
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+
   // Suspend/resume handle for the visibility effect, set up by the controller.
   const controlRef = useRef<{ suspend: () => void; resume: () => void } | null>(null);
 
@@ -109,7 +114,11 @@ export default function VideoGallery({
     let raf = 0;
     let holdTimer = 0;
     let disposed = false;
-    let suspended = false;
+    // Start suspended if the tab is already hidden, so a controller rebuilt
+    // while hidden (e.g. a prefers-reduced-motion flip) doesn't resume playback
+    // in the background until the tab is actually shown again.
+    let suspended = pausedRef.current;
+    let started = false;
     let covering = false;
 
     const setCovering = (v: boolean) => {
@@ -249,7 +258,7 @@ export default function VideoGallery({
       whenReady(
         frontEl,
         () => {
-          if (disposed) return;
+          if (disposed || suspended) return;
           playSafe(frontEl);
           ramp(
             (k) => {
@@ -257,20 +266,28 @@ export default function VideoGallery({
             },
             () => setCovering(true),
           );
-          preloadNext();
+          // Under reduced motion the gallery never shuffles, so don't decode a
+          // second clip into the hidden buffer that can never be shown.
+          if (!reducedMotion) preloadNext();
           scheduleHold();
         },
         () => startFrom(candidates.slice(1)),
       );
     };
 
-    if (reducedMotion) {
-      const calm = pickCalmClip(poolRef.current);
-      startFrom(calm ? [calm] : []);
-    } else {
-      const first = pickNextClip(poolRef.current, null);
-      startFrom(first ? [first] : []);
-    }
+    // The first paint of the gallery. Deferred until the tab is visible so a
+    // controller built while hidden never decodes/plays in the background.
+    const begin = () => {
+      if (started || disposed) return;
+      started = true;
+      if (reducedMotion) {
+        const calm = pickCalmClip(poolRef.current);
+        startFrom(calm ? [calm] : []);
+      } else {
+        const first = pickNextClip(poolRef.current, null);
+        startFrom(first ? [first] : []);
+      }
+    };
 
     controlRef.current = {
       suspend: () => {
@@ -280,12 +297,21 @@ export default function VideoGallery({
         b.pause();
       },
       resume: () => {
-        if (!suspended) return;
+        if (!suspended && started) return;
         suspended = false;
+        // First time visible: do the initial paint now instead of on build.
+        if (!started) {
+          begin();
+          return;
+        }
         playSafe(els[front]!);
         scheduleHold();
       },
     };
+
+    // Only paint immediately when visible; otherwise the visibility effect's
+    // resume() kicks off the first paint once the tab is shown.
+    if (!suspended) begin();
 
     return () => {
       disposed = true;

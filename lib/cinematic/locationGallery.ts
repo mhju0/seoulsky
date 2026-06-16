@@ -157,11 +157,12 @@ export function selectGalleryPool(
   }
 
   // 3. Hard invariant: a dry live sky (clear / partly-cloudy) never serves a
-  //    snow or rain clip — even from the whole-library fallback above. Only
-  //    applied while it leaves something to show.
+  //    snow or rain clip — even from the whole-library fallback above. This is
+  //    unconditional: if the library holds no dry clip at all, the pool empties
+  //    and the caller falls back to the procedural field, rather than cutting a
+  //    clear morning to snow.
   if (target && DRY_TARGETS.includes(target)) {
-    const dry = pool.filter((c) => c.condition !== "snow" && c.condition !== "rain");
-    if (dry.length > 0) pool = dry;
+    pool = pool.filter((c) => c.condition !== "snow" && c.condition !== "rain");
   }
 
   // 4. Soft day/night preference — only applied while it keeps ≥2 clips.

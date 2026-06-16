@@ -10,7 +10,7 @@ import ProviderComparison from "@/components/ProviderComparison";
 import GlassPanel from "../glass/GlassPanel";
 import { MetricLabel } from "../EtchedType";
 import { ScrollReveal } from "../descentMotion";
-import { useWeatherField } from "../WeatherFieldContext";
+import { useWeatherClock, useWeatherField } from "../WeatherFieldContext";
 import { SectionHeading, SkySection } from "./SectionParts";
 
 /**
@@ -70,7 +70,8 @@ function DeckPanel({
 }
 
 export default function GroundStationSection() {
-  const { snapshot, clock } = useWeatherField();
+  const { snapshot } = useWeatherField();
+  const clock = useWeatherClock();
   const [data, setData] = useState<WeatherIntelligence | null>(null);
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -80,17 +81,30 @@ export default function GroundStationSection() {
   const deckRef = useRef<HTMLDivElement>(null);
   const near = useInView(deckRef, { once: true, margin: "0px 0px 400px 0px" });
 
+  // Guard against a fetch (manual or interval) resolving after unmount — setting
+  // state on an unmounted component. Flipped false on teardown (same idea as the
+  // `alive` flag in SceneStage's manifest fetch).
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
       const res = await fetch("/api/weather", { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData((await res.json()) as WeatherIntelligence);
+      const json = (await res.json()) as WeatherIntelligence;
+      if (!aliveRef.current) return;
+      setData(json);
       setFailed(false);
     } catch {
-      setFailed(true);
+      if (aliveRef.current) setFailed(true);
     } finally {
-      setRefreshing(false);
+      if (aliveRef.current) setRefreshing(false);
     }
   }, []);
 
