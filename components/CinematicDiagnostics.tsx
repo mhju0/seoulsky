@@ -25,15 +25,15 @@ import type { SkySnapshot } from "@/lib/types";
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-white/10 py-2 last:border-0">
-      <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.16em] text-white/45">{label}</span>
-      <span className="text-right font-sans text-sm font-light text-white/85">{value}</span>
+      <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.16em] text-white/55">{label}</span>
+      <span className="text-right font-sans text-sm font-light text-white/95">{value}</span>
     </div>
   );
 }
 
 function ColumnLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">{children}</p>
+    <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-white/55">{children}</p>
   );
 }
 
@@ -83,7 +83,7 @@ export default function CinematicDiagnostics({ sky: skyProp }: { sky?: SkySnapsh
             <span
               key={k}
               className={`font-mono text-[11px] tracking-wide ${
-                isPlateGenerated(k) ? "text-emerald-300/90" : "text-white/30"
+                isPlateGenerated(k) ? "text-emerald-300/90" : "text-white/40"
               }`}
             >
               {k}
@@ -91,7 +91,7 @@ export default function CinematicDiagnostics({ sky: skyProp }: { sky?: SkySnapsh
             </span>
           ))}
         </div>
-        <p className="mt-4 max-w-2xl text-[11px] leading-relaxed text-white/40">
+        <p className="mt-4 max-w-2xl text-[11px] leading-relaxed text-white/50">
           영상은 오프라인(Claude CLI의 Higgsfield 도구)에서 생성되어 public/cinematic/에
           저장됩니다. 런타임에는 Higgsfield를 호출하지 않으며, 조건에 맞는 클립이 없거나
           재생에 실패하면 실시간 절차적 3D 씬으로 자동 대체됩니다.

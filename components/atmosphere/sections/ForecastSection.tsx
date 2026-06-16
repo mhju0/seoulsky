@@ -69,18 +69,18 @@ export default function ForecastSection() {
                     key={h.time}
                     className="flex min-w-[3.4rem] flex-col items-center gap-2.5 px-1.5 py-1"
                   >
-                    <span className="font-mono text-[10px] tracking-[0.1em] text-white/50">
+                    <span className="font-mono text-[10px] tracking-[0.1em] text-white/60">
                       {i === 0 ? "지금" : hourFmt.format(new Date(h.time))}
                     </span>
-                    <WeatherGlyph condition={h.condition} night={isNightAt(h.time)} size={22} className="text-white/80" />
-                    <span className="font-sans text-base font-light tabular-nums text-white/90">
+                    <WeatherGlyph condition={h.condition} night={isNightAt(h.time)} size={22} className="text-white/90" />
+                    <span className="font-sans text-base font-light tabular-nums text-white/95">
                       {Math.round(h.temperature)}°
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.2em] text-white/35">
+              <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.2em] text-white/45">
                 시간별 예보 없음
               </p>
             )}
@@ -95,13 +95,13 @@ export default function ForecastSection() {
               {daily.map((d) => (
                 <GlassPanel key={d.date} radius="rounded-[16px]" className="px-2 py-3.5">
                   <div className="flex flex-col items-center gap-2.5">
-                    <span className="font-mono text-[10px] tracking-[0.08em] text-white/55">
+                    <span className="font-mono text-[10px] tracking-[0.08em] text-white/65">
                       {dayLabel(d.date)}
                     </span>
-                    <WeatherGlyph condition={d.condition} size={22} className="text-white/80" />
+                    <WeatherGlyph condition={d.condition} size={22} className="text-white/90" />
                     <span className="flex items-baseline gap-1.5 font-sans tabular-nums">
-                      <span className="text-base font-light text-white/90">{Math.round(d.temperatureMax)}°</span>
-                      <span className="text-xs font-light text-white/45">{Math.round(d.temperatureMin)}°</span>
+                      <span className="text-base font-light text-white/95">{Math.round(d.temperatureMax)}°</span>
+                      <span className="text-xs font-light text-white/55">{Math.round(d.temperatureMin)}°</span>
                     </span>
                   </div>
                 </GlassPanel>
@@ -125,7 +125,7 @@ export default function ForecastSection() {
                 {hourly.length > 0 ? (
                   windNear ? <WindGraph hourly={hourly} /> : <WindPlaceholder />
                 ) : (
-                  <div className="flex h-[150px] items-center font-mono text-[11px] uppercase tracking-[0.2em] text-white/35">
+                  <div className="flex h-[150px] items-center font-mono text-[11px] uppercase tracking-[0.2em] text-white/45">
                     바람 예보 없음
                   </div>
                 )}

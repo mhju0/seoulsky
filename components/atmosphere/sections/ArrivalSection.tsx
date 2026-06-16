@@ -59,10 +59,10 @@ export default function ArrivalSection() {
             className="inline-block h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: accentCss, boxShadow: `0 0 16px ${accentCss}` }}
           />
-          <span className="font-mono text-[11px] font-medium uppercase tracking-[0.46em] text-white/75">
+          <span className="font-mono text-[11px] font-medium uppercase tracking-[0.46em] text-white/85">
             Seoul · 서울
           </span>
-          <span className="text-white/20">·</span>
+          <span className="text-white/30">·</span>
           <LiveBadge status={status} />
         </div>
 
@@ -85,7 +85,7 @@ export default function ArrivalSection() {
               >
                 {conditionLabelEn(readout.condition)}
               </span>
-              <span className="text-base font-light tracking-wide text-white/65">{readout.conditionKo}</span>
+              <span className="text-base font-light tracking-wide text-white/75">{readout.conditionKo}</span>
             </div>
           </GlassPanel>
         </Parallax>
@@ -94,10 +94,10 @@ export default function ArrivalSection() {
         <PoeticLine className="mt-9">{line}</PoeticLine>
 
         {/* Seoul time. */}
-        <div className="mt-10 flex flex-wrap items-center gap-x-5 font-mono text-sm tracking-[0.08em] text-white/65">
+        <div className="mt-10 flex flex-wrap items-center gap-x-5 font-mono text-sm tracking-[0.08em] text-white/75">
           <span>{clock ? dateFmt.format(clock) : "—"}</span>
-          <span className="tabular-nums text-white/50">{clock ? timeFmt.format(clock) : "--:--"}</span>
-          <span className="text-white/30">KST</span>
+          <span className="tabular-nums text-white/60">{clock ? timeFmt.format(clock) : "--:--"}</span>
+          <span className="text-white/40">KST</span>
         </div>
       </ScrollReveal>
     </SkySection>

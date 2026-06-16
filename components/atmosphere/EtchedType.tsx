@@ -12,8 +12,8 @@ type Tone = "bright" | "muted" | "faint";
 
 const TONE: Record<Tone, string> = {
   bright: "text-white",
-  muted: "text-white/70",
-  faint: "text-white/45",
+  muted: "text-white/80",
+  faint: "text-white/55",
 };
 
 /** A small-caps mono label — the etched instrument caption above a reading. */
@@ -68,7 +68,7 @@ export function Value({
     >
       {children}
       {unit != null && (
-        <span className="ml-[0.12em] text-[0.34em] font-light tracking-[0.12em] text-white/55">{unit}</span>
+        <span className="ml-[0.12em] text-[0.34em] font-light tracking-[0.12em] text-white/65">{unit}</span>
       )}
     </span>
   );
@@ -106,7 +106,7 @@ export function PoeticLine({
 }) {
   return (
     <p
-      className={`max-w-[36ch] font-sans text-lg font-light leading-relaxed tracking-wide text-white/75 [text-shadow:0_1px_16px_rgba(0,0,0,0.5)] ${className}`}
+      className={`max-w-[36ch] font-sans text-lg font-light leading-relaxed tracking-wide text-white/85 [text-shadow:0_1px_16px_rgba(0,0,0,0.5)] ${className}`}
     >
       {children}
     </p>
@@ -140,7 +140,7 @@ export function Metric({
         {value}
       </Value>
       {sub != null && (
-        <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/45">{sub}</span>
+        <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/55">{sub}</span>
       )}
     </div>
   );

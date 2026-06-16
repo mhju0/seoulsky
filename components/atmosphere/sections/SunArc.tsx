@@ -83,14 +83,14 @@ export default function SunArc({
         />
       </svg>
 
-      <div className="flex items-center justify-between font-mono text-[11px] tracking-[0.12em] text-white/55">
+      <div className="flex items-center justify-between font-mono text-[11px] tracking-[0.12em] text-white/65">
         <span className="flex flex-col gap-0.5">
-          <span className="text-[9px] uppercase tracking-[0.24em] text-white/35">일출</span>
-          <span className="tabular-nums text-white/75">{sunrise ? formatKstTime(sunrise) : "—"}</span>
+          <span className="text-[9px] uppercase tracking-[0.24em] text-white/45">일출</span>
+          <span className="tabular-nums text-white/85">{sunrise ? formatKstTime(sunrise) : "—"}</span>
         </span>
         <span className="flex flex-col items-end gap-0.5">
-          <span className="text-[9px] uppercase tracking-[0.24em] text-white/35">일몰</span>
-          <span className="tabular-nums text-white/75">{sunset ? formatKstTime(sunset) : "—"}</span>
+          <span className="text-[9px] uppercase tracking-[0.24em] text-white/45">일몰</span>
+          <span className="tabular-nums text-white/85">{sunset ? formatKstTime(sunset) : "—"}</span>
         </span>
       </div>
     </div>

@@ -61,8 +61,8 @@ function applyReviewCond(snapshot: SkySnapshot | null, cond?: WeatherCondition):
 /**
  * The single page shell for the weather experience at /sky. It owns one live
  * data source and ONE persistent {@link SceneStage} (the shuffling video gallery,
- * live FX, spaceship canopy, and the procedural atmospheric-field fallback).
- * Both are created once in the /sky layout and never remount, because the
+ * live FX, and the procedural atmospheric-field fallback). Both are created once
+ * in the /sky layout and never remount, because the
  * experience is a single non-navigating scroll. The readable foreground (the
  * scroll content) is passed in as `children` and reads the shared state from
  * {@link WeatherFieldProvider}.
@@ -113,7 +113,7 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
   // Keep reduced-motion live: a DevTools/OS toggle re-gates the shuffle, FX,
   // parallax and sheen without a reload, since every consumer reacts to the
   // prop (VideoGallery rebuilds its controller, SceneStage drops the FX layer,
-  // the canopy/sheen listeners detach). Pointer parallax follows the same gate.
+  // the sheen listener detaches). Pointer parallax follows the same gate.
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -153,8 +153,8 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
 
   return (
     <WeatherFieldProvider value={{ snapshot, status, lastUpdatedAt, readout, target, clock }}>
-      {/* Layer 0 — the persistent moving scene (canopy + shuffling video gallery
-          + live FX, with the procedural field as the never-blank fallback). */}
+      {/* Layer 0 — the persistent moving scene (edge-to-edge shuffling video
+          gallery + live FX, with the procedural field as the never-blank fallback). */}
       <SceneStage
         quality={quality}
         reducedMotion={reduced}
