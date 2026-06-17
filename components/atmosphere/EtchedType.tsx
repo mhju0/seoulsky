@@ -64,7 +64,7 @@ export function Value({
 }) {
   return (
     <span
-      className={`inline-flex items-baseline font-sans font-light tabular-nums leading-[0.85] [text-shadow:0_2px_24px_rgba(0,0,0,0.45)] ${VALUE_SIZE[size]} ${TONE[tone]} ${className}`}
+      className={`etched-shadow inline-flex items-baseline font-sans font-light tabular-nums leading-[0.85] ${VALUE_SIZE[size]} ${TONE[tone]} ${className}`}
     >
       {children}
       {unit != null && (
@@ -106,7 +106,7 @@ export function PoeticLine({
 }) {
   return (
     <p
-      className={`max-w-[36ch] font-sans text-xl font-light leading-relaxed tracking-wide text-white/85 [text-shadow:0_1px_16px_rgba(0,0,0,0.5)] ${className}`}
+      className={`etched-shadow max-w-[36ch] font-sans text-xl font-light leading-relaxed tracking-wide text-white/85 ${className}`}
     >
       {children}
     </p>

@@ -3,35 +3,32 @@
 import type { ReactNode } from "react";
 
 /**
- * The single liquid-glass surface used across the /sky HUD. It composes the
- * `.liquid-glass` material (see globals.css) with its two internal layers — the
- * adaptive legibility scrim and the scroll-driven specular sheen — and lifts the
- * children above both. Everything visible to the visitor is built from this; the
- * shuffling video gallery lives behind it.
+ * The single readable surface used across the /sky HUD. Once liquid glass, now a
+ * plain matte panel: an opaque day/night-aware fill, a hairline border and a soft
+ * shadow — no backdrop blur, no specular sheen, no scrim. The surface and its text
+ * colour follow the sky (cream + deep-navy ink by day, a navy lift + cream ink at
+ * night) via the `--sky-panel-*` and `--color-white` variables set on the
+ * `.sky-foreground` wrapper, so legibility holds over any clip or gradient.
  *
- * It is purely presentational: no data, no scroll state, no effects. The specular
- * drift is driven entirely by the shared `--sky-sheen` CSS variable (written once
- * by {@link useScrollSheen}), so a page full of panels adds zero per-frame React
- * work and the sheen is held still under reduced motion.
- *
- * Restraint is deliberate: thin border, very low fill, large radius, and NO outer
- * shadow, so a panel reads as instrument glass rather than an app card.
+ * The name and prop API are unchanged so every call site keeps working as-is; the
+ * day/night response is entirely in the `.sky-panel` material (see globals.css).
  */
 export default function GlassPanel({
   children,
   className = "",
   radius = "rounded-[22px]",
+  elevated = false,
 }: {
   children: ReactNode;
   className?: string;
   /** Tailwind radius class — restrained by default; tiles can go tighter. */
   radius?: string;
+  /** Adds top-lit inner gradient + desktop hover lift (instrument tiles). */
+  elevated?: boolean;
 }) {
   return (
-    <div className={`liquid-glass ${radius} ${className}`}>
-      <span aria-hidden className="liquid-glass-scrim" />
-      <span aria-hidden className="liquid-glass-sheen" />
-      <div className="liquid-glass-content">{children}</div>
+    <div className={`sky-panel ${elevated ? "sky-panel-elevated" : ""} ${radius} ${className}`}>
+      {children}
     </div>
   );
 }

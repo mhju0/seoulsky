@@ -3,15 +3,14 @@
 import { poeticSkyLine } from "@/lib/cinematic/poeticWeatherCopy";
 import { computeSunPhase } from "@/lib/cinematic/seoulTime";
 import { normalizeWeather } from "@/lib/cinematic/weatherSceneConfig";
-import GlassPanel from "../glass/GlassPanel";
 import { PoeticLine, Value } from "../EtchedType";
 import { Parallax, ScrollReveal } from "../descentMotion";
 import { useWeatherClock, useWeatherField } from "../WeatherFieldContext";
 import { LiveBadge, SkySection } from "./SectionParts";
 
 /**
- * Section 1 — Arrival. The hero: the live Seoul temperature in a tall liquid-glass
- * pane, the city, the condition (Korean), one deterministic Korean poetic line,
+ * Section 1 — Arrival. The hero: the live Seoul temperature set large straight over
+ * the live view, the city, the condition (Korean), one deterministic Korean poetic line,
  * a pulsing LIVE dot, and the current Seoul time. Big and unhurried — it owns the
  * first viewport over the shuffling view.
  */
@@ -52,7 +51,11 @@ export default function ArrivalSection() {
 
   return (
     <SkySection center>
-      <ScrollReveal className="flex max-w-[680px] flex-col" amount={0.1}>
+      {/* Soft vignette (not glass) behind the hero text — keeps the temperature
+          and condition legible over any clip. It scrolls away with the hero, so it
+          never dims the gradient content below. */}
+      <div aria-hidden className="sky-hero-vignette pointer-events-none absolute inset-0" />
+      <ScrollReveal className="sky-on-media relative z-10 flex max-w-[680px] flex-col" amount={0.1}>
         {/* City + live status. */}
         <div className="mb-8 flex items-center gap-3">
           <span
@@ -66,32 +69,31 @@ export default function ArrivalSection() {
           <LiveBadge status={status} labelClassName="text-sm" />
         </div>
 
-        {/* The hero: temperature + condition in instrument glass, on a hair of
-            parallax so it floats a touch over the live view as you scroll. */}
+        {/* The hero: temperature (primary) over the condition (secondary), set
+            straight over the live view (no panel), on a hair of parallax so it
+            floats as you scroll. Legibility comes from the directional scrim + the
+            hero's light ink and text-shadow. */}
         <Parallax className="w-fit" distance={26}>
-          <GlassPanel
-            radius="rounded-[34px]"
-            className="px-[clamp(1.6rem,4vw,3rem)] py-[clamp(1.4rem,3vw,2.4rem)]"
-          >
-            <div className="-ml-1">
-              <Value size="hero" unit="°">
-                {round(readout.temperature)}
-              </Value>
-            </div>
-            <div className="mt-3 flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-              <span className="text-base font-light tracking-wide text-white/75">{readout.conditionKo}</span>
-            </div>
-          </GlassPanel>
+          <div className="-ml-1">
+            <Value size="hero" unit="°">
+              {round(readout.temperature)}
+            </Value>
+          </div>
+          <div className="mt-4 flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
+            <span className="text-2xl font-light leading-snug tracking-[0.01em] text-white/90">
+              {readout.conditionKo}
+            </span>
+          </div>
         </Parallax>
 
         {/* Poetic line — etched, generously led, comfortable over the live view. */}
         <PoeticLine className="mt-9">{line}</PoeticLine>
 
-        {/* Seoul time. */}
-        <div className="mt-10 flex flex-wrap items-center gap-x-5 font-mono text-base tracking-[0.08em] text-white/75">
+        {/* Seoul time — tertiary metrics, quiet under the secondary condition. */}
+        <div className="mt-10 flex flex-wrap items-center gap-x-5 font-mono text-sm tracking-[0.1em] text-white/65">
           <span>{clock ? dateFmt.format(clock) : "—"}</span>
-          <span className="tabular-nums text-white/60">{clock ? timeFmt.format(clock) : "--:--"}</span>
-          <span className="text-white/40">KST</span>
+          <span className="tabular-nums text-white/50">{clock ? timeFmt.format(clock) : "--:--"}</span>
+          <span className="text-white/35">KST</span>
         </div>
       </ScrollReveal>
     </SkySection>

@@ -52,21 +52,20 @@ test("selectGalleryPool prefers matching condition + time-of-day", () => {
   );
 });
 
-test("selectGalleryPool keeps the condition pool when time-of-day has <2", () => {
-  // rain by day → only one day-rain clip, so the whole rain pool is used.
+test("selectGalleryPool never serves the opposite time of day", () => {
+  // rain by day → a single day-rain clip exists; it must loop ALONE rather than
+  // bleeding in the night-rain clips. Time-of-day coherence beats shuffle variety.
   const dayRain = selectGalleryPool(LIBRARY, "rain", true);
-  assert.deepEqual(
-    dayRain.map((c) => c.id).sort(),
-    ["rain-day-a", "rain-night-a", "rain-night-b"],
-  );
+  assert.deepEqual(dayRain.map((c) => c.id), ["rain-day-a"]);
+  assert.ok(dayRain.every((c) => c.timeOfDay === "day"));
 });
 
-test("selectGalleryPool broadens to the whole library when <2 match", () => {
-  // snow has a single clip and no overcast to widen to → broaden to everything
-  // so there is ≥2 to shuffle.
+test("selectGalleryPool loops the lone matching-time clip instead of bleeding conditions", () => {
+  // snow has a single day clip and no overcast to widen to. Rather than opening
+  // to the whole library (which would mix in clear/rain), keep the tight,
+  // correct-time pool — even at size 1 — so the time of day stays coherent.
   const snow = selectGalleryPool(LIBRARY, "snow", true);
-  assert.ok(snow.length >= 2);
-  // Day preference then narrows the broadened pool to the day clips.
+  assert.deepEqual(snow.map((c) => c.id), ["snow-day-a"]);
   assert.ok(snow.every((c) => c.timeOfDay === "day"));
 });
 
@@ -81,6 +80,16 @@ const RICH: LocationClip[] = [
   clip("snow-day", "snow", "day"),
   clip("rain-night", "rain", "night"),
 ];
+
+test("selectGalleryPool never serves a day clip at night (the 22:00-KST bug)", () => {
+  // partly-cloudy has only DAY clips in RICH. At night it must broaden within the
+  // dry family to the correct-time clips (clear/overcast night), NOT fall back to
+  // its own daytime clips — the reported "daytime video at 22:00 KST" regression.
+  const pcNight = selectGalleryPool(RICH, "partly-cloudy", false);
+  assert.ok(pcNight.length >= 1);
+  assert.ok(pcNight.every((c) => c.timeOfDay === "night"));
+  assert.ok(pcNight.every((c) => c.condition !== "snow" && c.condition !== "rain"));
+});
 
 test("selectGalleryPool broadens partly-cloudy to the dry family, not snow/rain", () => {
   // Only one partly-cloudy clip → widen to clear + overcast (the dry family),

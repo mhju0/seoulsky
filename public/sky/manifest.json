@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "generator": "offline-still",
+  "generatedAt": "2026-06-17",
+  "note": "Still-image 'atmospheric color field' library for /sky (landmark x condition x anchor). anchor in {day, golden, night} is chosen by sun phase (golden near sunrise/sunset, else day/night by isDay); a continuous CSS grade (buildImageGrade) colours each anchor across its own slice of the day. Each plate is a full-bleed, near-still 16:9 webp at /sky/<landmark>__<condition>__<anchor>.webp. This list may name plates that do not exist yet: a plate whose file 404s silently falls back to the procedural CSS atmospheric field, so the app runs on fallback while the library fills in. Selection reuses the video gallery contract (condition matching, weather-adjacent broadening, the hard dry-sky invariant) so a clear sky never grades onto a rain/snow plate.",
+  "landmarks": [{ "slug": "hanriver", "ko": "한강", "en": "Han River" }],
+  "conditions": ["clear", "partly-cloudy", "overcast", "rain", "snow", "fog"],
+  "anchors": ["day", "golden", "night"],
+  "images": [
+    { "landmark": "hanriver", "condition": "clear", "anchor": "day", "src": "/sky/hanriver__clear__day.webp" },
+    { "landmark": "hanriver", "condition": "clear", "anchor": "golden", "src": "/sky/hanriver__clear__golden.webp" },
+    { "landmark": "hanriver", "condition": "clear", "anchor": "night", "src": "/sky/hanriver__clear__night.webp" },
+    { "landmark": "hanriver", "condition": "partly-cloudy", "anchor": "day", "src": "/sky/hanriver__partly-cloudy__day.webp" },
+    { "landmark": "hanriver", "condition": "partly-cloudy", "anchor": "golden", "src": "/sky/hanriver__partly-cloudy__golden.webp" },
+    { "landmark": "hanriver", "condition": "partly-cloudy", "anchor": "night", "src": "/sky/hanriver__partly-cloudy__night.webp" },
+    { "landmark": "hanriver", "condition": "overcast", "anchor": "day", "src": "/sky/hanriver__overcast__day.webp" },
+    { "landmark": "hanriver", "condition": "overcast", "anchor": "golden", "src": "/sky/hanriver__overcast__golden.webp" },
+    { "landmark": "hanriver", "condition": "overcast", "anchor": "night", "src": "/sky/hanriver__overcast__night.webp" },
+    { "landmark": "hanriver", "condition": "rain", "anchor": "day", "src": "/sky/hanriver__rain__day.webp" },
+    { "landmark": "hanriver", "condition": "rain", "anchor": "golden", "src": "/sky/hanriver__rain__golden.webp" },
+    { "landmark": "hanriver", "condition": "rain", "anchor": "night", "src": "/sky/hanriver__rain__night.webp" },
+    { "landmark": "hanriver", "condition": "snow", "anchor": "day", "src": "/sky/hanriver__snow__day.webp" },
+    { "landmark": "hanriver", "condition": "snow", "anchor": "golden", "src": "/sky/hanriver__snow__golden.webp" },
+    { "landmark": "hanriver", "condition": "snow", "anchor": "night", "src": "/sky/hanriver__snow__night.webp" },
+    { "landmark": "hanriver", "condition": "fog", "anchor": "day", "src": "/sky/hanriver__fog__day.webp" },
+    { "landmark": "hanriver", "condition": "fog", "anchor": "golden", "src": "/sky/hanriver__fog__golden.webp" },
+    { "landmark": "hanriver", "condition": "fog", "anchor": "night", "src": "/sky/hanriver__fog__night.webp" }
+  ]
+}

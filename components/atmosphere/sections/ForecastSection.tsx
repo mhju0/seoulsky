@@ -15,7 +15,7 @@ import SunArc from "./SunArc";
 /**
  * Section 3 — Forecast. The shared sky snapshot already carries the next 24h of
  * hourly and ~7 days of daily forecast, so this reads from context with no extra
- * fetch. Four glass instruments: a horizontally-scrollable hourly strip, a 7-day
+ * fetch. Four matte instruments: a horizontally-scrollable hourly strip, a 7-day
  * row, the sunrise/sunset arc, and the wind graph (lazy Recharts).
  */
 
@@ -27,14 +27,14 @@ const WindGraph = dynamic(() => import("./WindGraph"), {
 
 /** The pulse shown before the wind graph is near + while its chunk loads. */
 function WindPlaceholder() {
-  return <div className="h-[150px] w-full animate-pulse rounded-lg bg-white/[0.03]" />;
+  return <div className="h-full min-h-[150px] w-full animate-pulse rounded-lg bg-white/[0.03]" />;
 }
 
 const KST = "Asia/Seoul";
 const hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: KST, hour: "numeric", hour12: true });
 
 export default function ForecastSection() {
-  const { snapshot } = useWeatherField();
+  const { snapshot, readout, isDay } = useWeatherField();
   const clock = useWeatherClock();
 
   // Defer the heavy Recharts chunk until the wind panel is approaching — the
@@ -73,7 +73,15 @@ export default function ForecastSection() {
                     <span className="font-mono text-[10px] tracking-[0.1em] text-white/60">
                       {i === 0 ? "지금" : hourFmt.format(new Date(h.time))}
                     </span>
-                    <WeatherGlyph condition={h.condition} night={isNightAt(h.time)} size={22} className="text-white/90" />
+                    {/* '지금' mirrors the live readout (KMA-preferred current condition,
+                        same source the on-screen video uses) so it never diverges from
+                        what's playing; later hours stay on the Open-Meteo hourly series. */}
+                    <WeatherGlyph
+                      condition={i === 0 ? readout.condition : h.condition}
+                      night={isNightAt(h.time)}
+                      size={22}
+                      className="text-white/90"
+                    />
                     <span className="font-sans text-base font-light tabular-nums text-white/95">
                       {Math.round(h.temperature)}°
                     </span>
@@ -88,7 +96,7 @@ export default function ForecastSection() {
           </GlassPanel>
         </ScrollReveal>
 
-        {/* Daily — a 7-day row, each day its own glass tile. */}
+        {/* Daily — a 7-day row, each day its own panel tile. */}
         {daily.length > 0 && (
           <ScrollReveal amount={0.15} delay={0.05}>
             <MetricLabel className="mb-3 px-1">7-Day · 주간</MetricLabel>
@@ -111,25 +119,34 @@ export default function ForecastSection() {
           </ScrollReveal>
         )}
 
-        {/* Sun arc + wind graph. */}
-        <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
-          <ScrollReveal amount={0.2} delay={0.1}>
+        {/* Sun arc + wind graph — matched, equal-dimension cards: side by side on
+            wide screens, stacked when narrow/half-width. The arc's semicircle sets
+            the row height (items-stretch) and the wind chart fills to match it. */}
+        <div className="grid gap-4 sm:gap-5 lg:grid-cols-2 lg:items-stretch">
+          <ScrollReveal className="h-full" amount={0.2} delay={0.1}>
             <GlassPanel className="h-full px-5 py-5 sm:px-6 sm:py-6">
-              <SunArc sunrise={snapshot?.sun.sunrise ?? null} sunset={snapshot?.sun.sunset ?? null} now={clock} />
+              <SunArc
+                sunrise={snapshot?.sun.sunrise ?? null}
+                sunset={snapshot?.sun.sunset ?? null}
+                now={clock}
+                isDay={isDay}
+              />
             </GlassPanel>
           </ScrollReveal>
 
-          <ScrollReveal amount={0.2} delay={0.14}>
+          <ScrollReveal className="h-full" amount={0.2} delay={0.14}>
             <GlassPanel className="h-full px-5 py-5 sm:px-6 sm:py-6">
-              <MetricLabel className="mb-4">Wind · 바람 · m/s</MetricLabel>
-              <div ref={windRef}>
-                {hourly.length > 0 ? (
-                  windNear ? <WindGraph hourly={hourly} /> : <WindPlaceholder />
-                ) : (
-                  <div className="flex h-[150px] items-center font-mono text-[11px] uppercase tracking-[0.2em] text-white/45">
-                    바람 예보 없음
-                  </div>
-                )}
+              <div className="flex h-full flex-col">
+                <MetricLabel className="mb-4">Wind · 바람 · m/s</MetricLabel>
+                <div ref={windRef} className="min-h-[150px] flex-1">
+                  {hourly.length > 0 ? (
+                    windNear ? <WindGraph hourly={hourly} isDay={isDay} /> : <WindPlaceholder />
+                  ) : (
+                    <div className="flex h-full min-h-[150px] items-center font-mono text-[11px] uppercase tracking-[0.2em] text-white/45">
+                      바람 예보 없음
+                    </div>
+                  )}
+                </div>
               </div>
             </GlassPanel>
           </ScrollReveal>

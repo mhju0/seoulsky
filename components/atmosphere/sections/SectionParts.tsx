@@ -6,7 +6,7 @@ import { MetricLabel } from "../EtchedType";
 
 /**
  * Shared chrome for the four /sky scroll sections — the section shell, the quiet
- * EN·KO heading, and the live-status badge. Pure presentation; the glass and the
+ * EN·KO heading, and the live-status badge. Pure presentation; the panels and the
  * data live in the section bodies. Every section flows in the normal document
  * scroll over the fixed scene, so reveal/parallax here never drives the scene.
  */

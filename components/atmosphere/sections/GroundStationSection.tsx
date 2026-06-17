@@ -17,7 +17,7 @@ import { SectionHeading, SkySection } from "./SectionParts";
  * Section 4 — Ground Station. The data deck where the scroll lands: cross-provider
  * confidence, the source comparison, the environment sources (air + radar, with
  * the required RainViewer attribution) and the cinematic-engine diagnostics — all
- * re-skinned into liquid glass, all the original data/logic preserved.
+ * re-skinned into the matte reading panels, all the original data/logic preserved.
  *
  * PERF: the heavier /api/weather intelligence fetch is deferred until this final
  * section is approaching (useInView, ~400px early) and refreshed every 5 min; the
@@ -44,7 +44,7 @@ function radarSummary(radar: SkyRadar | null | undefined): string {
   return "접근하는 비구름 없음";
 }
 
-/** A glass deck panel: a small-caps heading (+ sub) over its data block. */
+/** A deck panel: a small-caps heading (+ sub) over its data block. */
 function DeckPanel({
   label,
   sub,

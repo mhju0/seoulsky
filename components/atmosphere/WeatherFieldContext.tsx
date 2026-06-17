@@ -26,6 +26,14 @@ export interface WeatherFieldValue {
   target: VisualConfig;
   /** Day/night flag from Seoul sun geometry, recomputed on the coarse tick. */
   isDay: boolean;
+  /** Continuous 0 (full night) … 1 (full day) — drives the gradient colour lerp. */
+  dayFactor: number;
+  /** 0 … 1 warm bump around the horizon — drives the gradient's golden-hour cast. */
+  goldenFactor: number;
+  /** Sun ascending (before solar noon) — separates dawn's cool cast from dusk's warm one. */
+  rising: boolean;
+  /** Sun-altitude proxy −1 (solar midnight) … +1 (noon) — deepens the darkest hours. */
+  elevation: number;
 }
 
 const WeatherFieldContext = createContext<WeatherFieldValue | null>(null);
@@ -51,4 +59,21 @@ export const WeatherClockProvider = WeatherClockContext.Provider;
 
 export function useWeatherClock(): Date | null {
   return useContext(WeatherClockContext);
+}
+
+/**
+ * Which of the two discrete /sky views is showing — the full-screen live "hero"
+ * (video + minimal readout) or the scrolling "data" dashboard. The shell owns the
+ * state and flips it from the keyboard (D toggles, Esc → hero); {@link SkyView}
+ * reads it here to cross-fade the two layers, and the shell uses it to pause the
+ * scene while the dashboard is up.
+ */
+export type WeatherView = "hero" | "data";
+
+const WeatherViewContext = createContext<WeatherView>("hero");
+
+export const WeatherViewProvider = WeatherViewContext.Provider;
+
+export function useWeatherView(): WeatherView {
+  return useContext(WeatherViewContext);
 }

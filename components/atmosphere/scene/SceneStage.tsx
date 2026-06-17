@@ -1,13 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Component, memo, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Component, memo, useMemo, type ReactNode } from "react";
 import type { QualitySettings } from "@/components/three/quality";
-import type { LocationManifest } from "@/lib/cinematic/locationGallery";
 import AtmosphericFieldFallback from "../AtmosphericFieldFallback";
 import { useWeatherField } from "../WeatherFieldContext";
 import FXOverlay, { type FxState } from "./FXOverlay";
-import VideoGallery from "./VideoGallery";
+import ImageField from "./ImageField";
+import { useSkyImage } from "./SkyImageContext";
 
 /**
  * The one persistent SCENE that lives behind the /sky scroll content. It mounts
@@ -15,16 +15,17 @@ import VideoGallery from "./VideoGallery";
  * viewport edge-to-edge — there is no frame around it. Back-to-front:
  *
  *   1. Procedural atmospheric field (WebGL, or a CSS fallback) — the guaranteed
- *      never-blank base. It is always live until a video covers it, then it is
- *      paused (it sits fully behind the opaque clip), and it returns the moment a
- *      clip is unavailable. This is the tail of the fallback chain.
- *   2. The condition-coupled shuffling video gallery (the "view").
+ *      never-blank base. It is always live until a still plate covers it, then it
+ *      is paused (it sits fully behind the opaque plate), and it returns the
+ *      moment no plate is available. This is the tail of the fallback chain.
+ *   2. The still "atmospheric color field" plate, colour-graded by the live sun
+ *      phase (the "view") — see {@link ImageField} + {@link useSkyImage}.
  *   3. The live weather FX overlay (rain/snow/lightning/fog/god-rays).
  *
- * Fallback chain (never a blank or frozen frame): matching clip → broadened clip
- * (both inside {@link VideoGallery}) → procedural field here. The video selection
- * + FX read the single live snapshot from {@link useWeatherField}; capability
- * flags (quality, reduced-motion, tab-hidden, WebGL) come from the shell.
+ * Fallback chain (never a blank frame): matching plate → broadened plate (both
+ * inside {@link selectSkyImage}) → procedural field here. The plate selection +
+ * FX read the single live snapshot from {@link useWeatherField}; capability flags
+ * (quality, reduced-motion, tab-hidden, WebGL) come from the shell.
  */
 
 // WebGL field loads client-only (it touches the GL context on mount).
@@ -50,7 +51,8 @@ class FieldBoundary extends Component<{ onError: () => void; children: ReactNode
 export interface SceneStageProps {
   quality: QualitySettings;
   reducedMotion: boolean;
-  /** Tab hidden. */
+  /** Scene not visible (tab hidden, or covered by the data dashboard) — pause the
+   *  FX and procedural field so nothing renders behind it. */
   hidden: boolean;
   pointerEnabled: boolean;
   webgl: boolean;
@@ -67,27 +69,10 @@ function SceneStage({
   canvasFailed,
   onCanvasError,
 }: SceneStageProps) {
-  const { readout, target, isDay } = useWeatherField();
-
-  const [manifest, setManifest] = useState<LocationManifest | null>(null);
-  // True once a gallery clip is painting at full opacity — lets us pause the
-  // procedural field behind it (and resume it the moment no clip covers).
-  const [videoCovering, setVideoCovering] = useState(false);
-
-  // Read the offline gallery manifest exactly once (a static public asset). On
-  // failure the gallery never mounts and the procedural field stays the scene.
-  useEffect(() => {
-    let alive = true;
-    fetch("/cinematic/manifest.json")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: LocationManifest) => {
-        if (alive && Array.isArray(data?.clips)) setManifest(data);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const { readout, target } = useWeatherField();
+  // The currently-decoded still plate (null → no plate, the procedural field is
+  // the scene). It also gates the field pause below.
+  const { src: plateSrc } = useSkyImage();
 
   // Live FX parameters, derived from the same clamped visual target as the field.
   const fx = useMemo<FxState>(
@@ -105,9 +90,8 @@ function SceneStage({
   );
 
   const useFallback = !webgl || canvasFailed;
-  const galleryAvailable = !!manifest && manifest.clips.length >= 1;
-  // The field idles whenever a clip fully covers it (or the tab is hidden).
-  const fieldPaused = hidden || videoCovering;
+  // The field idles whenever a still plate covers it (or the tab is hidden).
+  const fieldPaused = hidden || plateSrc != null;
 
   return (
     <div className="fixed inset-0 z-0 overflow-hidden bg-[#04060d]">
@@ -128,17 +112,8 @@ function SceneStage({
         )}
       </div>
 
-      {/* 2 — the shuffling Seoul-landmark video view. */}
-      {galleryAvailable && (
-        <VideoGallery
-          manifest={manifest}
-          condition={readout.condition}
-          isDay={isDay}
-          reducedMotion={reducedMotion}
-          paused={hidden}
-          onCoverageChange={setVideoCovering}
-        />
-      )}
+      {/* 2 — the still Seoul-landmark color-field plate (graded by sun phase). */}
+      <ImageField reducedMotion={reducedMotion} />
 
       {/* 3 — live weather FX (off entirely under reduced motion). */}
       {!reducedMotion && <FXOverlay fx={fx} quality={quality} paused={hidden} />}
@@ -148,5 +123,5 @@ function SceneStage({
 
 // Memoized: the shell re-renders every second (live clock), but SceneStage reads
 // only the coarse field context and takes referentially-stable props, so the
-// shuffling gallery + FX no longer re-run their render bodies each tick.
+// still plate + FX no longer re-run their render bodies each tick.
 export default memo(SceneStage);
