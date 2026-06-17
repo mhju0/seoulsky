@@ -11,10 +11,12 @@ import type {
 import { MetricLabel } from "./atmosphere/EtchedType";
 
 /**
- * Cross-provider comparison as a quiet etched readout (no cards): each source is
- * a column of hairline-separated rows showing its current reading and the signed
- * deviation from the cross-provider average. All data/logic is unchanged from the
- * original panel — only the chrome is stripped.
+ * Cross-provider comparison as a quiet etched readout (no cards): each source
+ * LEADS with its 강수 확률 (the figure this page exists to compare) shown large,
+ * with 기온 · 바람 · 습도 demoted to small secondary rows beneath. Each value
+ * carries the signed deviation from the cross-provider average. A source with no
+ * precip data (e.g. MET Norway) reads "데이터 없음" — never 0% — and is excluded
+ * from the precip average upstream ({@link buildComparison}).
  */
 
 interface Props {
@@ -29,7 +31,20 @@ const STATUS: Record<ProviderAvailability, { label: string; dot: string }> = {
   unavailable: { label: "미지원", dot: "bg-slate-500" },
 };
 
-function MetricRow({
+/** A small signed deviation chip (from the cross-provider average). */
+function Delta({ delta, strongAt }: { delta: number | null; strongAt: number }) {
+  if (delta === null || Math.abs(delta) < 0.05) return null;
+  const rounded = Math.round(delta * 10) / 10;
+  return (
+    <span className={`ml-2 text-xs ${Math.abs(delta) >= strongAt ? "text-amber-300" : "text-white/45"}`}>
+      {delta > 0 ? "+" : ""}
+      {rounded}
+    </span>
+  );
+}
+
+/** A demoted secondary reading: 기온 / 바람 / 습도, beneath the precip lead. */
+function SecondaryRow({
   label,
   value,
   unit,
@@ -40,18 +55,12 @@ function MetricRow({
   unit: string;
   delta: number | null;
 }) {
-  const showDelta = delta !== null && Math.abs(delta) >= 0.05;
   return (
-    <div className="flex items-baseline justify-between border-b border-white/10 py-2 last:border-0">
-      <MetricLabel className="!tracking-[0.18em] text-white/55">{label}</MetricLabel>
-      <span className="font-sans text-base font-light tabular-nums text-white/95">
+    <div className="flex items-baseline justify-between border-b border-white/10 py-1.5 last:border-0">
+      <MetricLabel className="!tracking-[0.16em] text-white/40">{label}</MetricLabel>
+      <span className="font-sans text-sm font-light tabular-nums text-white/70">
         {value !== null ? `${Math.round(value * 10) / 10}${unit}` : "—"}
-        {showDelta && (
-          <span className={`ml-2 text-xs ${Math.abs(delta!) >= 1 ? "text-amber-300" : "text-white/45"}`}>
-            {delta! > 0 ? "+" : ""}
-            {Math.round(delta! * 10) / 10}
-          </span>
-        )}
+        <Delta delta={delta} strongAt={1} />
       </span>
     </div>
   );
@@ -89,31 +98,47 @@ export default function ProviderComparison({ snapshots, comparison }: Props) {
               </div>
 
               {s.current ? (
-                <div className="flex flex-col">
-                  <MetricRow
-                    label="기온"
-                    value={s.current.temperature}
-                    unit="°"
-                    delta={deltaOf("temperature", s.current.temperature)}
-                  />
-                  <MetricRow
-                    label="강수 확률"
-                    value={rain}
-                    unit="%"
-                    delta={deltaOf("rainProbability", rain)}
-                  />
-                  <MetricRow
-                    label="바람"
-                    value={s.current.windSpeed}
-                    unit=" km/h"
-                    delta={deltaOf("windSpeed", s.current.windSpeed)}
-                  />
-                  <MetricRow
-                    label="습도"
-                    value={s.current.humidity}
-                    unit="%"
-                    delta={deltaOf("humidity", s.current.humidity)}
-                  />
+                <div className="flex flex-col gap-4">
+                  {/* Primary — precipitation. "데이터 없음" when the source carries
+                      no precip series (never shown as 0%). */}
+                  <div>
+                    <MetricLabel className="!tracking-[0.18em] text-white/55">강수 확률</MetricLabel>
+                    <div className="mt-1 flex items-baseline">
+                      {rain !== null ? (
+                        <span className="font-sans text-3xl font-light tabular-nums text-white/95">
+                          {Math.round(rain)}
+                          <span className="ml-0.5 text-lg text-white/70">%</span>
+                          <Delta delta={deltaOf("rainProbability", rain)} strongAt={10} />
+                        </span>
+                      ) : (
+                        <span className="font-mono text-sm uppercase tracking-[0.18em] text-white/45">
+                          데이터 없음
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Secondary — 기온 · 바람 · 습도, quiet and subordinate. */}
+                  <div className="flex flex-col">
+                    <SecondaryRow
+                      label="기온"
+                      value={s.current.temperature}
+                      unit="°"
+                      delta={deltaOf("temperature", s.current.temperature)}
+                    />
+                    <SecondaryRow
+                      label="바람"
+                      value={s.current.windSpeed}
+                      unit=" km/h"
+                      delta={deltaOf("windSpeed", s.current.windSpeed)}
+                    />
+                    <SecondaryRow
+                      label="습도"
+                      value={s.current.humidity}
+                      unit="%"
+                      delta={deltaOf("humidity", s.current.humidity)}
+                    />
+                  </div>
                 </div>
               ) : (
                 <p className="text-sm leading-relaxed text-white/55">{s.status.message}</p>
