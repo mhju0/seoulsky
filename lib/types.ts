@@ -66,6 +66,7 @@ export type ProviderId =
   | "open-meteo"
   | "met-norway"
   | "kma"
+  | "pirate-weather"
   | "open-meteo-air-quality"
   | "airkorea"
   | "rainviewer";
