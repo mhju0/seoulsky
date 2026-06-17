@@ -2,7 +2,7 @@ import type { WeatherCondition } from "@/lib/types";
 
 /**
  * A minimal, hairline weather icon — thin strokes in `currentColor`, no fill — so
- * it sits as a quiet instrument mark inside the glass forecast tiles rather than a
+ * it sits as a quiet instrument mark inside the forecast tiles rather than a
  * coloured app sticker. One compact SVG composes a few shared primitives (sun,
  * moon, cloud, precipitation) per {@link WeatherCondition}, with a day/night
  * variant for the clear/partly-cloudy faces.

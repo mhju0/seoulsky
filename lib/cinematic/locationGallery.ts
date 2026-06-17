@@ -11,16 +11,19 @@
  * Selection contract (matches the runbook):
  *   1. Map the live {@link WeatherCondition} to one of the manifest's coarse
  *      gallery conditions.
- *   2. Take clips matching that condition. If FEWER THAN 2 match, broaden — but
- *      WEATHER-FIRST: first to the visually-adjacent conditions (the dry/overcast
- *      family, the precip family, fog→overcast, snow→overcast) and only then, if
- *      that is still too small, to the whole library. A dry live sky (clear /
- *      partly-cloudy) NEVER serves a snow or rain clip, even from that last
- *      whole-library fallback — so the gallery can't cut to snow on a clear
- *      morning.
- *   3. Within that pool, prefer the matching time-of-day (day|night) — but only
- *      when ≥2 such clips exist, so day/night preference never starves the
- *      shuffle. Otherwise keep the broader pool.
+ *   2. Time-of-day is a HARD axis: a night sky never serves a daytime clip (or
+ *      vice versa) while ANY weather-compatible clip of the correct time exists.
+ *      Among the correct-time clips we take the tightest weather tier that has
+ *      one — exact condition, then the visually-adjacent family (the dry/overcast
+ *      family, the precip family, fog→overcast, snow→overcast), then the whole
+ *      library — preferring a tier with ≥2 clips for shuffle variety and
+ *      otherwise looping a single correct-time clip rather than bleeding in an
+ *      unrelated condition. A dry live sky (clear / partly-cloudy) NEVER serves a
+ *      snow or rain clip at any tier — so the gallery can't cut to snow on a
+ *      clear morning.
+ *   3. Only when NO weather-compatible clip of the correct time exists at all do
+ *      we fall back to the opposite time of day (still weather-first, still
+ *      dry-safe), so the scene is never blank.
  *
  * If the pool ends up with 0 clips (an empty/broken manifest), the caller falls
  * back to the procedural atmospheric field — never a blank or frozen frame.
@@ -57,6 +60,8 @@ export interface LocationClip {
   loopOut?: number;
   /** A signature shot for its landmark (purely descriptive metadata). */
   hero?: boolean;
+  /** Playback speed override. Defaults to 0.7 when unset (slows AI-generated motion to cinematic pace). */
+  rate?: number;
 }
 
 /** The whole manifest.json document (only the fields the runtime consumes). */
@@ -113,7 +118,7 @@ export function clipSources(clip: LocationClip): { src: string; type: string }[]
  * library, so a sparse condition cuts to a related sky (not a jarring one). Each
  * list leads with the condition itself.
  */
-const RELATED_CONDITIONS: Record<GalleryCondition, GalleryCondition[]> = {
+export const RELATED_CONDITIONS: Record<GalleryCondition, GalleryCondition[]> = {
   // Dry / overcast family — these three broaden among themselves.
   clear: ["clear", "partly-cloudy", "overcast"],
   "partly-cloudy": ["partly-cloudy", "clear", "overcast"],
@@ -126,11 +131,21 @@ const RELATED_CONDITIONS: Record<GalleryCondition, GalleryCondition[]> = {
 };
 
 /** Dry live skies that must NEVER show a precip clip (snow/rain) in their pool. */
-const DRY_TARGETS: readonly GalleryCondition[] = ["clear", "partly-cloudy"];
+export const DRY_TARGETS: readonly GalleryCondition[] = ["clear", "partly-cloudy"];
+/** The precip conditions a dry sky must never serve. */
+export const PRECIP_CONDITIONS: readonly GalleryCondition[] = ["snow", "rain"];
 
 /**
- * The usable shuffle pool for the current weather. Pure: given the same inputs
- * it returns the same clips (a stable subset of `clips`, never reordered).
+ * The usable shuffle pool for the current weather AND time of day. Pure: given
+ * the same inputs it returns the same clips (a stable subset of `clips`, never
+ * reordered).
+ *
+ * Time-of-day is a HARD axis: a night sky never serves a daytime clip while any
+ * weather-compatible clip of the correct time exists, and vice versa. This is
+ * what keeps 22:00-KST nights from showing bright daytime plates when a
+ * condition (e.g. partly-cloudy) happens to have no night clip of its own —
+ * we'd rather broaden to a correct-time *adjacent* condition (clear/overcast
+ * night) than fall back to the condition's own daytime clips.
  */
 export function selectGalleryPool(
   clips: readonly LocationClip[],
@@ -138,37 +153,40 @@ export function selectGalleryPool(
   isDay: boolean,
 ): LocationClip[] {
   const target = mapToGalleryCondition(condition);
-
-  // 1. Exact-condition match.
-  const exact = target ? clips.filter((c) => c.condition === target) : [];
-
-  // 2. Broaden when too few exact clips: first to the weather-adjacent family,
-  //    then (only if that is still too small) to the whole library — so there is
-  //    always ≥2 to shuffle between whenever the library itself has ≥2 clips.
-  let pool: LocationClip[];
-  if (exact.length >= 2) {
-    pool = exact;
-  } else if (target) {
-    const family = RELATED_CONDITIONS[target];
-    const related = clips.filter((c) => family.includes(c.condition));
-    pool = related.length >= 2 ? related : clips.slice();
-  } else {
-    pool = clips.slice();
-  }
-
-  // 3. Hard invariant: a dry live sky (clear / partly-cloudy) never serves a
-  //    snow or rain clip — even from the whole-library fallback above. This is
-  //    unconditional: if the library holds no dry clip at all, the pool empties
-  //    and the caller falls back to the procedural field, rather than cutting a
-  //    clear morning to snow.
-  if (target && DRY_TARGETS.includes(target)) {
-    pool = pool.filter((c) => c.condition !== "snow" && c.condition !== "rain");
-  }
-
-  // 4. Soft day/night preference — only applied while it keeps ≥2 clips.
   const wantTime: GalleryTimeOfDay = isDay ? "day" : "night";
-  const byTime = pool.filter((c) => c.timeOfDay === wantTime);
-  return byTime.length >= 2 ? byTime : pool;
+
+  // Hard dry-sky invariant, applied to the whole candidate universe up front: a
+  // dry live sky (clear / partly-cloudy) never even considers a snow/rain clip,
+  // at ANY broadening tier. With no dry clip at all the universe empties and the
+  // caller falls back to the procedural field — never a clear morning cut to snow.
+  const dry = target != null && DRY_TARGETS.includes(target);
+  const universe = dry ? clips.filter((c) => !PRECIP_CONDITIONS.includes(c.condition)) : clips.slice();
+
+  // Weather tiers, narrow → wide. The family list leads with the target itself,
+  // so `adjacent` ⊇ `exact`, and `universe` is the widest tier.
+  const family = target ? RELATED_CONDITIONS[target] : null;
+  const exact = target ? universe.filter((c) => c.condition === target) : [];
+  const adjacent = family ? universe.filter((c) => family.includes(c.condition)) : universe.slice();
+
+  const atTime = (cs: readonly LocationClip[]) => cs.filter((c) => c.timeOfDay === wantTime);
+  const exactT = atTime(exact);
+  const adjacentT = atTime(adjacent);
+  const universeT = atTime(universe);
+
+  // 1. Correct time of day, tightest weather tier that offers shuffle variety (≥2).
+  if (exactT.length >= 2) return exactT;
+  if (adjacentT.length >= 2) return adjacentT;
+  // 2. …else loop a single correct-time clip from the tight tier (`adjacent`
+  //    already covers a lone exact clip) before bleeding into the whole library.
+  if (adjacentT.length >= 1) return adjacentT;
+  // 3. …else widen to the whole correct-time library (variety, then a single clip).
+  if (universeT.length >= 1) return universeT;
+  // 4. No weather-compatible clip of the correct time exists at all — only now
+  //    accept the opposite time of day (still weather-first, still dry-safe) so
+  //    the scene is never blank.
+  for (const tier of [exact, adjacent, universe]) if (tier.length >= 2) return tier;
+  for (const tier of [exact, adjacent, universe]) if (tier.length >= 1) return tier;
+  return [];
 }
 
 /**

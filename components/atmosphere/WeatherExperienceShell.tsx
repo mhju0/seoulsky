@@ -13,9 +13,24 @@ import { computeSunPhase } from "@/lib/cinematic/seoulTime";
 import { buildVisualConfig, readAtmosphere } from "@/lib/atmosphere/weatherVisualConfig";
 import type { SkySnapshot, WeatherCondition } from "@/lib/types";
 import SceneStage from "./scene/SceneStage";
-import { WeatherClockProvider, WeatherFieldProvider, type WeatherFieldValue } from "./WeatherFieldContext";
+import { SkyImageProvider } from "./scene/SkyImageContext";
+import {
+  WeatherClockProvider,
+  WeatherFieldProvider,
+  WeatherViewProvider,
+  type WeatherFieldValue,
+  type WeatherView,
+} from "./WeatherFieldContext";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
+
+/** Don't let the D / Esc view-toggle fire while the user is typing in a field. */
+function isTypingTarget(el: Element | null): boolean {
+  if (!el) return false;
+  const tag = el.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  return (el as HTMLElement).isContentEditable === true;
+}
 
 /**
  * Dev-only `?cond=&hour=` visual-review override (stripped to a no-op in prod, so
@@ -87,6 +102,9 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
   const [canvasFailed, setCanvasFailed] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [review, setReview] = useState<ReviewOverride>({});
+  // The two discrete, keyboard-toggled views. The whole experience is desktop
+  // keyboard-driven: D toggles hero ↔ data, Esc always returns to the hero.
+  const [view, setView] = useState<WeatherView>("hero");
 
   // Client-only capability detection (no SSR/hydration divergence).
   useEffect(() => {
@@ -100,6 +118,28 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
         typeof window.matchMedia === "function" &&
         window.matchMedia("(pointer: fine)").matches,
     );
+  }, []);
+
+  // Keyboard navigation between the two views (desktop only — no touch
+  // affordance). D toggles hero ↔ data; Esc always returns to the hero. Inert
+  // while typing or holding a command modifier, and ignores auto-repeat.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTypingTarget(document.activeElement)) return;
+      switch (e.key.toLowerCase()) {
+        case "d":
+          setView((v) => (v === "hero" ? "data" : "hero"));
+          break;
+        case "escape":
+          setView("hero");
+          break;
+        default:
+          return;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   // Pause the GL loop while the tab is hidden (battery / GPU).
@@ -138,7 +178,7 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
   // per-second clock) so it flips at sunrise/sunset without re-rendering the
   // heavy scene every tick.
   const tick = clock ? Math.floor(clock.getTime() / 30000) : 0;
-  const { target, isDay } = useMemo(() => {
+  const { target, isDay, dayFactor, goldenFactor, rising, elevation } = useMemo(() => {
     const eff = applyReviewCond(snapshot, review.cond);
     const at =
       review.hour != null ? seoulAtHour(review.hour) : tick > 0 ? new Date(tick * 30000) : new Date();
@@ -148,7 +188,14 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
       sunset: snapshot?.sun.sunset,
       isDayHint: review.hour != null ? undefined : snapshot?.current.isDay,
     });
-    return { target: buildVisualConfig(sun, eff), isDay: sun.isDay };
+    return {
+      target: buildVisualConfig(sun, eff),
+      isDay: sun.isDay,
+      dayFactor: sun.dayFactor,
+      goldenFactor: sun.goldenFactor,
+      rising: sun.rising,
+      elevation: sun.elevation,
+    };
   }, [tick, snapshot, review.cond, review.hour]);
 
   // Stable reference so the memoized SceneStage isn't re-rendered each tick.
@@ -158,33 +205,56 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
   // per-second clock ticks above — consumers (incl. the memoized SceneStage)
   // re-render only when the weather/visual target actually changes.
   const fieldValue = useMemo<WeatherFieldValue>(
-    () => ({ snapshot, status, lastUpdatedAt, readout, target, isDay }),
-    [snapshot, status, lastUpdatedAt, readout, target, isDay],
+    () => ({
+      snapshot,
+      status,
+      lastUpdatedAt,
+      readout,
+      target,
+      isDay,
+      dayFactor,
+      goldenFactor,
+      rising,
+      elevation,
+    }),
+    [snapshot, status, lastUpdatedAt, readout, target, isDay, dayFactor, goldenFactor, rising, elevation],
   );
 
   // Pre-detection (and SSR): a calm loader — no canvas, no hydration mismatch.
   if (!quality) return <Loader />;
 
+  // The scene is invisible while the data dashboard is up (it sits behind the
+  // opaque gradient), so suspend the gallery + FX + field exactly as when the tab
+  // is hidden — no video decoding behind the dashboard.
+  const sceneHidden = hidden || view === "data";
+
   return (
     <WeatherFieldProvider value={fieldValue}>
-      {/* Layer 0 — the persistent moving scene (edge-to-edge shuffling video
-          gallery + live FX, with the procedural field as the never-blank fallback).
-          It reads only the coarse field state, so the per-second clock never
-          re-renders it. */}
-      <SceneStage
-        quality={quality}
-        reducedMotion={reduced}
-        hidden={hidden}
-        pointerEnabled={pointerEnabled}
-        webgl={webgl}
-        canvasFailed={canvasFailed}
-        onCanvasError={onCanvasError}
-      />
+      {/* The still color-field plate (selected + preloaded + graded once) is shared
+          by the scene background AND the defocused data-view backdrop, so the
+          D-toggle reads as one cohesive image at two depths. */}
+      <SkyImageProvider>
+        {/* Layer 0 — the persistent scene (edge-to-edge still color-field plate +
+            live FX, with the procedural field as the never-blank fallback). It
+            reads only the coarse field state, so the per-second clock never
+            re-renders it. */}
+        <SceneStage
+          quality={quality}
+          reducedMotion={reduced}
+          hidden={sceneHidden}
+          pointerEnabled={pointerEnabled}
+          webgl={webgl}
+          canvasFailed={canvasFailed}
+          onCanvasError={onCanvasError}
+        />
 
-      {/* The scroll content renders its own scrim + readable foreground above
-          the shared scene. The live clock is scoped here — only the sections that
-          display ticking time subscribe to it. */}
-      <WeatherClockProvider value={clock}>{children}</WeatherClockProvider>
+        {/* The two view layers render their own scrim + readable foreground above
+            the shared scene, cross-fading on the D-toggle. The live clock is scoped
+            here — only the sections that display ticking time subscribe to it. */}
+        <WeatherViewProvider value={view}>
+          <WeatherClockProvider value={clock}>{children}</WeatherClockProvider>
+        </WeatherViewProvider>
+      </SkyImageProvider>
     </WeatherFieldProvider>
   );
 }

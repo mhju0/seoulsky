@@ -42,8 +42,8 @@ export default function SkyLayout({ children }: { children: ReactNode }) {
             SeoulSky — 서울 하늘
           </h1>
           <p style={{ maxWidth: "40ch", lineHeight: 1.7, color: "#cbd5e1", margin: 0 }}>
-            실시간 서울 날씨를, 그 날씨 속 서울 명소의 시네마틱 영상 위에 떠 있는 리퀴드
-            글래스 HUD로 — 도착부터 지상 관측소까지 하나의 스크롤로 보여줍니다.
+            실시간 서울 날씨를, 그 날씨 속 서울 명소의 시네마틱 영상 위에 떠 있는 HUD로 —
+            도착부터 지상 관측소까지 하나의 스크롤로 보여줍니다.
           </p>
           <p style={{ fontSize: "0.85rem", letterSpacing: "0.18em", color: "#94a3b8", margin: 0 }}>
             도착 · 계기 · 예보 · 지상 관측소

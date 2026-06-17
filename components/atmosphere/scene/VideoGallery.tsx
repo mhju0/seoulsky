@@ -136,6 +136,7 @@ export default function VideoGallery({
       const el = els[i]!;
       el.src = clipSrc(clip);
       el.load();
+      el.playbackRate = clip.rate ?? 0.7;
       bufClipId[i] = clip.id;
     };
 

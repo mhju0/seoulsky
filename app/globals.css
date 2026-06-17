@@ -16,82 +16,249 @@ body {
   font-feature-settings: "tnum";
 }
 
-/* ---------- liquid glass (instrument glass, not iOS card) ----------
+/* ---------- readable panel (matte, day/night-aware) ----------
 
-   Apple "Liquid Glass" MATERIAL only: a translucent refractive pane, not a
-   floating widget. The legibility recipe, back-to-front inside one panel:
-     1. backdrop-filter blur + saturate samples & enriches the live scene behind.
-     2. a very low-opacity white fill gives the pane a faint body.
-     3. .liquid-glass-scrim — a soft dark wash that *auto-strengthens over bright
-        scenes*: a flat dark veil is plainly visible over a sunny clip (restoring
-        contrast) yet near-invisible over a dark/stormy one, with no scene
-        sampling needed.
-     4. a thin bright refractive border + a white top-edge inset highlight + a
-        soft inner base shadow read as real glass thickness.
-     5. .liquid-glass-sheen — a specular highlight that drifts a few px on scroll
-        (shared --sky-sheen var, written once by useScrollSheen; 0 under reduced
-        motion). mix-blend screen so it only ever brightens.
-   Deliberately NO outer drop-shadow — that is what reads as a Material card. */
+   The one surface behind every HUD reading. Opaque, so text stays legible over
+   any clip or gradient — no backdrop blur, no sheen, deliberately matte. Its
+   fill, hairline border, soft shadow and base ink all come from the
+   `--sky-panel-*` / `--color-white` variables that buildSkyPalette() writes on
+   `.sky-foreground`: a cream surface with deep-navy ink by day, a surface lifted
+   from the navy ground with cream ink at night. (Vars carry safe night-state
+   fallbacks for the brief moment before the palette mounts.) */
 
-.liquid-glass {
+.sky-panel {
   position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.11);
-  backdrop-filter: blur(32px) saturate(180%);
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    inset 0 -24px 48px -30px rgba(0, 0, 0, 0.55);
+  background-color: var(--sky-panel-bg, rgb(28, 38, 74));
+  color: var(--color-white);
+  border: 1px solid var(--sky-panel-border, rgba(175, 210, 250, 0.12));
+  box-shadow: var(--sky-panel-shadow, 0 18px 44px -22px rgba(0, 0, 0, 0.6));
 }
 
-/* Fallback when backdrop-filter is unsupported (old/embedded WebViews, Firefox
-   with the flag off): the blur+saturate becomes a no-op and the pane would be a
-   near-transparent 6%-white wash — illegible over a bright clip. Swap in a solid
-   low-opacity dark fill so text keeps WCAG-AA contrast over ANY clip. The scrim
-   and sheen layers still ride on top. */
-@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
-  .liquid-glass {
-    background: rgba(7, 10, 19, 0.72);
-  }
+/* ---------- the two view layers (hero ↔ data, D-toggle) ----------
+
+   Both layers are FIXED, full-viewport, and always mounted; only the active one
+   is visible + interactive. The toggle cross-fades them in ~500ms — the data
+   dashboard rises up as the live view recedes — and that is the ONLY transition
+   (no scroll-coupled opacity). The live SceneStage sits below at z-0; the hero
+   lets it show through, the data layer's opaque gradient covers it. */
+
+.sky-hero-layer,
+.sky-data-layer {
+  position: fixed;
+  inset: 0;
+  transition:
+    opacity 500ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.liquid-glass-scrim {
+.sky-hero-layer {
+  z-index: 20;
+}
+
+.sky-data-layer {
+  z-index: 30;
+}
+
+/* Inactive: the live view recedes (a hair of zoom + fade); the dashboard waits
+   just below the fold, ready to rise. `inert` already removes them from
+   interaction, but pointer-events keeps the fading layer click-through too. */
+.sky-hero-layer:not(.is-active) {
+  opacity: 0;
+  transform: scale(1.04);
+  pointer-events: none;
+}
+
+.sky-data-layer:not(.is-active) {
+  opacity: 0;
+  transform: translateY(2.5rem);
+  pointer-events: none;
+}
+
+/* The data dashboard's own scrolling container — self-contained, so the body
+   itself never scrolls and the hero view has no scroll at all. */
+.sky-data-scroll {
   position: absolute;
   inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    rgba(3, 5, 12, 0.4) 0%,
-    rgba(3, 5, 12, 0.22) 46%,
-    rgba(3, 5, 12, 0.36) 100%
-  );
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
-.liquid-glass-sheen {
+/* The opaque day/night gradient backdrop for the data view. Colours lerp with
+   the sun via the `--sky-*` vars; 4 independently drifting radial blooms under
+   a matte animated grain and a slow breath pulse give the editorial, living feel. */
+.sky-data-bg {
   position: absolute;
-  inset: -2px;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.7;
-  mix-blend-mode: screen;
-  background: linear-gradient(
-    152deg,
-    rgba(255, 255, 255, 0.2) 0%,
-    rgba(255, 255, 255, 0.05) 16%,
-    transparent 40%
-  );
-  transform: translate3d(0, var(--sky-sheen, 0px), 0);
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate; /* keep the grain's blend-mode local to this layer */
+}
+
+/* Solid base layer — the sky ground tone. */
+.sky-amb-base {
+  position: absolute;
+  inset: 0;
+  background: var(--sky-bg-base, #0c1226);
+}
+
+/* Each bloom is oversized (-16%) so slow drift never reveals an edge.
+   They use independent keyframe animations at different speeds and phase offsets
+   so the field never reads as a periodic loop. Colors come from --sky-amb-col-*
+   which buildSkyPalette() keys to condition + day/night.
+
+   Tunables:
+     Bloom positions/sizes: the radial-gradient shapes in .sky-amb-bloom-a/b/c/d
+     Drift vectors:         the translate3d values in sky-amb-drift-* keyframes
+     Drift speeds:          --sky-amb-dur-a/b/c/d (set from JS; fallbacks shown)
+     Phase offsets:         animation-delay on each bloom below
+     Bloom count:           add/remove .sky-amb-bloom-* divs + rules here
+*/
+.sky-amb-bloom {
+  position: absolute;
+  inset: -16%;
   will-change: transform;
 }
 
-/* The readable contents always sit above both the scrim and the sheen. */
-.liquid-glass-content {
-  position: relative;
-  z-index: 1;
+/* Bloom A — top-left powder: the main daytime air bloom, NW↔SE drift. */
+.sky-amb-bloom-a {
+  background: radial-gradient(
+    58% 54% at 19% 16%,
+    var(--sky-amb-col-a, rgba(58, 82, 140, 0.38)),
+    transparent 62%
+  );
+  animation: sky-amb-drift-a var(--sky-amb-dur-a, 38s) ease-in-out infinite alternate;
+}
+
+/* Bloom B — bottom horizon warm: the golden-hour glow, lateral drift. */
+.sky-amb-bloom-b {
+  background: radial-gradient(
+    76% 66% at 50% 113%,
+    var(--sky-amb-col-b, rgba(34, 36, 66, 0.32)),
+    transparent 60%
+  );
+  animation: sky-amb-drift-b var(--sky-amb-dur-b, 52s) ease-in-out infinite alternate;
+  animation-delay: -8s; /* phase offset so it never syncs with A */
+}
+
+/* Bloom C — top-right highlight: the lifted sky corner, NE↔SW (opposite A). */
+.sky-amb-bloom-c {
+  background: radial-gradient(
+    54% 52% at 84% 6%,
+    var(--sky-amb-col-c, rgba(30, 42, 86, 0.3)),
+    transparent 60%
+  );
+  animation: sky-amb-drift-c var(--sky-amb-dur-c, 44s) ease-in-out infinite alternate;
+  animation-delay: -22s;
+}
+
+/* Bloom D — mid-right cross-modal accent: warm cream day / cool indigo night / deep purple storm. */
+.sky-amb-bloom-d {
+  background: radial-gradient(
+    45% 50% at 72% 55%,
+    var(--sky-amb-col-d, rgba(28, 40, 108, 0.16)),
+    transparent 58%
+  );
+  animation: sky-amb-drift-d var(--sky-amb-dur-d, 61s) ease-in-out infinite alternate;
+  animation-delay: -14s;
+}
+
+/* Independent drift paths — transform-only so the GPU handles everything. */
+@keyframes sky-amb-drift-a {
+  from { transform: translate3d(-2.2%, -1.8%, 0) scale(0.96); }
+  to   { transform: translate3d(1.8%, 1.6%, 0) scale(1.04); }
+}
+@keyframes sky-amb-drift-b {
+  from { transform: translate3d(-1.4%, 0.4%, 0) scale(0.98); }
+  to   { transform: translate3d(2%, -0.6%, 0) scale(1.05); }
+}
+@keyframes sky-amb-drift-c {
+  from { transform: translate3d(2%, -1%, 0) scale(1.02); }
+  to   { transform: translate3d(-1.6%, 1.8%, 0) scale(0.97); }
+}
+@keyframes sky-amb-drift-d {
+  from { transform: translate3d(-1%, 1.2%, 0) scale(0.95); }
+  to   { transform: translate3d(1.6%, -1.4%, 0) scale(1.05); }
+}
+
+/* Breathing overlay — a very faint white veil that pulses in and out, giving
+   the whole field a slow sigh. Opacity range (0 → 0.022) is intentionally tiny;
+   the effect is felt rather than seen.
+   Tunable: keyframe `to` opacity sets the breath peak brightness. */
+.sky-amb-breath {
+  position: absolute;
+  inset: 0;
+  background: rgb(255 255 255 / 0.022);
+  animation: sky-amb-pulse var(--sky-amb-breath-dur, 9s) ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes sky-amb-pulse {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Matte film grain — monochrome fractal noise, soft-light blended at low
+   opacity. Two layered animations: a discrete position hop (steps) that
+   regenerates the texture tile, and a slow opacity shimmer for the matte-film
+   feel. Both are kept at negligible intensity.
+   Tunables:
+     Shimmer range:   opacity values in sky-grain-shimmer keyframes
+     Regenerate rate: duration + steps count in sky-grain-shift
+     Base grain size: background-size below */
+.sky-grain {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  animation:
+    sky-grain-shift 18s steps(6) infinite,
+    sky-grain-shimmer 13s ease-in-out infinite alternate;
+}
+
+@keyframes sky-grain-shift {
+  0%   { background-position: 0 0; }
+  17%  { background-position: 90px 54px; }
+  33%  { background-position: 36px 126px; }
+  50%  { background-position: 144px 18px; }
+  67%  { background-position: 54px 90px; }
+  83%  { background-position: 126px 162px; }
+  100% { background-position: 0 0; }
+}
+
+@keyframes sky-grain-shimmer {
+  from { opacity: 0.040; }
+  to   { opacity: 0.068; }
+}
+
+/* Etched numerals + poetic line carry a text-shadow only where one is set (the
+   hero, over video); elsewhere it resolves to none so ink stays crisp on panels. */
+.etched-shadow {
+  text-shadow: var(--sky-text-shadow, none);
+}
+
+/* The arrival hero sits over the live video: force light ink + a strong
+   legibility shadow regardless of the ambient day/night ink, paired with the
+   vignette below so the temperature reads over any footage. */
+.sky-on-media {
+  --color-white: #fefaef;
+  --sky-text-shadow: 0 2px 24px rgba(2, 6, 16, 0.55);
+}
+
+/* The hero scrim — not glass: a directional wash anchored to the text side (left)
+   so the readout stays legible while the photo's open side (right) reads clean.
+   A faint floor grounds the time row + keyboard hint at the bottom. Scrolls away
+   with the hero, so it never dims content. */
+.sky-hero-vignette {
+  background:
+    linear-gradient(
+      100deg,
+      rgba(3, 7, 18, 0.6) 0%,
+      rgba(3, 7, 18, 0.34) 30%,
+      rgba(3, 7, 18, 0.1) 55%,
+      transparent 74%
+    ),
+    linear-gradient(to top, rgba(3, 7, 18, 0.32) 0%, transparent 34%);
 }
 
 /* ---------- procedural-field fallback haze ----------
@@ -115,10 +282,10 @@ body {
   will-change: transform;
 }
 
-/* ---------- shuffling video gallery ---------- */
+/* ---------- still color-field plate ---------- */
 
-/* a very slow cinematic push-in over each clip (Ken Burns); paired buffers each
-   carry it, so a crossfade never reveals a frozen frame */
+/* a very slow cinematic push-in over the still (Ken Burns); each crossfading
+   plate carries it, so the scene breathes rather than sitting dead-still */
 @keyframes scene-pushin {
   from {
     transform: scale(1.02);
@@ -131,6 +298,52 @@ body {
 .scene-pushin {
   animation: scene-pushin 24s ease-in-out infinite alternate;
   will-change: transform;
+}
+
+/* The plate's live sun-phase grade re-applies on the coarse (30s) tick; ease the
+   filter so exposure/warmth glide rather than step. */
+.sky-image-layer {
+  transition: filter 900ms ease;
+  will-change: filter, transform;
+}
+
+/* The incoming plate cross-dissolves in over the outgoing one (~700ms). */
+@keyframes sky-image-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.sky-image-in {
+  animation: sky-image-in 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Tint/glow grade washes ease with the plate's filter on each tick. */
+.sky-image-grade {
+  transition: background 900ms ease;
+}
+
+/* ---------- data-view backdrop: the same plate, defocused + darkened ----------
+   On the D (data) view the live plate is reused behind the dashboard grid but
+   blurred and dimmed, so the toggle reads as one cohesive scene at two depths. */
+.sky-data-plate {
+  position: absolute;
+  inset: -4%; /* bleed past the blur so no soft edge shows */
+  background-size: cover;
+  background-position: center;
+  filter: blur(42px) brightness(0.5) saturate(0.9);
+  transform: scale(1.06);
+}
+
+.sky-data-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(4, 6, 13, 0.62), rgba(4, 6, 13, 0.8)),
+    radial-gradient(120% 90% at 50% 0%, rgba(4, 6, 13, 0.18), rgba(4, 6, 13, 0.68));
 }
 
 /* ---------- scrollbars ---------- */
@@ -153,11 +366,92 @@ body {
   background: transparent;
 }
 
+/* ---------- instrument tile depth ----------
+
+   Adds a top-lit inner gradient (the "lit material" feel) and a desktop hover
+   lift to panels that opt in via the `elevated` prop on GlassPanel. The gradient
+   uses background-image layered above the background-color from .sky-panel, so
+   no pseudo-element stacking is needed.
+
+   Tunables:
+     Gradient stop: rgba(..., 0.05) controls the top-highlight brightness.
+     Lift distance: translateY(-2px) on hover — keep ≤3px for restraint.
+     Shadow depth:  the second box-shadow term on hover. */
+.sky-panel-elevated {
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.052) 0%,
+    transparent 38%
+  );
+  transition: transform 180ms ease, box-shadow 200ms ease;
+}
+
+@media (hover: hover) {
+  .sky-panel-elevated:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      var(--sky-panel-shadow, 0 18px 44px -22px rgba(0, 0, 0, 0.6)),
+      0 20px 48px -12px rgba(0, 0, 0, 0.38);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky-panel-elevated {
+    transition: none;
+  }
+}
+
+/* ---------- wind bearing arrow idle sway ----------
+
+   Uses the standalone `rotate` CSS property (CSS Transforms Level 2), which
+   composes with Framer Motion's `transform: rotate()` on the parent div without
+   conflict — they apply to different elements with different CSS properties.
+   Tunables: ±2deg sway angle, 4s period, 1.2s initial delay (settle time). */
+@keyframes wind-sway {
+  0%, 100% { rotate: -2deg; }
+  50%       { rotate: 2deg; }
+}
+
+.wind-sway {
+  animation: wind-sway 4s ease-in-out 1.2s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wind-sway {
+    animation: none;
+  }
+}
+
 /* ---------- accessibility ---------- */
 
 @media (prefers-reduced-motion: reduce) {
+  /* Stop all drift, regeneration, and grain shift — only the breath survives. */
   .haze-layer,
-  .scene-pushin {
+  .scene-pushin,
+  .sky-amb-bloom,
+  .sky-grain {
     animation: none !important;
+  }
+
+  /* Keep a near-static field with just the gentle breath pulse. */
+  .sky-amb-breath {
+    animation: sky-amb-pulse var(--sky-amb-breath-dur, 9s) ease-in-out infinite alternate !important;
+    opacity: 0.4; /* visible but calm */
+  }
+
+  /* Give grain a fixed, readable opacity instead of animating it. */
+  .sky-grain {
+    opacity: 0.05;
+  }
+
+  /* View toggle: a simple fade, no transform. */
+  .sky-hero-layer,
+  .sky-data-layer {
+    transition: opacity 220ms ease;
+  }
+
+  .sky-hero-layer:not(.is-active),
+  .sky-data-layer:not(.is-active) {
+    transform: none;
   }
 }
