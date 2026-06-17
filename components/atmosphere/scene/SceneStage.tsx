@@ -115,8 +115,9 @@ function SceneStage({
       {/* 2 — the still Seoul-landmark color-field plate (graded by sun phase). */}
       <ImageField reducedMotion={reducedMotion} />
 
-      {/* 3 — live weather FX (off entirely under reduced motion). */}
-      {!reducedMotion && <FXOverlay fx={fx} quality={quality} paused={hidden} />}
+      {/* 3 — live weather FX. Reduced motion is handled inside the overlay (it
+          paints a single static ambient frame), so the layer stays mounted. */}
+      <FXOverlay fx={fx} quality={quality} paused={hidden} />
     </div>
   );
 }

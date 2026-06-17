@@ -5,21 +5,24 @@ import type { QualitySettings } from "@/components/three/quality";
 
 /**
  * The live weather FX overlay — layer (c) of the /sky scene. A single 2D canvas
- * over the video view, driven by the LIVE weather: rain streaks (including drops
- * clinging to the canopy glass), snowfall, a random lightning flash in
- * thunderstorms, a drifting fog veil, and sun god-rays. It is GPU-cheap (one
- * canvas, one rAF loop, capped particle counts) and gated by the existing
- * quality tiers.
+ * over the still color-field plate, driven by the LIVE weather: rain streaks,
+ * snowfall, a random lightning flash in thunderstorms, a drifting fog veil, and
+ * sun god-rays. It is GPU-cheap (one canvas, one rAF loop, capped particle
+ * counts) and gated by the existing quality tiers.
  *
  * Live values arrive as a plain {@link FxState} and are read through a ref each
  * frame, so React never re-renders for motion (same pattern as the atmospheric
- * field). The parent only mounts this when motion is allowed — under
- * `prefers-reduced-motion` the whole layer is omitted — and pauses it when the
- * tab is hidden.
+ * field). It is paused when the tab is hidden.
+ *
+ * `prefers-reduced-motion` is honoured HERE rather than by the parent omitting
+ * the layer, and it is watched live so a runtime toggle takes effect without a
+ * remount: when reduced, the rAF loop never runs and we paint a single STATIC
+ * ambient frame — the non-moving atmosphere only (fog veil + god-ray gradient),
+ * with no rain / snow / lightning — so the scene never hard-cuts all atmosphere.
  */
 
 export interface FxState {
-  /** 0..1 rain intensity (drives streak count + glass drops). */
+  /** 0..1 rain intensity (drives streak count). */
   rain: number;
   /** 0..1 snow intensity. */
   snow: number;
@@ -40,14 +43,13 @@ export interface FxState {
 interface FxCounts {
   rain: number;
   snow: number;
-  drops: number;
   rays: number;
 }
 
 function countsFor(tier: QualitySettings["tier"]): FxCounts {
-  if (tier === "high") return { rain: 900, snow: 600, drops: 80, rays: 7 };
-  if (tier === "balanced") return { rain: 520, snow: 360, drops: 50, rays: 5 };
-  return { rain: 240, snow: 180, drops: 26, rays: 4 };
+  if (tier === "high") return { rain: 900, snow: 600, rays: 7 };
+  if (tier === "balanced") return { rain: 520, snow: 360, rays: 5 };
+  return { rain: 240, snow: 180, rays: 4 };
 }
 
 interface RainP {
@@ -62,12 +64,6 @@ interface SnowP {
   r: number;
   spd: number;
   phase: number;
-}
-interface DropP {
-  x: number;
-  y: number;
-  r: number;
-  vy: number; // 0 = clinging, >0 = sliding
 }
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
@@ -86,7 +82,7 @@ export default function FXOverlay({ fx, quality, paused }: FXOverlayProps) {
   fxRef.current = fx;
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
-  const controlRef = useRef<{ start: () => void; stop: () => void } | null>(null);
+  const controlRef = useRef<{ apply: () => void; redrawStatic: () => void } | null>(null);
 
   // Build the canvas + particle pools + render loop. Rebuilt only when the
   // quality tier changes (pool sizes bake in here); live weather flows via ref.
@@ -125,13 +121,6 @@ export default function FXOverlay({ fx, quality, paused }: FXOverlayProps) {
       spd: rnd(40, 110) * dpr,
       phase: rnd(0, Math.PI * 2),
     }));
-    const drops: DropP[] = Array.from({ length: counts.drops }, () => ({
-      x: rnd(0, w),
-      y: rnd(0, h),
-      r: rnd(1.4, 4) * dpr,
-      vy: 0,
-    }));
-
     // Lightning flash state (random interval while a storm is active).
     let flash = 0; // current brightness 0..1
     let nextFlashAt = performance.now() + rnd(2500, 7000);
@@ -238,38 +227,6 @@ export default function FXOverlay({ fx, quality, paused }: FXOverlayProps) {
       ctx.stroke();
     };
 
-    // Drops clinging to the canopy glass, occasionally sliding down.
-    const drawGlassDrops = (intensity: number, dt: number) => {
-      const active = Math.floor(drops.length * intensity);
-      if (active <= 0) return;
-      for (let i = 0; i < active; i++) {
-        const p = drops[i];
-        if (p.vy === 0 && Math.random() < 0.004 * (0.5 + intensity)) {
-          p.vy = rnd(30, 90) * dpr; // start sliding
-        }
-        if (p.vy > 0) {
-          p.y += p.vy * dt;
-          p.vy += 60 * dpr * dt; // accelerate
-          if (p.y > h + 8) {
-            p.x = rnd(0, w);
-            p.y = rnd(0, h * 0.85);
-            p.r = rnd(1.4, 4) * dpr;
-            p.vy = 0;
-          }
-        }
-        // body
-        ctx.fillStyle = "rgba(150,172,205,0.16)";
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-        // specular highlight
-        ctx.fillStyle = "rgba(232,240,255,0.5)";
-        ctx.beginPath();
-        ctx.arc(p.x - p.r * 0.3, p.y - p.r * 0.3, Math.max(0.5, p.r * 0.32), 0, Math.PI * 2);
-        ctx.fill();
-      }
-    };
-
     const drawLightning = (s: FxState, nowMs: number, dt: number) => {
       if (s.lightning && nowMs >= nextFlashAt) {
         flash = 1;
@@ -300,41 +257,86 @@ export default function FXOverlay({ fx, quality, paused }: FXOverlayProps) {
       drawGodRays(s);
       drawSnow(s.snow, dt, s);
       drawRain(s.rain, dt, s);
-      drawGlassDrops(s.rain, dt);
       drawLightning(s, now, dt);
 
       raf = requestAnimationFrame(frame);
     };
 
-    const ro = new ResizeObserver(() => resize());
-    ro.observe(canvas);
-
-    const start = () => {
-      if (raf || pausedRef.current) return;
-      last = performance.now();
-      raf = requestAnimationFrame(frame);
-    };
     const stop = () => {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
     };
-    controlRef.current = { start, stop };
-    start();
+
+    // The single STATIC ambient frame painted under reduced motion: only the
+    // non-moving atmosphere (fog veil + god-rays), no rain/snow/lightning.
+    const renderStatic = () => {
+      const s = fxRef.current;
+      ctx.clearRect(0, 0, w, h);
+      drawFog(s.haze);
+      drawGodRays(s);
+    };
+
+    // prefers-reduced-motion, watched live so a runtime toggle takes effect
+    // without remounting the canvas.
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let reduced = mq.matches;
+
+    // Reconcile the canvas to the current paused / reduced-motion state: run the
+    // loop only when motion is allowed and the scene is visible; otherwise leave
+    // the loop stopped (no leaked rAF) and, when reduced, paint one static frame.
+    const apply = () => {
+      if (pausedRef.current) {
+        stop();
+        return;
+      }
+      if (reduced) {
+        stop();
+        renderStatic();
+        return;
+      }
+      if (!raf) {
+        last = performance.now();
+        raf = requestAnimationFrame(frame);
+      }
+    };
+    const redrawStatic = () => {
+      if (reduced && !pausedRef.current) renderStatic();
+    };
+
+    const onMqChange = () => {
+      reduced = mq.matches;
+      apply();
+    };
+    mq.addEventListener("change", onMqChange);
+
+    const ro = new ResizeObserver(() => {
+      resize();
+      // The loop repaints next frame; a static frame must be redrawn by hand.
+      redrawStatic();
+    });
+    ro.observe(canvas);
+
+    controlRef.current = { apply, redrawStatic };
+    apply();
 
     return () => {
       stop();
       ro.disconnect();
+      mq.removeEventListener("change", onMqChange);
       controlRef.current = null;
     };
   }, [quality.tier]);
 
   // Start/stop on tab visibility without rebuilding the canvas.
   useEffect(() => {
-    const c = controlRef.current;
-    if (!c) return;
-    if (paused) c.stop();
-    else c.start();
+    controlRef.current?.apply();
   }, [paused]);
+
+  // Under reduced motion the loop is idle, so the static frame must be redrawn
+  // when the live weather (fog / sun) changes.
+  useEffect(() => {
+    controlRef.current?.redrawStatic();
+  }, [fx]);
 
   return <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-hidden />;
 }
