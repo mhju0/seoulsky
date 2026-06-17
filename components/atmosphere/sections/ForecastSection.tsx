@@ -1,47 +1,25 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useInView } from "framer-motion";
-import { useRef } from "react";
 import { dayLabel, makeIsNightAt } from "@/lib/format";
 import GlassPanel from "../glass/GlassPanel";
 import WeatherGlyph from "../glass/WeatherGlyph";
 import { MetricLabel } from "../EtchedType";
 import { ScrollReveal } from "../descentMotion";
-import { useWeatherClock, useWeatherField } from "../WeatherFieldContext";
+import { useWeatherField } from "../WeatherFieldContext";
 import { SectionHeading, SkySection } from "./SectionParts";
-import SunArc from "./SunArc";
 
 /**
  * Section 3 — Forecast. The shared sky snapshot already carries the next 24h of
  * hourly and ~7 days of daily forecast, so this reads from context with no extra
- * fetch. Four matte instruments: a horizontally-scrollable hourly strip, a 7-day
- * row, the sunrise/sunset arc, and the wind graph (lazy Recharts).
+ * fetch. Two matte instruments: a horizontally-scrollable hourly strip and a
+ * 7-day row. (The celestial dial + wind trend live in Section 4, Sun & Sky.)
  */
-
-// Recharts is heavy — only pull its chunk in when the wind graph actually mounts.
-const WindGraph = dynamic(() => import("./WindGraph"), {
-  ssr: false,
-  loading: () => <WindPlaceholder />,
-});
-
-/** The pulse shown before the wind graph is near + while its chunk loads. */
-function WindPlaceholder() {
-  return <div className="h-full min-h-[150px] w-full animate-pulse rounded-lg bg-white/[0.03]" />;
-}
 
 const KST = "Asia/Seoul";
 const hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: KST, hour: "numeric", hour12: true });
 
 export default function ForecastSection() {
-  const { snapshot, readout, isDay } = useWeatherField();
-  const clock = useWeatherClock();
-
-  // Defer the heavy Recharts chunk until the wind panel is approaching — the
-  // dynamic import only fires once <WindGraph> first renders, so gating its
-  // mount here keeps Recharts off the initial /sky load entirely.
-  const windRef = useRef<HTMLDivElement>(null);
-  const windNear = useInView(windRef, { once: true, margin: "0px 0px 300px 0px" });
+  const { snapshot, readout } = useWeatherField();
 
   const hourly = snapshot?.hourly ?? [];
   const daily = (snapshot?.daily ?? []).slice(0, 7);
@@ -118,39 +96,6 @@ export default function ForecastSection() {
             </div>
           </ScrollReveal>
         )}
-
-        {/* Sun arc + wind graph — matched, equal-dimension cards: side by side on
-            wide screens, stacked when narrow/half-width. The arc's semicircle sets
-            the row height (items-stretch) and the wind chart fills to match it. */}
-        <div className="grid gap-4 sm:gap-5 lg:grid-cols-2 lg:items-stretch">
-          <ScrollReveal className="h-full" amount={0.2} delay={0.1}>
-            <GlassPanel className="h-full px-5 py-5 sm:px-6 sm:py-6">
-              <SunArc
-                sunrise={snapshot?.sun.sunrise ?? null}
-                sunset={snapshot?.sun.sunset ?? null}
-                now={clock}
-                isDay={isDay}
-              />
-            </GlassPanel>
-          </ScrollReveal>
-
-          <ScrollReveal className="h-full" amount={0.2} delay={0.14}>
-            <GlassPanel className="h-full px-5 py-5 sm:px-6 sm:py-6">
-              <div className="flex h-full flex-col">
-                <MetricLabel className="mb-4">Wind · 바람 · m/s</MetricLabel>
-                <div ref={windRef} className="min-h-[150px] flex-1">
-                  {hourly.length > 0 ? (
-                    windNear ? <WindGraph hourly={hourly} isDay={isDay} /> : <WindPlaceholder />
-                  ) : (
-                    <div className="flex h-full min-h-[150px] items-center font-mono text-[11px] uppercase tracking-[0.2em] text-white/45">
-                      바람 예보 없음
-                    </div>
-                  )}
-                </div>
-              </div>
-            </GlassPanel>
-          </ScrollReveal>
-        </div>
       </div>
     </SkySection>
   );

@@ -2,7 +2,6 @@
 
 import { formatKstTime } from "@/lib/format";
 import { inkTriplet, instrumentWarm } from "@/lib/cinematic/skyPalette";
-import { MetricLabel } from "../EtchedType";
 
 /**
  * A full-circle 24-hour day/night dial split by the horizon line.
@@ -170,11 +169,12 @@ export default function SunArc({
       : `24시간 해·달 다이얼. 밤에는 달이 아래쪽 반원의 현재 시각 위치에 표시됩니다 (달의 실제 고도가 아니라 밤 시간의 진행). 오늘 달 위상은 ${moonName}. 일출까지 약 ${formatUntil(untilMs)}.`;
 
   return (
-    <div className="flex flex-col gap-4">
-      <MetricLabel>Sun &amp; Moon · 해 · 달</MetricLabel>
-
-      <div className="mx-auto w-full max-w-[248px]">
-        <svg viewBox="0 0 300 300" className="w-full" role="img" aria-label={ariaLabel}>
+    <div className="flex flex-col items-center gap-7">
+      {/* Hero dial — a generous square with room around the circle for the
+          crossing labels. The expanded viewBox margin (−30…330) leaves a clear
+          gutter so the cardinal anchors sit outside the ring. */}
+      <div className="aspect-square w-full">
+        <svg viewBox="-30 -30 360 360" className="h-full w-full" role="img" aria-label={ariaLabel}>
           <defs>
             <linearGradient id="sunDayArc" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor={warm} stopOpacity={0.18} />
@@ -242,31 +242,42 @@ export default function SunArc({
             ) : (
               <MoonGlyph x={markerX} y={markerY} phase={phaseFrac} />
             ))}
+
+          {/* Cardinal anchor labels at the four horizon/meridian crossings:
+              sunrise (left), noon (top), sunset (right), midnight (bottom).
+              Sunrise/sunset also carry their KST time under the name. */}
+          <text x={CX} y={CY - R - 18} textAnchor="middle" className="font-mono" fontSize={11} letterSpacing={2} fill={ink(0.5)}>
+            정오
+          </text>
+          <text x={CX} y={CY + R + 30} textAnchor="middle" className="font-mono" fontSize={11} letterSpacing={2} fill={ink(0.42)}>
+            자정
+          </text>
+
+          <text x={CX - R - 18} y={CY - 5} textAnchor="end" className="font-mono" fontSize={11} letterSpacing={1.5} fill={ink(0.5)}>
+            일출
+          </text>
+          <text x={CX - R - 18} y={CY + 14} textAnchor="end" className="font-sans tabular-nums" fontSize={13} fill={ink(0.82)}>
+            {sunrise ? formatKstTime(sunrise) : "—"}
+          </text>
+
+          <text x={CX + R + 18} y={CY - 5} textAnchor="start" className="font-mono" fontSize={11} letterSpacing={1.5} fill={ink(0.5)}>
+            일몰
+          </text>
+          <text x={CX + R + 18} y={CY + 14} textAnchor="start" className="font-sans tabular-nums" fontSize={13} fill={ink(0.82)}>
+            {sunset ? formatKstTime(sunset) : "—"}
+          </text>
         </svg>
       </div>
 
-      <div className="flex items-end justify-between gap-2 font-mono text-[11px] tracking-[0.12em] text-white/65">
-        <span className="flex flex-col gap-0.5">
-          <span className="text-[9px] uppercase tracking-[0.24em] text-white/45">일출</span>
-          <span className="tabular-nums text-white/85">{sunrise ? formatKstTime(sunrise) : "—"}</span>
+      {/* Centered readout — time to the next crossing + tonight's moon phase. */}
+      <div className="flex flex-col items-center gap-1.5 text-center">
+        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-white/50">
+          {mode === "night" ? "일출까지" : "일몰까지"}
         </span>
-
-        <span className="flex flex-col items-center gap-0.5 text-center">
-          <span className="text-[9px] uppercase tracking-[0.24em] text-white/45">
-            {mode === "night" ? "일출까지" : "일몰까지"}
-          </span>
-          <span className="font-sans text-sm font-light tabular-nums text-white/90">
-            {haveSun ? formatUntil(untilMs) : "—"}
-          </span>
-          {haveSun && mode === "night" && (
-            <span className="text-[9px] tracking-[0.16em] text-white/45">달 위상 · {moonName}</span>
-          )}
+        <span className="font-sans text-[clamp(1.6rem,3.4vw,2.3rem)] font-light leading-none tabular-nums text-white/95">
+          {haveSun ? formatUntil(untilMs) : "—"}
         </span>
-
-        <span className="flex flex-col items-end gap-0.5">
-          <span className="text-[9px] uppercase tracking-[0.24em] text-white/45">일몰</span>
-          <span className="tabular-nums text-white/85">{sunset ? formatKstTime(sunset) : "—"}</span>
-        </span>
+        <span className="font-mono text-[11px] tracking-[0.16em] text-white/55">달 위상 · {moonName}</span>
       </div>
     </div>
   );

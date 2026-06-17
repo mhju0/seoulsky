@@ -14,15 +14,15 @@ import { useWeatherClock, useWeatherField } from "../WeatherFieldContext";
 import { SectionHeading, SkySection } from "./SectionParts";
 
 /**
- * Section 4 — Ground Station. The data deck where the scroll lands: cross-provider
+ * Section 5 — Ground Station. The data deck where the scroll lands: cross-provider
  * confidence, the source comparison, the environment sources (air + radar, with
  * the required RainViewer attribution) and the cinematic-engine diagnostics — all
  * re-skinned into the matte reading panels, all the original data/logic preserved.
  *
  * PERF: the heavier /api/weather intelligence fetch is deferred until this final
  * section is approaching (useInView, ~400px early) and refreshed every 5 min; the
- * shared sky snapshot (bands above) is never re-fetched. The Recharts forecast
- * charts now live in Section 3, so nothing heavy mounts here beyond this fetch.
+ * shared sky snapshot (bands above) is never re-fetched. The Recharts wind chart
+ * now lives in Section 4 (Sun & Sky), so nothing heavy mounts here beyond this fetch.
  * The scroll ends here — no footer bar, no nav; the data-source attribution is a
  * quiet line inside the deck.
  */
@@ -119,7 +119,7 @@ export default function GroundStationSection() {
 
   return (
     <SkySection id="ground">
-      <SectionHeading index="04" en="Ground Station" ko="지상 관측소" />
+      <SectionHeading index="05" en="Ground Station" ko="지상 관측소" />
 
       <div ref={deckRef} className="flex flex-col gap-4 sm:gap-5">
         {/* Provenance header. */}
