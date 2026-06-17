@@ -317,15 +317,18 @@ export default function InstrumentsSection() {
   return (
     <SkySection>
       <SectionHeading index="02" en="Instruments" ko="계기" />
-      {/* key={entranceKey} remounts the motion tree on each D-key entrance,
-          resetting Framer Motion animation state so the stagger replays cleanly. */}
-      <motion.div
-        key={entranceKey}
-        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3"
-        initial={reduce ? false : "hidden"}
-        animate={isActive ? "visible" : "hidden"}
-        variants={reduce ? {} : GRID_VARIANTS}
-      >
+      {/* Heading stays pinned at the section top; the grid centres in the space
+          below it (equal top/bottom) so the deck never sits top-weighted. */}
+      <div className="flex flex-1 flex-col justify-center">
+        {/* key={entranceKey} remounts the motion tree on each D-key entrance,
+            resetting Framer Motion animation state so the stagger replays cleanly. */}
+        <motion.div
+          key={entranceKey}
+          className="mx-auto grid w-full max-w-[64rem] grid-cols-2 gap-5 lg:grid-cols-3"
+          initial={reduce ? false : "hidden"}
+          animate={isActive ? "visible" : "hidden"}
+          variants={reduce ? {} : GRID_VARIANTS}
+        >
         <Tile
           label="Wind"
           value={windDisplay}
@@ -369,7 +372,8 @@ export default function InstrumentsSection() {
           accent={accentClass("precip", null, precipRaw)}
           reduce={reduce}
         />
-      </motion.div>
+        </motion.div>
+      </div>
     </SkySection>
   );
 }
