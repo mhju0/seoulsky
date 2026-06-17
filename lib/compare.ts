@@ -114,6 +114,43 @@ export function buildComparison(live: ProviderSnapshot[]): ProviderComparison | 
   };
 }
 
+/** Two clear umbrella states keyed to the consensus chance of rain. */
+function umbrellaAdvice(consensus: number): { verdict: string; action: string } {
+  if (consensus >= 50) return { verdict: "비 올 가능성 높음", action: "우산을 챙기세요." };
+  if (consensus >= 30) return { verdict: "비 올 가능성 있음", action: "우산을 챙기세요." };
+  if (consensus >= 15)
+    return { verdict: "비 올 가능성 낮음", action: "우산은 없어도 될 듯하지만, 외출이 길면 챙겨두세요." };
+  return { verdict: "비 올 가능성 낮음", action: "우산은 필요 없어 보입니다." };
+}
+
+/**
+ * The rain-first answer to "지금 무엇을 믿어야 할까요?". Leads with the consensus
+ * chance of rain for today + the next few hours, then a clear umbrella call.
+ *  • Sources agree → state the chance + verdict + action (e.g. a unanimous ~5%
+ *    reads "비 올 가능성 낮음 · 의견 일치. 우산은 필요 없어 보입니다.").
+ *  • Sources disagree → pivot to the most conservative reading.
+ *  • Too few sources report precip → say so honestly; never invent a number.
+ */
+function rainRecommendation(
+  rainAgreement: number | null,
+  rainCmp: MetricComparison | undefined,
+  nameOf: (id: ProviderId) => string,
+): string {
+  if (rainAgreement === null || !rainCmp) {
+    return "강수 데이터가 부족해 교차 검증이 어렵습니다. 우산 여부는 기상청 등 공식 채널에서 직접 확인하세요.";
+  }
+  const consensus = Math.round(rainCmp.average);
+  if (rainAgreement < 65) {
+    // Sources disagree → lead with the most conservative (highest) reading.
+    const worst = rainCmp.values.reduce((a, b) => (b.value > a.value ? b : a));
+    return `소스 간 강수 예보가 ${rainCmp.spread}%p 엇갈립니다 (합의 약 ${consensus}%). 가장 보수적인 ${nameOf(
+      worst.providerId,
+    )}의 ${Math.round(worst.value)}%를 기준으로, 우산을 챙기는 편이 안전합니다.`;
+  }
+  const { verdict, action } = umbrellaAdvice(consensus);
+  return `오늘·향후 몇 시간 합의 강수 확률 약 ${consensus}% — ${verdict} · 의견 일치. ${action}`;
+}
+
 export function buildConfidence(
   live: ProviderSnapshot[],
   comparison: ProviderComparison | null,
@@ -144,14 +181,22 @@ export function buildConfidence(
   }
 
   const byMetric = new Map(comparison.metrics.map((m) => [m.metric, m]));
+  const rainCmp = byMetric.get("rainProbability");
   const temp = byMetric.get("temperature")?.agreement ?? null;
-  const rain = byMetric.get("rainProbability")?.agreement ?? null;
+  const rain = rainCmp?.agreement ?? null;
   const wind = byMetric.get("windSpeed")?.agreement ?? null;
 
+  // Precipitation-led confidence. Rain agreement dominates the headline score
+  // (temperature + wind are minor supporting signals) because "umbrella or not"
+  // is the decision this page exists to answer. Crucially the score is built from
+  // AGREEMENT — the spread between sources — never the rain VALUE: when every
+  // source concurs on ~5% that is a high-confidence DRY forecast, not low
+  // confidence. When too few sources report precip the score falls back to the
+  // remaining metrics (and the bar/narrative flag the gap honestly).
   const parts: { score: number; weight: number }[] = [];
-  if (temp !== null) parts.push({ score: temp, weight: 0.4 });
-  if (rain !== null) parts.push({ score: rain, weight: 0.4 });
-  if (wind !== null) parts.push({ score: wind, weight: 0.2 });
+  if (rain !== null) parts.push({ score: rain, weight: 0.7 });
+  if (temp !== null) parts.push({ score: temp, weight: 0.18 });
+  if (wind !== null) parts.push({ score: wind, weight: 0.12 });
   const totalWeight = parts.reduce((a, p) => a + p.weight, 0);
   const overall = totalWeight
     ? Math.round(parts.reduce((a, p) => a + p.score * p.weight, 0) / totalWeight)
@@ -161,26 +206,7 @@ export function buildConfidence(
 
   const nameOf = (id: ProviderId) => live.find((s) => s.id === id)?.status.name ?? id;
 
-  // "지금 무엇을 믿어야 할까요?" — concrete, conservative advice.
-  let recommendation: string;
-  const rainCmp = byMetric.get("rainProbability");
-  const tempCmp = byMetric.get("temperature");
-  if (level === "high") {
-    recommendation = `${live.length}개 소스가 거의 일치합니다. 어느 예보를 봐도 좋습니다${
-      tempCmp ? ` — 합의 기온 약 ${Math.round(tempCmp.average)}°C` : ""
-    }${rainCmp ? `, 강수 확률 ${Math.round(rainCmp.average)}%` : ""}.`;
-  } else if (rain !== null && rain < 65 && rainCmp) {
-    const worst = rainCmp.values.reduce((a, b) => (b.value > a.value ? b : a));
-    recommendation = `강수 예보가 ${rainCmp.spread}%p 엇갈립니다. 우산은 가장 보수적인 ${nameOf(worst.providerId)}의 ${Math.round(worst.value)}%를 기준으로 판단하는 편이 안전합니다.`;
-  } else if (temp !== null && temp < 65 && tempCmp) {
-    recommendation = `기온 예측이 최대 ${tempCmp.spread}°C 벌어져 있습니다. 옷차림은 소스 평균인 ${Math.round(tempCmp.average)}°C를 기준으로 하되, 얇은 겉옷을 챙기세요.`;
-  } else if (wind !== null && wind < 65) {
-    recommendation = "바람 예보의 불확실성이 큽니다. 야외 활동 시 돌풍 가능성을 염두에 두세요.";
-  } else {
-    recommendation = `소스 간 약간의 편차가 있지만 큰 그림은 같습니다. 평균값${
-      tempCmp ? ` (기온 ${Math.round(tempCmp.average)}°C)` : ""
-    }을 기준으로 판단하면 충분합니다.`;
-  }
+  const recommendation = rainRecommendation(rain, rainCmp, nameOf);
 
   const explanation =
     level === "high"
