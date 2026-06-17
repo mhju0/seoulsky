@@ -30,7 +30,7 @@ export function SkySection({
       className={`relative flex min-h-svh w-full scroll-mt-0 flex-col px-[clamp(1.25rem,5vw,4.5rem)] ${
         center
           ? "justify-center py-[clamp(3rem,12vh,8rem)]"
-          : "justify-start pt-[clamp(4.5rem,13vh,8.5rem)] pb-[clamp(3rem,10vh,7rem)]"
+          : "justify-start py-[clamp(4rem,10vh,7rem)]"
       } ${className}`}
     >
       {children}
