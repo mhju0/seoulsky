@@ -326,24 +326,43 @@ body {
   transition: background 900ms ease;
 }
 
-/* ---------- data-view backdrop: the same plate, defocused + darkened ----------
-   On the D (data) view the live plate is reused behind the dashboard grid but
-   blurred and dimmed, so the toggle reads as one cohesive scene at two depths. */
+/* ---------- data-view backdrop: the same plate, defocused + veiled ----------
+   On the D (data) view the live condition plate is reused as a single fixed,
+   full-page layer behind the ENTIRE scroll (it lives in .sky-data-bg, a sibling
+   of the scroller, so it never scrolls). Heavily blurred + slightly desaturated;
+   the day/night DARKENING itself is the scrim below, not a fixed brightness, so
+   contrast tracks the sky. Static — no animation, no per-frame state. */
 .sky-data-plate {
   position: absolute;
-  inset: -4%; /* bleed past the blur so no soft edge shows */
-  background-size: cover;
+  inset: -5%; /* extra bleed so the heavier blur never reveals a soft edge */
+  background-size: cover; /* object-fit: cover, behind every section + card */
   background-position: center;
-  filter: blur(42px) brightness(0.5) saturate(0.9);
-  transform: scale(1.06);
+  filter: blur(56px) brightness(0.88) saturate(0.82);
+  transform: scale(1.08);
 }
 
+/* Day/night-aware veil over the blurred plate. Tinted from the SAME
+   `--sky-bg-base` the palette computes (light cream by day, deep navy at night),
+   so it LIGHTENS the plate by day and DARKENS it at night — keeping the bare
+   section labels (02 INSTRUMENTS, 신뢰도 분석, the attribution line), which the
+   palette flips navy↔cream with the sky, clearly legible in either, while the
+   blurred plate still reads through around the matte cards. A top-down ramp
+   leaves the plate most present up top and veils the dense lower sections. */
 .sky-data-scrim {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to bottom, rgba(4, 6, 13, 0.62), rgba(4, 6, 13, 0.8)),
-    radial-gradient(120% 90% at 50% 0%, rgba(4, 6, 13, 0.18), rgba(4, 6, 13, 0.68));
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--sky-bg-base, #0c1226) 50%, transparent) 0%,
+      color-mix(in srgb, var(--sky-bg-base, #0c1226) 64%, transparent) 55%,
+      color-mix(in srgb, var(--sky-bg-base, #0c1226) 74%, transparent) 100%
+    ),
+    radial-gradient(
+      130% 100% at 50% -5%,
+      transparent 35%,
+      color-mix(in srgb, var(--sky-bg-base, #0c1226) 30%, transparent) 100%
+    );
 }
 
 /* ---------- scrollbars ---------- */
