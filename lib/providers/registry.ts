@@ -4,17 +4,20 @@ import { kmaProvider } from "./kma";
 import { metNorwayProvider } from "./met-norway";
 import { openMeteoProvider } from "./open-meteo";
 import { pirateWeatherProvider } from "./pirate-weather";
+import { weatherApiProvider } from "./weather-api";
 
 /**
  * Order matters: the first live provider becomes the primary source that
  * drives the diagnostics hero. Open-Meteo first — free, keyless, reliable;
- * MET Norway second (keyless); KMA + Pirate Weather when keys are configured.
+ * MET Norway second (keyless); KMA, Pirate Weather, WeatherAPI when keys
+ * are configured.
  */
 export const providers: WeatherProvider[] = [
   openMeteoProvider,
   metNorwayProvider,
   kmaProvider,
   pirateWeatherProvider,
+  weatherApiProvider,
 ];
 
 /**
