@@ -151,3 +151,62 @@ export function reweightForecastPrecip(
   ).pop;
   return { daily, hourly, currentPrecipitationProbability };
 }
+
+// ── Phase 4: multi-source weighted daily precip consensus ────────────────────
+// Phase 3 carried a single forecast source, so the weighted consensus was the
+// identity. Phase 4 (behind the MULTI_SOURCE_PRECIP flag) feeds MULTIPLE forecast
+// sources here so the learned weights have something to actually blend. Still
+// PRECIP-ONLY and still bounded to FORECAST sources — chooseCurrent (the KMA
+// observation) is never part of this consensus.
+
+/** One forecast source's daily array, as returned this cycle (returned-only). */
+export interface SourceDailyForecast {
+  source: ProviderId;
+  daily: readonly DailyForecast[];
+}
+
+/**
+ * Multi-source weighted daily precip consensus. `base` (the always-present
+ * forecast source, Open-Meteo) fixes the output slots/order and every non-precip
+ * field; for each date we gather POP / predicted_mm contributions from EVERY
+ * source that returned this cycle and actually carries that date, then fuse with
+ * the effective weights.
+ *
+ * No fabrication: a source missing a date is dropped from that slot (never
+ * imputed, never treated as 0). `predicted_mm` self-restricts to amount-bearing
+ * sources inside fuseWeightedPrecip, so amount-less sources (KMA forecast, Pirate,
+ * MET) contribute to POP but never drag the mm average toward 0. A slot with no
+ * contributor at all keeps `base` unchanged (so an empty source set — e.g. the
+ * all-sources-down fallback — is the identity over `base`).
+ */
+export function fuseMultiSourceDaily(
+  base: readonly DailyForecast[],
+  sources: readonly SourceDailyForecast[],
+  weights: Record<string, number>,
+): DailyForecast[] {
+  const byDate = new Map<ProviderId, Map<string, DailyForecast>>();
+  for (const s of sources) {
+    const m = new Map<string, DailyForecast>();
+    for (const d of s.daily) m.set(d.date, d);
+    byDate.set(s.source, m);
+  }
+  return base.map((b) => {
+    const contributions: PrecipContribution[] = [];
+    for (const s of sources) {
+      const entry = byDate.get(s.source)?.get(b.date);
+      if (!entry) continue; // source lacks this date → drop it (no imputation)
+      contributions.push({
+        source: s.source,
+        pop: entry.precipitationProbability,
+        predicted_mm: entry.precipitationAmount ?? null,
+      });
+    }
+    if (contributions.length === 0) return b; // no source covered this date → keep base as-is
+    const f = fuseWeightedPrecip(contributions, weights);
+    const out: DailyForecast = { ...b, precipitationProbability: f.pop };
+    // Only rewrite predicted_mm when base actually carried one — never add a null
+    // amount where the field was absent (that would change the payload shape).
+    if (b.precipitationAmount !== undefined) out.precipitationAmount = f.predicted_mm;
+    return out;
+  });
+}
