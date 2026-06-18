@@ -113,12 +113,43 @@ npm run reliability:daily
 - **Output dir**: `./data/reliability` by default (git-ignored); override with
   `RELIABILITY_DATA_DIR` to point cron/CI at durable storage.
 
-An example scheduler lives in `.github/workflows/precip-reliability.yml`
-(manual-dispatch by default; uncomment the `schedule` block to run daily). Durable
-cross-run persistence of the data files — the `.jsonl` logs and especially
-`source-weights.json` (the Hedge state) — is a deployment choice; commit them back
-to a data branch or use object storage. Artifacts alone don't carry state between
-scheduled runs.
+## Deployment — scheduling & durable cross-run persistence
+
+`.github/workflows/precip-reliability.yml` runs the batch **daily** (`schedule`,
+21:10 UTC ≈ 06:10 KST, after the KMA ASOS daily data publishes) plus on-demand via
+**Run workflow** (`workflow_dispatch`). It closes the persistence gap that artifacts
+can't: the three data files are the accumulator's only memory, so the job **commits
+them back to a dedicated orphan branch, `reliability-state`** (data-only — no source,
+no secrets), and **restores them at the start of the next run**. This is what makes
+`eventsScored` climb instead of cold-starting every day.
+
+- **State branch (`reliability-state`)** holds *only* `data/reliability/{forecast-log.jsonl,
+  daily-skill.jsonl, source-weights.json}`. It is created as an orphan on the first
+  run and updated thereafter; the restore step round-trips each blob byte-exact (so
+  the append-only `.jsonl` stays well-formed). `concurrency: precip-reliability`
+  serializes runs so two batches never race the branch push, and the commit is a
+  no-op on days nothing changed.
+- **Idempotency survives across runs** because `source-weights.json` carries
+  `processedDates`; a re-run (or a manual dispatch on the same day) never
+  double-applies a scored day, and the `.jsonl` stores skip `(date, source)` pairs
+  already present.
+- **Secrets → job env.** Map these repo **Secrets** (Settings → Secrets and variables
+  → Actions); every one is optional and all are server-side only:
+  `KMA_OBSERVATION_API_KEY` (ground truth — required for *any* scoring),
+  `MET_NO_USER_AGENT`, `KMA_SHORT_TERM_API_KEY`, `PIRATE_WEATHER_API_KEY`,
+  `WEATHERAPI_KEY`, and optional `RELIABILITY_ETA`. Open-Meteo needs no key.
+- **Missing observation key is not a failure.** With no `KMA_OBSERVATION_API_KEY`
+  (or an unsubscribed key → HTTP 403), the ASOS fetch returns `null`, the day is
+  **scoring-skipped** (logged, never fabricated), and the job still succeeds and
+  still logs forecasts — so warm-up resumes the day a valid key is added.
+- ⚠️ **The `schedule:` trigger only fires from the repository's _default_ branch.**
+  On a feature branch the daily cron is inert; you can still trigger a run manually
+  via **Run workflow**. Merge this workflow to `main` to activate the daily schedule.
+
+> Alternative to commit-back: point `RELIABILITY_DATA_DIR` at object storage / a KV
+> volume restored+saved around the run instead of the state branch. Commit-back was
+> chosen because it is keyless, auditable (the learning history is a readable git
+> log), and needs no extra infrastructure.
 
 ## Files
 
@@ -174,11 +205,12 @@ order**; cold start is **equal weights** over the existing 5 providers.
   date; re-running never double-applies a day.
 - **Persistence:** state lives in `data/reliability/source-weights.json`
   (`{ updatedAt, eventsScored, processedDates, weights }`). **This file is the
-  algorithm's only memory and MUST survive across scheduled runs** — commit it back
-  to a data branch, or store it in object storage / a KV store. The Phase 1
-  artifact-upload does **not** carry state between runs; do not assume local disk
-  persists. `eventsScored` is maintained for Phase 3's warm-up gate but nothing is
-  gated on it here.
+  algorithm's only memory and MUST survive across scheduled runs.** That is now
+  wired: the GitHub Action commits it (and the two `.jsonl` logs) back to the
+  `reliability-state` branch and restores them next run — see *Deployment* above. An
+  artifact upload alone would **not** carry state between runs; do not assume local
+  disk persists. `eventsScored` is maintained for Phase 3's warm-up gate but nothing
+  is gated on it here.
 
 Unit-tested in `weights.test.ts`: repeated misses monotonically down-weight a
 source (to the floor); a `correct_dry` day is a zero-change no-op; a miss
