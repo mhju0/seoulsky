@@ -1,5 +1,5 @@
-import { cachedFetch } from "../cache";
-import { CACHE_TTL_MS, SEOUL } from "../seoul";
+import { cachedFetch } from "../cache.ts";
+import { CACHE_TTL_MS, SEOUL } from "../seoul.ts";
 import type {
   CurrentWeather,
   DailyForecast,
