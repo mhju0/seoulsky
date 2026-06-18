@@ -39,7 +39,7 @@ test("classifyOutcome maps the four contingency cells", () => {
   assert.equal(classifyOutcome(true, true), "hit");
   assert.equal(classifyOutcome(false, true), "miss");
   assert.equal(classifyOutcome(true, false), "false_alarm");
-  assert.equal(classifyOutcome(false, false), "correct_negative");
+  assert.equal(classifyOutcome(false, false), "correct_dry");
 });
 
 test("CSI excludes correct-negatives (dry days don't inflate)", () => {
@@ -47,7 +47,7 @@ test("CSI excludes correct-negatives (dry days don't inflate)", () => {
   assert.equal(criticalSuccessIndex(contingencyOf("miss")), 0);
   assert.equal(criticalSuccessIndex(contingencyOf("false_alarm")), 0);
   // correct-negative → 0/0 → null (not 1, which would inflate a dry forecaster)
-  assert.equal(criticalSuccessIndex(contingencyOf("correct_negative")), null);
+  assert.equal(criticalSuccessIndex(contingencyOf("correct_dry")), null);
 });
 
 test("categoricalSkill applies an asymmetric penalty: miss < false alarm < hit", () => {
@@ -58,7 +58,7 @@ test("categoricalSkill applies an asymmetric penalty: miss < false alarm < hit",
   assert.equal(fa, 1 - FALSE_ALARM_PENALTY); // 0.5
   assert.equal(miss, 0);
   assert.ok(miss! < fa! && fa! < hit!, "miss must be penalized more than a false alarm");
-  assert.equal(categoricalSkill("correct_negative"), null);
+  assert.equal(categoricalSkill("correct_dry"), null);
 });
 
 test("quantitativeSkill: only on rainy days, only with an amount, clamped", () => {
@@ -86,7 +86,7 @@ test("scoreSourceDay: missing forecast signal → skip", () => {
   assert.equal(scoreSourceDay({ pop: null, predicted_mm: null, observed_mm: 10 }), null);
 });
 
-test("scoreSourceDay: correct-negative (both dry) → skip, no inflation", () => {
+test("scoreSourceDay: correct-dry (both dry) → skip, no inflation", () => {
   assert.equal(scoreSourceDay({ pop: 10, predicted_mm: null, observed_mm: 0 }), null);
   assert.equal(scoreSourceDay({ pop: null, predicted_mm: 0, observed_mm: 0 }), null);
 });
@@ -97,8 +97,16 @@ test("scoreSourceDay: hit with a good amount blends to a high skill", () => {
   assert.equal(s.outcome, "hit");
   assert.equal(s.categorical_skill, 1);
   assert.equal(s.quantitative_skill, 1 - 2 / QUANT_SCALE_MM); // 0.9
+  assert.equal(s.mae, 2); // |12 − 10|
   assert.equal(s.skill, CATEGORICAL_WEIGHT * 1 + (1 - CATEGORICAL_WEIGHT) * 0.9); // 0.96
   assert.equal(s.csi, 1);
+});
+
+test("scoreSourceDay: mae is null when the source supplied no amount", () => {
+  const s = scoreSourceDay({ pop: 95, predicted_mm: null, observed_mm: 40 });
+  assert.ok(s);
+  assert.equal(s.outcome, "hit"); // POP-only hit
+  assert.equal(s.mae, null);
 });
 
 test("scoreSourceDay: a miss is penalized more than a false alarm", () => {

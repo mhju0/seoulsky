@@ -9,7 +9,7 @@ import type { ProviderId } from "../types.ts";
  * is Phase 3. See lib/reliability/README.md.
  */
 
-export type RainOutcome = "hit" | "miss" | "false_alarm" | "correct_negative";
+export type RainOutcome = "hit" | "miss" | "false_alarm" | "correct_dry";
 
 /**
  * One source's daily precipitation forecast for a target date. The core fields
@@ -47,7 +47,11 @@ export interface ObservationRecord {
   observedAt: string;
 }
 
-/** Single-day contingency cell (one-hot: exactly one entry is 1). */
+/**
+ * Single-day contingency cell (one-hot: exactly one entry is 1). The cell names
+ * are the textbook verification terms; the `correct_negatives` cell corresponds
+ * to the `correct_dry` outcome.
+ */
 export interface Contingency {
   hits: number;
   misses: number;
@@ -62,12 +66,15 @@ export interface SourceDayScore {
   outcome: RainOutcome;
   contingency: Contingency;
   /** CSI for the day: 1 (hit), 0 (miss/false alarm); never null here because a
-   *  correct-negative is not emitted (it carries no precipitation skill). */
+   *  correct-dry day is not emitted (it carries no precipitation skill). */
   csi: number | null;
   /** Categorical skill in [0,1] with the asymmetric miss/false-alarm penalty. */
   categorical_skill: number;
   /** Quantitative skill in [0,1] from the rainy-day amount error, or null. */
   quantitative_skill: number | null;
+  /** Absolute amount error |predicted_mm − observed_mm| (mm) when the source
+   *  supplied an amount, else null. Consumed by the Phase 2 hit-loss term. */
+  mae: number | null;
   /** Combined daily skill in [0,1]. */
   skill: number;
 }
@@ -90,6 +97,26 @@ export interface DailySkillRecord {
   csi: number | null;
   categorical_skill: number;
   quantitative_skill: number | null;
+  /** Absolute amount error (mm) when an amount was supplied, else null. */
+  mae: number | null;
   skill: number;
   scoredAt: string;
+}
+
+/** Per-source weight (≥0). Keyed by ProviderId; sums to ~1 after normalization. */
+export type WeightsMap = Record<string, number>;
+
+/**
+ * Persisted, stateful output of the Phase 2 Hedge updater
+ * (data/reliability/source-weights.json). This file MUST survive across
+ * scheduled runs (see README) — it is the algorithm's only memory.
+ */
+export interface WeightsState {
+  updatedAt: string;
+  /** Cumulative count of informative (loss-bearing) source-day events applied. */
+  eventsScored: number;
+  /** Daily-skill dates already folded into the weights (idempotency guard). */
+  processedDates: string[];
+  /** Current per-source weights. */
+  weights: WeightsMap;
 }
