@@ -1,0 +1,12 @@
+{
+  "updatedAt": "2026-06-18T08:34:17.629Z",
+  "eventsScored": 0,
+  "processedDates": [],
+  "weights": {
+    "open-meteo": 0.2,
+    "met-norway": 0.2,
+    "kma": 0.2,
+    "pirate-weather": 0.2,
+    "weather-api": 0.2
+  }
+}
