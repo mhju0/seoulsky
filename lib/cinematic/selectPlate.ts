@@ -3,7 +3,7 @@
  *
  * Given the current observed weather + today's sun geometry, this picks ONE
  * {@link CinematicPlateKey} representing the broad category, plus a short reason
- * and the continuous sun phase (for diagnostics / the live three.js layer). The
+ * and the continuous sun phase (for diagnostics / the live WebGL layer). The
  * footage only ever stands in for the *category*; the real-time scene layered on
  * top is what makes it match the exact current rain/wind/visibility.
  *
@@ -101,7 +101,7 @@ export function selectCinematicPlate(input: PlateSelectionInput): PlateSelection
 
   // 3. Rain — any wet condition, or a heavy-rain (호우) / typhoon (태풍) warning.
   //    Time-aware: a dedicated rainy-night plate at night, the daytime rain clip
-  //    otherwise (the live three.js grade adapts either to the exact conditions).
+  //    otherwise (the live WebGL grade adapts either to the exact conditions).
   const rainKey: CinematicPlateKey = isDay ? "rain" : "night-rain";
   if (RAINY.includes(input.condition)) return result(rainKey, `${input.condition} observed`);
   if (hasWarning(input.warnings, "호우", "태풍")) return result(rainKey, "rain/typhoon warning active");

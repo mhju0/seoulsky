@@ -6,12 +6,10 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    // react-three-fiber drives three.js by mutating objects inside useFrame and
-    // relies on the canonical lazy-ref-init pattern. Both are intentional and
-    // both are flagged by the experimental React Compiler rules, which assume
-    // pure-render semantics that don't hold for an imperative WebGL render loop.
-    // The Atmospheric Color Field runs the same kind of imperative GL loop (a
-    // single fullscreen shader driven by mutable refs).
+    // The Atmospheric Color Field is a raw WebGL render loop (a single fullscreen
+    // shader driven by mutable refs). The imperative pattern — reading and writing
+    // refs each frame, never triggering React renders — is intentional but flagged
+    // by the experimental React Compiler rules, which assume pure-render semantics.
     files: ["components/three/**/*.{ts,tsx}", "components/atmosphere/**/*.{ts,tsx}"],
     rules: {
       "react-hooks/immutability": "off",
