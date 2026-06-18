@@ -6,13 +6,22 @@ touches the live `/sky` render path until the scores are trustworthy.
 
 - **Phase 1 — offline scoring** (logging, ground-truth fetch, per-source daily skill). ✅
 - **Phase 2 — stateful weight update** (multiplicative-weights / Hedge). ✅
-- **Phase 3 — gated runtime consumption** in the precip fusion (this commit). ✅
+- **Phase 3 — gated runtime consumption** in the precip fusion. ✅
+- **Phase 4 — multi-source runtime consensus** behind a flag (this commit). ✅
 
 Phases 1–2 are offline only. Phase 3 consumes the weights in the `/sky` data path
 but is **gated**: until the weights warm up it degrades to the **exact** pre-Phase-3
 behavior. The live scene therefore stays in equal-fallback (byte-for-byte unchanged)
 until `KMA_OBSERVATION_API_KEY` is active and ≥ `WARMUP_EVENTS` (5) informative
 events accumulate.
+
+Phase 3 wired the gate in, but the live path still carried a **single** forecast
+source (Open-Meteo), so the weighted consensus was the identity — the learned
+weights had nothing to blend. **Phase 4** puts real traffic on the rails: it makes
+`/api/sky` carry **multiple** forecast sources for POP / `predicted_mm`, behind a
+flag (`MULTI_SOURCE_PRECIP`, default **OFF**). OFF is byte-for-byte the pre-Phase-4
+single-source path; ON is the first phase that **intentionally** changes runtime
+output (see the Phase 4 section below).
 
 ---
 
@@ -119,6 +128,7 @@ scheduled runs.
 | `weights.ts` / `weights.test.ts`                | Pure Hedge weight updater (Phase 2; no I/O)                 |
 | `runtimeWeights.ts` / `runtimeWeights.test.ts`  | Pure Phase 3 gate + confidence ramp + effective weights     |
 | `runtimeWeightsSource.ts`                       | Memoized, never-throwing server read of `source-weights.json` |
+| `forecastSources.ts` / `.test.ts`               | Phase 4 shared TTL-cached + single-flight multi-source forecast fetch |
 | `types.ts`                                      | Record/score/weight shapes                                  |
 | `constants.ts`                                  | `REGION` ("seoul")                                          |
 | `forecastLog.ts`                                | Reads the live provider registry → `ForecastRecord[]`       |
@@ -224,3 +234,90 @@ payload is unchanged. No UI / render component is touched.
 **Live status:** with no `source-weights.json` present (today's real state), the gate
 is `equal-fallback` / `no-weights-file` and the fused forecast is identical to
 pre-Phase-3 — verified by unit tests and an `/api/sky` smoke test.
+
+## Phase 4 — multi-source runtime consensus (this commit)
+
+Phase 3 gated the weights into the fusion, but the live path carried only
+Open-Meteo, so the consensus was the identity. Phase 4 feeds the fusion **multiple**
+forecast sources so the learned weights actually blend. Scope is the runtime
+multi-source precip fusion + its fetch/cache layer only — the offline pipeline, the
+render components, and `chooseCurrent` are untouched.
+
+> ⚠️ **This is the first phase that intentionally changes runtime output.** Flipping
+> the flag **ON shifts the precip baseline** — daily POP / `predicted_mm` become an
+> **equal-weighted consensus** across the returning sources **even before any
+> learning engages** (pre-warm-up / no weights file ⇒ equal weights, but an
+> equal-weighted *average over several sources* is not the single Open-Meteo value).
+> Learning only *tilts* that consensus once the weights warm up. OFF preserves the
+> exact pre-Phase-4 single-source output, byte-for-byte.
+
+### The flag
+
+`MULTI_SOURCE_PRECIP` (env, default **OFF**):
+
+- **OFF** → the exact Phase 3 path: gate over the one live source (Open-Meteo),
+  single-source reweight = identity. No forecast fan-out is even fetched.
+- **ON** → daily POP / `predicted_mm` are a weighted consensus over whichever
+  forecast sources returned this cycle. Hourly + current POP stay single-source
+  (Open-Meteo): the learned weights rank **daily** forecast skill, and providers'
+  hourly grids don't align — so those fields are left identical.
+
+### Fetch / cache / latency design (`forecastSources.ts`)
+
+The multi-source forecasts come straight from the **existing provider registry**
+(`lib/providers/registry.ts`) — the same `getDailyForecast` each provider already
+exposes and the offline pipeline logs. No duplicated fetch logic, no new providers,
+all keys stay server-side.
+
+- **Shared TTL cache** (`FORECAST_CACHE_TTL_MS`, default ~12 min): the whole
+  collection is fetched at most once per window, so concurrent `/api/sky` requests
+  reuse one cycle instead of each fanning out 5 live upstream calls.
+- **Single-flight**: even a cold concurrent burst collapses to **one** upstream
+  cycle (callers share the in-flight promise) — not N. Unit-tested.
+- **Per-source timeout** (`PER_SOURCE_TIMEOUT_MS`, default 4 s): one slow provider
+  can't stall the response; it's dropped from the cycle.
+- The fetch is added to the route's existing `Promise.all`, so it runs in parallel
+  with the baseline Open-Meteo / KMA / air / radar fetches — no added serial latency.
+- The layer **never throws**: a fully-failed cycle resolves to `[]`.
+
+### Partial-failure semantics (no fabrication)
+
+Each source fails independently. The invariants:
+
+- A source that fails / times out / lacks the date is **dropped** — never imputed,
+  and a missing precip is **never** treated as 0.
+- **Cycle-level renormalization:** the effective weights are computed
+  (`gatePrecipWeighting`) over exactly the sources that **returned this cycle**, so a
+  learned source that is absent has its weight redistributed over the present subset.
+- **Field-level renormalization:** inside `fuseWeightedPrecip`, POP self-normalizes
+  over sources with a non-null POP, and `predicted_mm` self-normalizes over the
+  **amount-bearing subset only** (currently Open-Meteo + WeatherAPI). Sources without
+  a clean daily amount (KMA forecast, Pirate, MET) contribute to POP but **not** to
+  the mm average — they can't drag mm toward 0.
+- A slot with **no** contributor keeps `base` (Open-Meteo) unchanged, and if **all**
+  forecast sources are down (`[]`), the route falls back to the Phase 3 single-source
+  path — identical to flag OFF.
+
+The KMA **observation** (실황) is never part of this consensus: it stays ground truth
+in `chooseCurrent`, never weighted (the learned weights rank FORECAST skill).
+
+### Observability (debug only)
+
+With `RELIABILITY_DEBUG=1` the `precipWeighting` debug field additionally reports
+`multiSource` (did the consensus path run), `sources` (who contributed this cycle),
+and `weights` (their effective post-availability-renormalization weights). Off in
+production and with the flag off, the public payload is unchanged.
+
+### Files / touch-points
+
+| File                                    | Role                                                              |
+| --------------------------------------- | ---------------------------------------------------------------- |
+| `forecastSources.ts` / `.test.ts`       | Shared TTL-cached + single-flight multi-source forecast fetch     |
+| `lib/skyFusion.ts` `fuseMultiSourceDaily` | Pure multi-source weighted daily consensus (POP + mm)           |
+| `app/api/sky/route.ts`                  | Flag wiring, fallback, extended debug field                       |
+
+Tested in `forecastSources.test.ts` (one-cycle concurrency, TTL hit, drop on
+failure/timeout, all-down → `[]`) and `lib/skyFusion.test.ts` (weighted POP over all
++ mm over the amount subset with no 0-imputation, partial-availability renormalize,
+equal-weighted baseline, learned tilt, flag-OFF single-source identity,
+empty-set/all-down identity).

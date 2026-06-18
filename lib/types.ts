@@ -319,13 +319,19 @@ export interface SkySnapshot {
   /** Every source that contributed to this snapshot, for provenance. */
   sources: ProviderId[];
   /**
-   * Debug-only (server-gated behind RELIABILITY_DEBUG): how Phase 3's learned
-   * precip weights were applied this cycle. Absent in production, so the public
-   * payload is unchanged. Not consumed by any render component.
+   * Debug-only (server-gated behind RELIABILITY_DEBUG): how the learned precip
+   * weights were applied this cycle. Absent in production, so the public payload is
+   * unchanged. Not consumed by any render component.
    */
   precipWeighting?: {
     mode: "equal-fallback" | "ramping" | "learned";
     reason: string;
     confidence: number;
+    /** Phase 4: true when the multi-source consensus path ran (flag on + ≥1 source). */
+    multiSource: boolean;
+    /** Sources that contributed this cycle (returned-only under the flag). */
+    sources: ProviderId[];
+    /** Effective per-source weights after availability renormalization (sums to 1). */
+    weights: Record<string, number>;
   };
 }
