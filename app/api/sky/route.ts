@@ -4,8 +4,20 @@ import { getFusedAirQuality } from "@/lib/providers/air-quality";
 import { kmaProvider } from "@/lib/providers/kma";
 import { openMeteoProvider } from "@/lib/providers/open-meteo";
 import { getSkyRadar } from "@/lib/providers/radar";
-import { chooseCurrent } from "@/lib/skyFusion";
+import { gatePrecipWeighting } from "@/lib/reliability/runtimeWeights";
+import { loadWeightsStateCached } from "@/lib/reliability/runtimeWeightsSource";
+import { chooseCurrent, reweightForecastPrecip } from "@/lib/skyFusion";
 import type { CurrentWeather, NormalizedWarning, ProviderId, SkySnapshot } from "@/lib/types";
+
+/**
+ * Phase 3: forecast sources whose learned precip weights may refine the scene's
+ * precip fields. Today the live /sky path carries a single forecast source
+ * (Open-Meteo), so the weighted consensus is the identity — output is byte-for-byte
+ * unchanged until both (a) weights warm up and (b) more forecast sources feed here.
+ */
+const PRECIP_FORECAST_SOURCES: ProviderId[] = ["open-meteo"];
+/** Debug-only: expose the precip weighting decision in the payload. Never on in prod. */
+const RELIABILITY_DEBUG = process.env.RELIABILITY_DEBUG === "1";
 
 /**
  * GET /api/sky — the public cinematic page's data source.
@@ -45,21 +57,34 @@ async function kmaWarningsOrEmpty(): Promise<NormalizedWarning[]> {
 
 export async function GET() {
   try {
-    const [current, hourly, daily, status, air, radar, kmaCurrent, warnings] = await Promise.all([
-      openMeteoProvider.getCurrentWeather(),
-      // Already part of the same cached Open-Meteo snapshot — no extra upstream call.
-      openMeteoProvider.getHourlyForecast?.() ?? Promise.resolve([]),
-      openMeteoProvider.getDailyForecast(),
-      openMeteoProvider.getProviderStatus(),
-      getFusedAirQuality(),
-      getSkyRadar(),
-      kmaCurrentOrNull(),
-      kmaWarningsOrEmpty(),
-    ]);
+    const [current, hourly, daily, status, air, radar, kmaCurrent, warnings, weightsState] =
+      await Promise.all([
+        openMeteoProvider.getCurrentWeather(),
+        // Already part of the same cached Open-Meteo snapshot — no extra upstream call.
+        openMeteoProvider.getHourlyForecast?.() ?? Promise.resolve([]),
+        openMeteoProvider.getDailyForecast(),
+        openMeteoProvider.getProviderStatus(),
+        getFusedAirQuality(),
+        getSkyRadar(),
+        kmaCurrentOrNull(),
+        kmaWarningsOrEmpty(),
+        // Learned precip weights (memoized; never throws). null ⇒ equal-fallback.
+        loadWeightsStateCached(),
+      ]);
 
     // Today's sun times in Seoul wall-time — never assume daily[0] is today.
     const today = seoulDateStr(new Date());
     const todaySun = daily.find((d) => d.date === today) ?? daily[0] ?? null;
+
+    // Phase 3: gated, PRECIP-ONLY learned weighting. With a single live forecast
+    // source this is the identity (byte-for-byte unchanged); it degrades to equal
+    // whenever the gate isn't met. Non-precip fields and chooseCurrent are untouched.
+    const weighting = gatePrecipWeighting(weightsState, PRECIP_FORECAST_SOURCES, new Date());
+    const weightedPrecip = reweightForecastPrecip(
+      { daily, hourly, currentPrecipitationProbability: current.precipitationProbability ?? null },
+      "open-meteo",
+      weighting.weights,
+    );
 
     // Deterministic fusion: KMA observation preferred for temp/active-precip.
     const choice = chooseCurrent(
@@ -91,7 +116,7 @@ export async function GET() {
         precipitation: choice.precipitation,
         rain: current.rain ?? null,
         snowfall: current.snowfall ?? null,
-        precipitationProbability: current.precipitationProbability ?? null,
+        precipitationProbability: weightedPrecip.currentPrecipitationProbability,
         cloudCover: current.cloudCover,
         visibility: current.visibility ?? null,
         isDay: current.isDay ?? null,
@@ -102,13 +127,23 @@ export async function GET() {
         sunrise: todaySun?.sunrise ?? null,
         sunset: todaySun?.sunset ?? null,
       },
-      hourly,
-      daily,
+      hourly: weightedPrecip.hourly,
+      daily: weightedPrecip.daily,
       air,
       radar,
       warnings,
       observationSource: choice.temperatureSource,
       sources,
+      // Debug-only (RELIABILITY_DEBUG=1): how the precip weights were applied.
+      ...(RELIABILITY_DEBUG
+        ? {
+            precipWeighting: {
+              mode: weighting.mode,
+              reason: weighting.reason,
+              confidence: weighting.confidence,
+            },
+          }
+        : {}),
     };
 
     return NextResponse.json(payload, {

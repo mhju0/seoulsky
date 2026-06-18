@@ -318,4 +318,14 @@ export interface SkySnapshot {
   observationSource: ProviderId;
   /** Every source that contributed to this snapshot, for provenance. */
   sources: ProviderId[];
+  /**
+   * Debug-only (server-gated behind RELIABILITY_DEBUG): how Phase 3's learned
+   * precip weights were applied this cycle. Absent in production, so the public
+   * payload is unchanged. Not consumed by any render component.
+   */
+  precipWeighting?: {
+    mode: "equal-fallback" | "ramping" | "learned";
+    reason: string;
+    confidence: number;
+  };
 }
