@@ -1,40 +1,128 @@
-# Daily precipitation source-reliability batch (Phase 1: log + ground truth + score).
-# Example scheduler for scripts/precip-reliability.ts. Manual-dispatch by default;
-# uncomment the `schedule` block to run daily. See lib/reliability/README.md.
+# Daily precipitation source-reliability batch (log → ground truth → score → Hedge
+# weights). Runs scripts/precip-reliability.ts on a schedule and — critically —
+# PERSISTS the learning state across runs by committing the data files back to a
+# dedicated orphan branch (`reliability-state`). The accumulator's only memory is
+# data/reliability/source-weights.json (+ the two .jsonl logs); an uploaded
+# artifact does NOT carry state between runs, so we commit-back instead.
 #
-# NOTE: durable cross-run persistence of the .jsonl outputs (commit-back to a data
-# branch, or object storage) is a deployment choice — the uploaded artifact below
-# does NOT carry state between scheduled runs. Wire that up before enabling daily.
+# What is persisted (and ONLY this — never secrets, never fabricated data):
+#   data/reliability/forecast-log.jsonl   (each source's logged forecast per day)
+#   data/reliability/daily-skill.jsonl    (scored per-source skill per completed day)
+#   data/reliability/source-weights.json  (the stateful Hedge weights — the memory)
+#
+# Idempotency is preserved end-to-end: the restored source-weights.json carries
+# WeightsState.processedDates, so re-runs never double-apply a scored day, and the
+# .jsonl stores skip (date, source) pairs already present.
+#
+# IMPORTANT — the `schedule:` trigger only fires when this file is on the repo's
+# DEFAULT branch (main). On a feature branch you can still run it via the
+# "Run workflow" button (workflow_dispatch). See lib/reliability/README.md.
 name: precip-reliability
 
 on:
   workflow_dispatch: {}
-  # schedule:
-  #   # 21:10 UTC ≈ 06:10 KST — after yesterday's KMA ASOS daily data is published.
-  #   - cron: "10 21 * * *"
+  schedule:
+    # 21:10 UTC ≈ 06:10 KST — after yesterday's KMA ASOS daily data is published.
+    - cron: "10 21 * * *"
+
+# Serialize runs: two batches must never race to push the state branch.
+concurrency:
+  group: precip-reliability
+  cancel-in-progress: false
+
+# Needed so the job can push the learned state back to the state branch.
+permissions:
+  contents: write
+
+env:
+  STATE_BRANCH: reliability-state
+  # Absolute, cwd-independent so restore/run/persist all agree.
+  RELIABILITY_DATA_DIR: ${{ github.workspace }}/data/reliability
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        # Persists a credential used later to push the state branch.
+        uses: actions/checkout@v4
+
+      - name: Restore prior learning state from state branch
+        run: |
+          mkdir -p "$RELIABILITY_DATA_DIR"
+          if git fetch --depth 1 origin "$STATE_BRANCH" 2>/dev/null; then
+            for f in forecast-log.jsonl daily-skill.jsonl source-weights.json; do
+              if git cat-file -e "FETCH_HEAD:data/reliability/$f" 2>/dev/null; then
+                # `git show` of a blob is byte-exact (trailing newline preserved),
+                # so the append-only stores stay well-formed across runs.
+                git show "FETCH_HEAD:data/reliability/$f" > "$RELIABILITY_DATA_DIR/$f"
+                echo "restored $f ($(wc -l < "$RELIABILITY_DATA_DIR/$f") line(s))"
+              else
+                echo "no prior $f on $STATE_BRANCH (cold start for this file)"
+              fi
+            done
+          else
+            echo "state branch '$STATE_BRANCH' not found — first run / cold start"
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+
       - name: Run daily reliability batch
         env:
-          # All optional. Open-Meteo logs forecasts with no key; others activate
-          # when their secret is set. Ground-truth scoring needs KMA_OBSERVATION_API_KEY.
+          # All optional and server-side. Open-Meteo logs forecasts with no key;
+          # the others activate only when their secret is set. Ground-truth scoring
+          # needs KMA_OBSERVATION_API_KEY — if it is missing/unsubscribed the ASOS
+          # call returns 403, the day is SCORING-SKIPPED (not a job failure), and the
+          # forecast log still grows so warm-up can proceed once the key is added.
           MET_NO_USER_AGENT: ${{ secrets.MET_NO_USER_AGENT }}
           KMA_SHORT_TERM_API_KEY: ${{ secrets.KMA_SHORT_TERM_API_KEY }}
           PIRATE_WEATHER_API_KEY: ${{ secrets.PIRATE_WEATHER_API_KEY }}
           WEATHERAPI_KEY: ${{ secrets.WEATHERAPI_KEY }}
           KMA_OBSERVATION_API_KEY: ${{ secrets.KMA_OBSERVATION_API_KEY }}
-        run: node scripts/precip-reliability.ts
-      - name: Upload reliability data (example — not durable across runs)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: reliability-data
-          path: data/reliability/*.jsonl
-          if-no-files-found: ignore
+          # Tuning knobs (optional; sensible defaults baked into the code).
+          RELIABILITY_ETA: ${{ secrets.RELIABILITY_ETA }}
+        run: npm run reliability:daily
+
+      - name: Persist learning state back to state branch
+        # Always run so the forecast log is saved even on a scoring-skip day; the
+        # commit is a no-op when nothing actually changed.
+        if: ${{ always() }}
+        run: |
+          shopt -s nullglob
+          produced=("$RELIABILITY_DATA_DIR"/*.jsonl "$RELIABILITY_DATA_DIR"/*.json)
+          if [ ${#produced[@]} -eq 0 ]; then
+            echo "no state files produced; nothing to persist"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          STATE_WT="$(mktemp -d)/state"
+          if git fetch --depth 1 origin "$STATE_BRANCH" 2>/dev/null; then
+            # Update the existing state branch.
+            git worktree add -B "$STATE_BRANCH" "$STATE_WT" FETCH_HEAD
+          else
+            # First run: create an ORPHAN, code-free state branch (data only).
+            git worktree add --detach "$STATE_WT" HEAD
+            git -C "$STATE_WT" checkout --orphan "$STATE_BRANCH"
+            git -C "$STATE_WT" rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          mkdir -p "$STATE_WT/data/reliability"
+          cp -f "$RELIABILITY_DATA_DIR"/*.jsonl "$STATE_WT/data/reliability/" 2>/dev/null || true
+          cp -f "$RELIABILITY_DATA_DIR"/*.json  "$STATE_WT/data/reliability/" 2>/dev/null || true
+
+          # -f overrides the repo .gitignore on /data/reliability/*; only these data
+          # files are staged — no source, no secrets.
+          git -C "$STATE_WT" add -f data/reliability
+          if git -C "$STATE_WT" diff --cached --quiet; then
+            echo "learning state unchanged; nothing to commit"
+          else
+            git -C "$STATE_WT" commit -m "chore(reliability): persist learning state $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git -C "$STATE_WT" push origin "HEAD:$STATE_BRANCH"
+            echo "pushed updated state to $STATE_BRANCH"
+          fi
+          git worktree remove --force "$STATE_WT"
