@@ -1,10 +1,10 @@
 import type { ProviderSnapshot } from "../types";
 import type { WeatherProvider } from "./base";
-import { kmaProvider } from "./kma";
-import { metNorwayProvider } from "./met-norway";
-import { openMeteoProvider } from "./open-meteo";
-import { pirateWeatherProvider } from "./pirate-weather";
-import { weatherApiProvider } from "./weather-api";
+import { kmaProvider } from "./kma.ts";
+import { metNorwayProvider } from "./met-norway.ts";
+import { openMeteoProvider } from "./open-meteo.ts";
+import { pirateWeatherProvider } from "./pirate-weather.ts";
+import { weatherApiProvider } from "./weather-api.ts";
 
 /**
  * Order matters: the first live provider becomes the primary source that

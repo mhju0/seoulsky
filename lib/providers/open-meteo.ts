@@ -1,6 +1,6 @@
-import { cachedFetch } from "../cache";
-import { conditionFromWmoCode } from "../conditions";
-import { CACHE_TTL_MS, SEOUL } from "../seoul";
+import { cachedFetch } from "../cache.ts";
+import { conditionFromWmoCode } from "../conditions.ts";
+import { CACHE_TTL_MS, SEOUL } from "../seoul.ts";
 import type {
   CurrentWeather,
   DailyForecast,
@@ -45,6 +45,7 @@ interface OpenMeteoResponse {
     temperature_2m_max: number[];
     temperature_2m_min: number[];
     precipitation_probability_max: (number | null)[];
+    precipitation_sum: (number | null)[];
     sunrise: string[];
     sunset: string[];
   };
@@ -72,7 +73,7 @@ async function fetchSnapshot(): Promise<Snapshot> {
     hourly:
       "temperature_2m,precipitation_probability,weather_code,wind_speed_10m,relative_humidity_2m",
     daily:
-      "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset",
+      "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,sunrise,sunset",
   });
 
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
@@ -128,6 +129,7 @@ async function fetchSnapshot(): Promise<Snapshot> {
     condition: conditionFromWmoCode(data.daily.weather_code[i]),
     sunrise: toKstIso(data.daily.sunrise[i]),
     sunset: toKstIso(data.daily.sunset[i]),
+    precipitationAmount: data.daily.precipitation_sum?.[i] ?? null,
   }));
 
   return { current, hourly, daily };
