@@ -60,6 +60,13 @@ export interface DailyForecast {
   condition: WeatherCondition;
   sunrise: string | null;
   sunset: string | null;
+  /**
+   * Forecast daily precipitation total (mm). Optional enrichment populated only
+   * by sources that publish a clean daily amount (Open-Meteo, WeatherAPI); other
+   * sources omit it. Consumed by the offline source-reliability batch
+   * (lib/reliability) as `predicted_mm`; the live /sky scene ignores it.
+   */
+  precipitationAmount?: number | null;
 }
 
 export type ProviderId =

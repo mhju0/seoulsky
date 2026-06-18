@@ -1,0 +1,40 @@
+# Daily precipitation source-reliability batch (Phase 1: log + ground truth + score).
+# Example scheduler for scripts/precip-reliability.ts. Manual-dispatch by default;
+# uncomment the `schedule` block to run daily. See lib/reliability/README.md.
+#
+# NOTE: durable cross-run persistence of the .jsonl outputs (commit-back to a data
+# branch, or object storage) is a deployment choice — the uploaded artifact below
+# does NOT carry state between scheduled runs. Wire that up before enabling daily.
+name: precip-reliability
+
+on:
+  workflow_dispatch: {}
+  # schedule:
+  #   # 21:10 UTC ≈ 06:10 KST — after yesterday's KMA ASOS daily data is published.
+  #   - cron: "10 21 * * *"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Run daily reliability batch
+        env:
+          # All optional. Open-Meteo logs forecasts with no key; others activate
+          # when their secret is set. Ground-truth scoring needs KMA_OBSERVATION_API_KEY.
+          MET_NO_USER_AGENT: ${{ secrets.MET_NO_USER_AGENT }}
+          KMA_SHORT_TERM_API_KEY: ${{ secrets.KMA_SHORT_TERM_API_KEY }}
+          PIRATE_WEATHER_API_KEY: ${{ secrets.PIRATE_WEATHER_API_KEY }}
+          WEATHERAPI_KEY: ${{ secrets.WEATHERAPI_KEY }}
+          KMA_OBSERVATION_API_KEY: ${{ secrets.KMA_OBSERVATION_API_KEY }}
+        run: node scripts/precip-reliability.ts
+      - name: Upload reliability data (example — not durable across runs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reliability-data
+          path: data/reliability/*.jsonl
+          if-no-files-found: ignore

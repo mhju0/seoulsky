@@ -33,6 +33,10 @@
 .DS_Store
 *.pem
 
+# precipitation source-reliability batch outputs (runtime-generated; never commit
+# — no real/fabricated observation data belongs in the repo). Dir kept via .gitkeep.
+/data/reliability/*.jsonl
+
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -51,3 +55,6 @@ yarn-error.log*
 next-env.d.ts
 
 /docs/
+
+# claude
+CLAUDE.md
