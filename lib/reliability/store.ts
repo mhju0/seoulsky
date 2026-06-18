@@ -1,6 +1,6 @@
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { DailySkillRecord, ForecastRecord } from "./types.ts";
+import type { DailySkillRecord, ForecastRecord, WeightsState } from "./types.ts";
 
 /**
  * Append-only JSONL persistence for the reliability batch. Two files:
@@ -15,6 +15,7 @@ import type { DailySkillRecord, ForecastRecord } from "./types.ts";
 
 const FORECAST_LOG = "forecast-log.jsonl";
 const DAILY_SKILL = "daily-skill.jsonl";
+const WEIGHTS_FILE = "source-weights.json";
 
 /** Output directory — overridable so cron/CI can point at durable storage. */
 export function reliabilityDataDir(): string {
@@ -59,6 +60,30 @@ export async function appendForecasts(records: readonly ForecastRecord[]): Promi
 export async function readForecasts(date: string): Promise<ForecastRecord[]> {
   const all = await readJsonl<ForecastRecord>(FORECAST_LOG);
   return all.filter((r) => r.date === date);
+}
+
+/** Every scored daily-skill record (used by the Phase 2 weight updater). */
+export async function readDailySkill(): Promise<DailySkillRecord[]> {
+  return readJsonl<DailySkillRecord>(DAILY_SKILL);
+}
+
+/**
+ * Persisted Hedge weight state, or null when never written. This file is the
+ * algorithm's only memory — it MUST survive across scheduled runs (see README).
+ */
+export async function readWeights(): Promise<WeightsState | null> {
+  try {
+    const text = await readFile(path.join(reliabilityDataDir(), WEIGHTS_FILE), "utf8");
+    return JSON.parse(text) as WeightsState;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeWeights(state: WeightsState): Promise<void> {
+  const dir = reliabilityDataDir();
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, WEIGHTS_FILE), JSON.stringify(state, null, 2) + "\n", "utf8");
 }
 
 /**

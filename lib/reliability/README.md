@@ -4,13 +4,15 @@ Per-source skill scoring for Seoul precipitation forecasts, learned by verifying
 each weather source against independent ground truth. Built in phases so nothing
 touches the live `/sky` render path until the scores are trustworthy.
 
-**Phase 1 (this commit) is offline only — logging, ground-truth fetch, and
-scoring.** No weight is consumed by the runtime pipeline yet, and the `/sky`
-render path is untouched.
+- **Phase 1 — offline scoring** (logging, ground-truth fetch, per-source daily skill).
+- **Phase 2 — stateful weight update** (multiplicative-weights / Hedge; this commit).
+
+Both phases are **offline only**: no weight is consumed by the runtime pipeline,
+and the `/sky` render path and fusion logic are untouched. That is **Phase 3**.
 
 ---
 
-## What Phase 1 does
+## What the daily batch does
 
 A standalone daily batch (`scripts/precip-reliability.ts`, runnable via cron or a
 GitHub Action — never at request time, no runtime AI calls). Each run:
@@ -25,9 +27,12 @@ GitHub Action — never at request time, no runtime AI calls). Each run:
    independent truth and is **never** one of the scored forecast sources, even
    though KMA's *forecast* may be a source.
 3. **Verification + daily skill** — joins yesterday's previously-logged forecasts
-   with the observation and writes one daily skill per source to
-   `daily-skill.jsonl`. Days with a missing forecast or observation are skipped —
-   no value is ever fabricated.
+   with the observation and writes one record per source to `daily-skill.jsonl`
+   (`outcome`, `mae`, the scalar `skill`, and the contingency/CSI breakdown). Days
+   with a missing forecast or observation are skipped — no value is ever fabricated.
+4. **Weight update (Phase 2)** — folds every not-yet-processed scored day into the
+   persisted Hedge weights (`source-weights.json`). Idempotent and offline; see the
+   Phase 2 section below.
 
 The first scores appear once a target day has **both** a prior-logged forecast
 and an observation (≥2 consecutive run days). This warm-up is real, not backfilled.
@@ -44,9 +49,10 @@ For each source on a completed day:
 - **Categorical (rain / no-rain)** via a contingency table. Rain is "measurable"
   precipitation, `≥ RAIN_THRESHOLD_MM` (0.1 mm). A source's predicted-rain uses
   its `predicted_mm` when present, else `pop ≥ POP_RAIN_THRESHOLD` (50%).
-  - `CSI = hits / (hits + misses + false_alarms)` — correct-negatives (dry days)
-    are excluded so dry stretches can't inflate a source's score. A pure
-    correct-negative day produces **no** record (CSI undefined → skipped).
+  - `CSI = hits / (hits + misses + false_alarms)` — the correct-negatives cell
+    (a `correct_dry` day: both forecast and observed dry) is excluded so dry
+    stretches can't inflate a source's score. A pure `correct_dry` day produces
+    **no** record (CSI undefined → skipped).
   - **Asymmetric penalty:** a miss (unforecast rain) is penalized more than a
     false alarm. `categorical_skill`: hit → 1, false alarm → 0.5, miss → 0
     (`MISS_PENALTY` 1.0 vs `FALSE_ALARM_PENALTY` 0.5).
@@ -95,54 +101,90 @@ npm run reliability:daily
   `RELIABILITY_DATA_DIR` to point cron/CI at durable storage.
 
 An example scheduler lives in `.github/workflows/precip-reliability.yml`
-(manual-dispatch by default; uncomment the `schedule` block to run daily). Note
-that durable cross-run persistence of the `.jsonl` files (commit-back to a data
-branch, or object storage) is a deployment choice — artifacts alone don't carry
-state between scheduled runs.
+(manual-dispatch by default; uncomment the `schedule` block to run daily). Durable
+cross-run persistence of the data files — the `.jsonl` logs and especially
+`source-weights.json` (the Hedge state) — is a deployment choice; commit them back
+to a data branch or use object storage. Artifacts alone don't carry state between
+scheduled runs.
 
 ## Files
 
-| File                              | Role                                                      |
-| --------------------------------- | --------------------------------------------------------- |
-| `score.ts` / `score.test.ts`      | Pure verification + skill math (no I/O)                   |
-| `types.ts`                        | Record/score shapes                                       |
-| `constants.ts`                    | `REGION` ("seoul")                                        |
-| `forecastLog.ts`                  | Reads the live provider registry → `ForecastRecord[]`     |
-| `groundTruth.ts`                  | KMA ASOS observed daily precip (independent truth)        |
-| `store.ts`                        | Append-only JSONL persistence (idempotent per date+source)|
-| `scripts/precip-reliability.ts`   | The daily orchestrator                                    |
+| File                              | Role                                                       |
+| --------------------------------- | ---------------------------------------------------------- |
+| `score.ts` / `score.test.ts`      | Pure verification + skill math (no I/O)                    |
+| `weights.ts` / `weights.test.ts`  | Pure Hedge weight updater (Phase 2; no I/O)                |
+| `types.ts`                        | Record/score/weight shapes                                 |
+| `constants.ts`                    | `REGION` ("seoul")                                         |
+| `forecastLog.ts`                  | Reads the live provider registry → `ForecastRecord[]`      |
+| `groundTruth.ts`                  | KMA ASOS observed daily precip (independent truth)         |
+| `store.ts`                        | JSONL logs + `source-weights.json` (idempotent persistence)|
+| `scripts/precip-reliability.ts`   | The daily orchestrator (log → truth → score → weights)     |
 
 Pipeline touch-points (additive, behavior-preserving for `/sky`): an optional
 `precipitationAmount` field on `DailyForecast`, populated by Open-Meteo and
 WeatherAPI; and `.ts` import extensions on the providers + registry so the
 standalone `node` script can load them (matching `kma.ts`'s existing style).
+Phase 2 also extends the scorer's emit with `outcome` + `mae` (already computed
+internally) and keeps the existing scalar `skill` field.
 
 ---
 
-## Phase 2 — EWMA weight update (NOT in this commit)
+## Phase 2 — Hedge weight update (this commit)
 
-Turn the daily skills into a smoothed, bounded per-source weight, still offline.
+Turn the daily skills into a stateful, bounded per-source weight with a fast
+multiplicative-weights (Hedge) updater — **not** the slow EWMA originally sketched
+here. Still offline; nothing is consumed by the runtime.
 
-- Read `daily-skill.jsonl`; per source maintain an exponentially-weighted moving
-  average: `w ← (1 − ALPHA)·w + ALPHA·skill`, **ALPHA ≈ 0.05** (slow, stable).
-- **Clamp each weight to [0.05, 0.60]** — no source is ever fully trusted or fully
-  silenced.
-- **14-day warm-up**: keep weights at a neutral default until a source has ≥14
-  scored days; don't let a handful of early days swing the weights.
-- Write to a **new** weights file (e.g. `weights.json`). Phase 2 still does **not**
-  let the runtime read it.
-- Decide durable persistence for the JSONL/weights across scheduled runs.
-- Optional accuracy work: KMA range-midpoint `predicted_mm`, MET block-summing,
-  threshold/weight calibration, and a note on KMA-forecast-vs-KMA-observation
-  self-correlation.
+Per scored day, per source, a **loss** is derived from the contingency outcome
+(the knob surface — all named, tunable constants in `weights.ts`):
+
+| Outcome (observed vs forecast) | Loss                                                        |
+| ------------------------------ | ----------------------------------------------------------- |
+| `miss` (rain, forecast dry)    | `MISS_LOSS` = 1.0                                            |
+| `false_alarm` (dry, forecast rain) | `FA_LOSS` = 0.6                                          |
+| `hit` (both rain)              | `HIT_BASE_LOSS` (0.1) + `HIT_MAE_WEIGHT` (0.4) · min(1, mae / `MAE_SCALE` (10 mm)), the amount term only when the source supplied an amount |
+| `correct_dry` (both dry)       | **no update** — dry-correct days must not move weights      |
+
+**Update rule:** `weight_i *= exp(−ETA · loss_i)` with **ETA = 0.5** (`DEFAULT_ETA`,
+overridable via `RELIABILITY_ETA`); renormalize to sum 1, hold each in
+**[W_FLOOR = 0.05, W_CAP = 0.60]**, renormalize (iterated to a fixed point so a
+capped weight can't drift back over the cap). Days are applied in **chronological
+order**; cold start is **equal weights** over the existing 5 providers.
+
+**Statefulness — both load-bearing:**
+
+- **Idempotency:** `WeightsState.processedDates` records every applied daily-skill
+  date; re-running never double-applies a day.
+- **Persistence:** state lives in `data/reliability/source-weights.json`
+  (`{ updatedAt, eventsScored, processedDates, weights }`). **This file is the
+  algorithm's only memory and MUST survive across scheduled runs** — commit it back
+  to a data branch, or store it in object storage / a KV store. The Phase 1
+  artifact-upload does **not** carry state between runs; do not assume local disk
+  persists. `eventsScored` is maintained for Phase 3's warm-up gate but nothing is
+  gated on it here.
+
+Unit-tested in `weights.test.ts`: repeated misses monotonically down-weight a
+source (to the floor); a `correct_dry` day is a zero-change no-op; a miss
+down-weights strictly more than a false alarm at equal η; weights always sum to ~1
+and respect the floor/cap; re-applying a date is idempotent.
+
+Possible later accuracy work (not required): KMA range-midpoint `predicted_mm`,
+MET block-summing, η / loss calibration, and a note on KMA-forecast-vs-KMA-
+observation self-correlation.
 
 ## Phase 3 — runtime consumption (NOT in this commit)
 
-Let the fusion layer use the weights, carefully and reversibly.
+Let the fusion layer use the weights, carefully and reversibly. **This is the first
+phase that touches the `/sky` data path / fusion logic** — gate and test before
+enabling.
 
-- `lib/skyFusion.ts` (and/or `/api/sky`) reads `weights.json` to bias precipitation
-  fusion toward historically-reliable sources — behind a flag, defaulting off.
-- Strictly degrade to today's behavior when weights are missing/stale/out of
-  warm-up, so the keyless-first guarantee and the scene's never-break contract hold.
-- This is the first phase that touches the `/sky` data path; gate and test it
-  before enabling.
+- `lib/skyFusion.ts` (and/or `/api/sky`) reads `source-weights.json` to bias
+  precipitation fusion toward historically-reliable sources — behind a flag,
+  defaulting off.
+- **Warm-up gate:** only consume the learned weights once there is enough signal —
+  e.g. require `eventsScored ≥ 5` informative events; below that, fall back to an
+  equal blend. (Warm-up is deliberately a Phase 3 concern — Phase 2 just maintains
+  the counter.)
+- Strictly degrade to today's behavior when the weights file is missing, stale, or
+  pre-warm-up, so the keyless-first guarantee and the scene's never-break contract
+  hold.
