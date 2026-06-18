@@ -1,5 +1,5 @@
-import { cachedFetch } from "../cache";
-import { CACHE_TTL_MS, SEOUL } from "../seoul";
+import { cachedFetch } from "../cache.ts";
+import { CACHE_TTL_MS, SEOUL } from "../seoul.ts";
 import type {
   CurrentWeather,
   DailyForecast,
@@ -144,6 +144,8 @@ interface WaDay {
   maxtemp_c: number;
   mintemp_c: number;
   daily_chance_of_rain: number;
+  /** Daily precipitation total (mm) — returned by default in the day object. */
+  totalprecip_mm?: number;
   condition: WaCondition;
 }
 
@@ -221,6 +223,7 @@ async function fetchSnapshot(): Promise<Snapshot> {
       condition: conditionFromCode(d.day.condition.code),
       sunrise: astroToKstIso(d.date, d.astro.sunrise),
       sunset: astroToKstIso(d.date, d.astro.sunset),
+      precipitationAmount: d.day.totalprecip_mm ?? null,
     }),
   );
 

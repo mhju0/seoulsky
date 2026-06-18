@@ -60,6 +60,13 @@ export interface DailyForecast {
   condition: WeatherCondition;
   sunrise: string | null;
   sunset: string | null;
+  /**
+   * Forecast daily precipitation total (mm). Optional enrichment populated only
+   * by sources that publish a clean daily amount (Open-Meteo, WeatherAPI); other
+   * sources omit it. Consumed by the offline source-reliability batch
+   * (lib/reliability) as `predicted_mm`; the live /sky scene ignores it.
+   */
+  precipitationAmount?: number | null;
 }
 
 export type ProviderId =
@@ -311,4 +318,20 @@ export interface SkySnapshot {
   observationSource: ProviderId;
   /** Every source that contributed to this snapshot, for provenance. */
   sources: ProviderId[];
+  /**
+   * Debug-only (server-gated behind RELIABILITY_DEBUG): how the learned precip
+   * weights were applied this cycle. Absent in production, so the public payload is
+   * unchanged. Not consumed by any render component.
+   */
+  precipWeighting?: {
+    mode: "equal-fallback" | "ramping" | "learned";
+    reason: string;
+    confidence: number;
+    /** Phase 4: true when the multi-source consensus path ran (flag on + ≥1 source). */
+    multiSource: boolean;
+    /** Sources that contributed this cycle (returned-only under the flag). */
+    sources: ProviderId[];
+    /** Effective per-source weights after availability renormalization (sums to 1). */
+    weights: Record<string, number>;
+  };
 }
