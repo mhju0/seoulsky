@@ -12,7 +12,7 @@ import { LiveBadge, SkySection } from "./SectionParts";
  * Section 1 — Arrival. The hero: the live Seoul temperature set large straight over
  * the live view, the city, the condition (Korean), one deterministic Korean poetic line,
  * a pulsing LIVE dot, and the current Seoul time. Big and unhurried — it owns the
- * first viewport over the shuffling view.
+ * first viewport over the live scene.
  */
 
 const KST = "Asia/Seoul";

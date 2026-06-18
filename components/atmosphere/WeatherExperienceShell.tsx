@@ -75,7 +75,7 @@ function applyReviewCond(snapshot: SkySnapshot | null, cond?: WeatherCondition):
 
 /**
  * The single page shell for the weather experience at /sky. It owns one live
- * data source and ONE persistent {@link SceneStage} (the shuffling video gallery,
+ * data source and ONE persistent {@link SceneStage} (the still landmark plate,
  * live FX, and the procedural atmospheric-field fallback). Both are created once
  * in the /sky layout and never remount, because the
  * experience is a single non-navigating scroll. The readable foreground (the
@@ -150,10 +150,10 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  // Keep reduced-motion live: a DevTools/OS toggle re-gates the shuffle, FX,
-  // parallax and sheen without a reload, since every consumer reacts to the
-  // prop (VideoGallery rebuilds its controller, SceneStage drops the FX layer,
-  // the sheen listener detaches). Pointer parallax follows the same gate.
+  // Keep reduced-motion live: a DevTools/OS toggle re-gates the FX, parallax
+  // and sheen without a reload, since every consumer reacts to the prop
+  // (SceneStage drops the FX layer, the sheen listener detaches). Pointer
+  // parallax follows the same gate.
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");

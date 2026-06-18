@@ -5,7 +5,7 @@ import { useSkyImage } from "./SkyImageContext";
 
 /**
  * The still "atmospheric color field" — layer (b) of the /sky scene, in place of
- * the old shuffling video gallery. It renders the single selected landmark plate
+ * the video gallery. It renders the single selected landmark plate
  * full-bleed (`object-fit: cover`) and cross-dissolves (~700ms) whenever the
  * condition or time-anchor changes the plate. There is no video machinery: a
  * still needs no buffering, no decode pipeline, no playback rate — just two

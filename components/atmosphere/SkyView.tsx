@@ -14,7 +14,7 @@ import { useWeatherField, useWeatherView } from "./WeatherFieldContext";
  * views share the viewport (desktop only): D toggles between them, Esc returns to
  * the hero — the state lives in {@link WeatherExperienceShell}.
  *
- *   • Hero — the full-screen live view (the shuffling video gallery on the fixed
+ *   • Hero — the full-screen live view (the still landmark plate on the fixed
  *     SceneStage below) with the de-glassed Arrival readout floating over it and a
  *     subtle "press D" hint. No scroll.
  *   • Data — the rest of the dashboard (instruments → forecast → sun & sky → ground station)
