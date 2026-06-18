@@ -4,11 +4,15 @@ Per-source skill scoring for Seoul precipitation forecasts, learned by verifying
 each weather source against independent ground truth. Built in phases so nothing
 touches the live `/sky` render path until the scores are trustworthy.
 
-- **Phase 1 — offline scoring** (logging, ground-truth fetch, per-source daily skill).
-- **Phase 2 — stateful weight update** (multiplicative-weights / Hedge; this commit).
+- **Phase 1 — offline scoring** (logging, ground-truth fetch, per-source daily skill). ✅
+- **Phase 2 — stateful weight update** (multiplicative-weights / Hedge). ✅
+- **Phase 3 — gated runtime consumption** in the precip fusion (this commit). ✅
 
-Both phases are **offline only**: no weight is consumed by the runtime pipeline,
-and the `/sky` render path and fusion logic are untouched. That is **Phase 3**.
+Phases 1–2 are offline only. Phase 3 consumes the weights in the `/sky` data path
+but is **gated**: until the weights warm up it degrades to the **exact** pre-Phase-3
+behavior. The live scene therefore stays in equal-fallback (byte-for-byte unchanged)
+until `KMA_OBSERVATION_API_KEY` is active and ≥ `WARMUP_EVENTS` (5) informative
+events accumulate.
 
 ---
 
@@ -109,23 +113,26 @@ scheduled runs.
 
 ## Files
 
-| File                              | Role                                                       |
-| --------------------------------- | ---------------------------------------------------------- |
-| `score.ts` / `score.test.ts`      | Pure verification + skill math (no I/O)                    |
-| `weights.ts` / `weights.test.ts`  | Pure Hedge weight updater (Phase 2; no I/O)                |
-| `types.ts`                        | Record/score/weight shapes                                 |
-| `constants.ts`                    | `REGION` ("seoul")                                         |
-| `forecastLog.ts`                  | Reads the live provider registry → `ForecastRecord[]`      |
-| `groundTruth.ts`                  | KMA ASOS observed daily precip (independent truth)         |
-| `store.ts`                        | JSONL logs + `source-weights.json` (idempotent persistence)|
-| `scripts/precip-reliability.ts`   | The daily orchestrator (log → truth → score → weights)     |
+| File                                            | Role                                                        |
+| ----------------------------------------------- | ----------------------------------------------------------- |
+| `score.ts` / `score.test.ts`                    | Pure verification + skill math (no I/O)                     |
+| `weights.ts` / `weights.test.ts`                | Pure Hedge weight updater (Phase 2; no I/O)                 |
+| `runtimeWeights.ts` / `runtimeWeights.test.ts`  | Pure Phase 3 gate + confidence ramp + effective weights     |
+| `runtimeWeightsSource.ts`                       | Memoized, never-throwing server read of `source-weights.json` |
+| `types.ts`                                      | Record/score/weight shapes                                  |
+| `constants.ts`                                  | `REGION` ("seoul")                                          |
+| `forecastLog.ts`                                | Reads the live provider registry → `ForecastRecord[]`       |
+| `groundTruth.ts`                                | KMA ASOS observed daily precip (independent truth)          |
+| `store.ts`                                      | JSONL logs + `source-weights.json` (idempotent persistence) |
+| `scripts/precip-reliability.ts`                 | The daily orchestrator (log → truth → score → weights)      |
 
 Pipeline touch-points (additive, behavior-preserving for `/sky`): an optional
 `precipitationAmount` field on `DailyForecast`, populated by Open-Meteo and
-WeatherAPI; and `.ts` import extensions on the providers + registry so the
-standalone `node` script can load them (matching `kma.ts`'s existing style).
-Phase 2 also extends the scorer's emit with `outcome` + `mae` (already computed
-internally) and keeps the existing scalar `skill` field.
+WeatherAPI; `.ts` import extensions on the providers + registry so the standalone
+`node` script can load them (matching `kma.ts`'s existing style); the scorer's
+emit gained `outcome` + `mae` (Phase 2); and Phase 3 added `fuseWeightedPrecip` /
+`reweightForecastPrecip` to `lib/skyFusion.ts`, an optional debug-only
+`precipWeighting` field on `SkySnapshot`, and the gated read in `app/api/sky/route.ts`.
 
 ---
 
@@ -172,19 +179,48 @@ Possible later accuracy work (not required): KMA range-midpoint `predicted_mm`,
 MET block-summing, η / loss calibration, and a note on KMA-forecast-vs-KMA-
 observation self-correlation.
 
-## Phase 3 — runtime consumption (NOT in this commit)
+## Phase 3 — gated runtime consumption (this commit)
 
-Let the fusion layer use the weights, carefully and reversibly. **This is the first
-phase that touches the `/sky` data path / fusion logic** — gate and test before
-enabling.
+The fusion layer now consumes the learned weights — **precipitation fields ONLY**
+(POP / predicted_mm), gated so that a missing/cold weights file leaves the live
+scene byte-for-byte unchanged. The #1 contract is behavior preservation when the
+gate is not met (the normal state today).
 
-- `lib/skyFusion.ts` (and/or `/api/sky`) reads `source-weights.json` to bias
-  precipitation fusion toward historically-reliable sources — behind a flag,
-  defaulting off.
-- **Warm-up gate:** only consume the learned weights once there is enough signal —
-  e.g. require `eventsScored ≥ 5` informative events; below that, fall back to an
-  equal blend. (Warm-up is deliberately a Phase 3 concern — Phase 2 just maintains
-  the counter.)
-- Strictly degrade to today's behavior when the weights file is missing, stale, or
-  pre-warm-up, so the keyless-first guarantee and the scene's never-break contract
-  hold.
+**Where & how (minimal, additive):**
+
+- `lib/reliability/runtimeWeightsSource.ts` reads `source-weights.json`
+  **server-side at the fusion layer**, memoized via the shared TTL cache (read ≤
+  once per `CACHE_TTL_MS`, never per render/frame), and **never throws** into the
+  render path (returns null on a missing/unparseable file).
+- `lib/reliability/runtimeWeights.ts` (pure) gates it. Config block:
+  `STALE_DAYS` 7, `WARMUP_EVENTS` 5, `FULL_CONFIDENCE_EVENTS` 20.
+- `lib/skyFusion.ts` `fuseWeightedPrecip` / `reweightForecastPrecip` apply the
+  effective weights to the forecast POP / predicted_mm. Temperature and every
+  non-precip field are fused exactly as before, and `chooseCurrent` (the
+  observation-based CURRENT conditions) is intentionally **not** weighted — the
+  learned weights rank FORECAST skill, not the KMA observation (ground truth).
+- `app/api/sky/route.ts` wires it in. The live scene supplies a single forecast
+  source (Open-Meteo), so the weighted consensus is the **identity** today; it only
+  begins to blend once multiple forecast sources feed the fusion.
+
+**Degrade-to-equal (the rock-solid default)** — effective weights become EQUAL
+(⇒ byte-for-byte pre-Phase-3 output) whenever:
+
+- the weights file is missing or unparseable,
+- it is stale (`updatedAt` older than `STALE_DAYS`) — cron presumed dead, or
+- it is pre-warm-up (`eventsScored < WARMUP_EVENTS`).
+
+**Confidence ramp** (no visible pop when crossing the threshold — condition flips
+the landmark visuals): `confidence = clamp01((eventsScored − WARMUP_EVENTS) /
+(FULL_CONFIDENCE_EVENTS − WARMUP_EVENTS))`, and
+`effective = lerp(equalWeights, learnedWeights, confidence)`. Below `WARMUP_EVENTS`
+→ pure equal; at/above `FULL_CONFIDENCE_EVENTS` → fully learned.
+
+**Observability (debug only):** with `RELIABILITY_DEBUG=1` the `/api/sky` payload
+carries `precipWeighting: { mode, reason, confidence }`
+(`'equal-fallback' | 'ramping' | 'learned'`). Off in production, so the public
+payload is unchanged. No UI / render component is touched.
+
+**Live status:** with no `source-weights.json` present (today's real state), the gate
+is `equal-fallback` / `no-weights-file` and the fused forecast is identical to
+pre-Phase-3 — verified by unit tests and an `/api/sky` smoke test.
