@@ -51,7 +51,7 @@ export function classifyOutcome(pred: boolean, obs: boolean): RainOutcome {
   if (pred && obs) return "hit";
   if (!pred && obs) return "miss";
   if (pred && !obs) return "false_alarm";
-  return "correct_negative";
+  return "correct_dry";
 }
 
 export function contingencyOf(outcome: RainOutcome): Contingency {
@@ -59,7 +59,8 @@ export function contingencyOf(outcome: RainOutcome): Contingency {
     hits: outcome === "hit" ? 1 : 0,
     misses: outcome === "miss" ? 1 : 0,
     false_alarms: outcome === "false_alarm" ? 1 : 0,
-    correct_negatives: outcome === "correct_negative" ? 1 : 0,
+    // textbook "correct negative" cell ↔ the correct_dry outcome
+    correct_negatives: outcome === "correct_dry" ? 1 : 0,
   };
 }
 
@@ -77,7 +78,7 @@ export function criticalSuccessIndex(c: Contingency): number | null {
 /**
  * Categorical skill in [0,1] — CSI re-graded with an ASYMMETRIC penalty so a
  * miss (dangerous: unforecast rain) costs more than a false alarm. Returns null
- * for a correct-negative (excluded, like CSI's denominator).
+ * for a correct-dry day (excluded, like CSI's denominator).
  */
 export function categoricalSkill(outcome: RainOutcome): number | null {
   switch (outcome) {
@@ -87,7 +88,7 @@ export function categoricalSkill(outcome: RainOutcome): number | null {
       return clamp01(1 - FALSE_ALARM_PENALTY);
     case "miss":
       return clamp01(1 - MISS_PENALTY);
-    case "correct_negative":
+    case "correct_dry":
       return null;
   }
 }
@@ -124,7 +125,7 @@ export function combineDailySkill(
 /**
  * Full per-source daily score, or null when the day must be skipped:
  *  • the source gave no usable forecast signal (no amount and no POP), or
- *  • the day was a correct-negative (both dry → no precipitation skill to learn).
+ *  • the day was a correct-dry day (both dry → no precipitation skill to learn).
  */
 export function scoreSourceDay(input: {
   pop: number | null;
@@ -140,7 +141,11 @@ export function scoreSourceDay(input: {
   const cat = categoricalSkill(outcome);
   const quant = quantitativeSkill(input.predicted_mm, input.observed_mm, obs);
   const skill = combineDailySkill(cat, quant);
-  if (skill === null) return null; // correct-negative → nothing to record
+  if (skill === null) return null; // correct-dry → nothing to record
+
+  // Raw amount error, carried for the Phase 2 hit-loss term; null when the
+  // source supplied no amount (independent of the rain/no-rain outcome).
+  const mae = input.predicted_mm === null ? null : Math.abs(input.predicted_mm - input.observed_mm);
 
   return {
     predicted_rain: pred,
@@ -149,9 +154,10 @@ export function scoreSourceDay(input: {
     contingency,
     csi: criticalSuccessIndex(contingency),
     // cat is non-null here: skill === null already returned for the only
-    // outcome (correct_negative) where categoricalSkill is null.
+    // outcome (correct_dry) where categoricalSkill is null.
     categorical_skill: cat ?? 0,
     quantitative_skill: quant,
+    mae,
     skill,
   };
 }
