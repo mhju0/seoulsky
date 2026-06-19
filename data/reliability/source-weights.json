@@ -1,12 +1,14 @@
 {
-  "updatedAt": "2026-06-18T08:34:17.629Z",
-  "eventsScored": 0,
-  "processedDates": [],
+  "updatedAt": "2026-06-19T22:11:37.197Z",
+  "eventsScored": 4,
+  "processedDates": [
+    "2026-06-19"
+  ],
   "weights": {
-    "open-meteo": 0.2,
-    "met-norway": 0.2,
-    "kma": 0.2,
-    "pirate-weather": 0.2,
-    "weather-api": 0.2
+    "open-meteo": 0.18692082089790618,
+    "met-norway": 0.2523167164083753,
+    "kma": 0.18692082089790618,
+    "pirate-weather": 0.18692082089790618,
+    "weather-api": 0.18692082089790618
   }
 }
