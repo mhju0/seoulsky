@@ -21,8 +21,9 @@ import { SectionHeading, SkySection } from "./SectionParts";
  *
  * PERF: the heavier /api/weather intelligence fetch is deferred until this final
  * section is approaching (useInView, ~400px early) and refreshed every 5 min; the
- * shared sky snapshot (bands above) is never re-fetched. The Recharts wind chart
- * now lives in Section 4 (Sun & Sky), so nothing heavy mounts here beyond this fetch.
+ * shared sky snapshot (bands above) is never re-fetched. The former Sun & Sky
+ * section (celestial dial + Recharts wind chart) has been removed, so nothing
+ * heavy mounts here beyond this fetch.
  * The scroll ends here — no footer bar, no nav; the data-source attribution is a
  * quiet line inside the deck.
  */
@@ -60,8 +61,8 @@ function DeckPanel({
     <ScrollReveal delay={delay} amount={0.12}>
       <GlassPanel className="px-5 py-6 sm:px-7 sm:py-7">
         <div className="mb-7 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <MetricLabel tone="muted">{label}</MetricLabel>
-          {sub && <span className="font-mono text-[10px] tracking-[0.2em] text-white/45">{sub}</span>}
+          <MetricLabel tone="bright">{label}</MetricLabel>
+          {sub && <span className="font-mono text-[10px] tracking-[0.2em] text-white">{sub}</span>}
         </div>
         {children}
       </GlassPanel>
@@ -127,25 +128,25 @@ export default function GroundStationSection() {
           <GlassPanel className="px-5 py-6 sm:px-7 sm:py-7">
             <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
               <div>
-                <MetricLabel tone="muted">서울 기상 인텔리전스</MetricLabel>
-                <p className="mt-2 font-sans text-[clamp(1.4rem,3.4vw,2rem)] font-light text-white/95">
+                <MetricLabel tone="bright">서울 기상 인텔리전스</MetricLabel>
+                <p className="mt-2 font-sans text-[clamp(1.4rem,3.4vw,2rem)] font-light text-white">
                   교차 검증 데이터 덱
                 </p>
-                <p className="mt-1 font-mono text-xs tracking-[0.12em] text-white/55">
+                <p className="mt-1 font-mono text-xs tracking-[0.12em] text-white">
                   {clock ? formatHeaderDate(clock) : " "} · 대한민국 서울
                 </p>
               </div>
               <div className="flex items-center gap-5">
                 <div className="text-right">
-                  <p className="font-sans text-2xl font-light tabular-nums text-white/95">
+                  <p className="font-sans text-2xl font-light tabular-nums text-white">
                     {clock ? formatClock(clock) : "--:--:--"}
                   </p>
-                  <p className="mt-0.5 font-mono text-[10px] tracking-[0.3em] text-white/50">SEOUL · KST</p>
+                  <p className="mt-0.5 font-mono text-[10px] tracking-[0.3em] text-white">SEOUL · KST</p>
                 </div>
                 <button
                   onClick={load}
                   disabled={refreshing}
-                  className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/55 transition hover:text-white/90 disabled:opacity-50"
+                  className="font-mono text-[11px] uppercase tracking-[0.2em] text-white transition hover:text-white/80 disabled:opacity-50"
                 >
                   {refreshing ? "동기화 중" : "↻ 새로고침"}
                 </button>
@@ -163,7 +164,7 @@ export default function GroundStationSection() {
                 {data.providers.map((p) => (
                   <span key={p.id} className="flex items-center gap-1.5">
                     <span className={`h-1.5 w-1.5 rounded-full ${DOT[p.status.availability]}`} />
-                    <span className="font-mono text-[10px] tracking-[0.14em] text-white/65">{p.status.name}</span>
+                    <span className="font-mono text-[10px] tracking-[0.14em] text-white">{p.status.name}</span>
                   </span>
                 ))}
               </div>
@@ -172,7 +173,7 @@ export default function GroundStationSection() {
         </ScrollReveal>
 
         {!near && (
-          <p className="py-6 font-mono text-[11px] uppercase tracking-[0.25em] text-white/40">
+          <p className="py-6 font-mono text-[11px] uppercase tracking-[0.25em] text-white">
             ↓ 지상 관측소 데이터를 불러옵니다
           </p>
         )}
@@ -180,7 +181,7 @@ export default function GroundStationSection() {
         {near && !data && !failed && (
           <div className="flex items-center gap-3 py-6">
             <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white/70" />
-            <span className="font-mono text-xs uppercase tracking-[0.25em] text-white/60">
+            <span className="font-mono text-xs uppercase tracking-[0.25em] text-white">
               교차 검증 데이터 수신 중
             </span>
           </div>
@@ -188,13 +189,13 @@ export default function GroundStationSection() {
 
         {!data && failed && (
           <GlassPanel className="px-5 py-6 sm:px-7 sm:py-7">
-            <p className="font-sans text-lg font-light text-white/95">데이터 수신 실패</p>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-white/60">
+            <p className="font-sans text-lg font-light text-white">데이터 수신 실패</p>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-white">
               기상 소스에 연결할 수 없습니다. 네트워크 상태를 확인한 뒤 다시 시도하세요.
             </p>
             <button
               onClick={load}
-              className="mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-white/80 transition hover:text-white"
+              className="mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-white transition hover:text-white/80"
             >
               ↻ 다시 시도
             </button>
@@ -236,17 +237,17 @@ export default function GroundStationSection() {
                     {data.environment.statuses.map((s) => (
                       <span key={s.id} className="flex items-center gap-1.5">
                         <span className={`h-1.5 w-1.5 rounded-full ${DOT[s.availability]}`} />
-                        <span className="font-mono text-[11px] tracking-[0.12em] text-white/75">{s.name}</span>
+                        <span className="font-mono text-[11px] tracking-[0.12em] text-white">{s.name}</span>
                       </span>
                     ))}
                   </div>
                 )}
                 <div className="flex flex-col gap-2">
-                  <MetricLabel>Radar Approach · 레이더 접근</MetricLabel>
-                  <p className="font-sans text-lg font-light tracking-wide text-white/95">
+                  <MetricLabel tone="bright">Radar Approach · 레이더 접근</MetricLabel>
+                  <p className="font-sans text-lg font-light tracking-wide text-white">
                     {radarSummary(snapshot?.radar)}
                   </p>
-                  <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/50">© RainViewer</span>
+                  <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white">© RainViewer</span>
                 </div>
               </div>
             </DeckPanel>
@@ -256,9 +257,9 @@ export default function GroundStationSection() {
             </DeckPanel>
 
             {/* Quiet data-source attribution — a line inside the deck, not a footer. */}
-            <p className="px-1 pt-2 text-center font-mono text-[11px] leading-relaxed tracking-[0.1em] text-white/45">
+            <p className="px-1 pt-2 text-center font-mono text-[11px] leading-relaxed tracking-[0.1em] text-white">
               SeoulSky — 서울 전용 기상 커맨드 센터 · 데이터: Open-Meteo · MET Norway
-              {" / "}선택: 기상청(KMA) · Pirate Weather · WeatherAPI · 대기질: AirKorea · 레이더: RainViewer — 비공식 개인 프로젝트
+              {" / "}선택: 기상청(KMA) · Pirate Weather · WeatherAPI · 대기질: AirKorea · 레이더: 기상청(KMA) · 레이더 접근: RainViewer — 비공식 개인 프로젝트
             </p>
           </>
         )}

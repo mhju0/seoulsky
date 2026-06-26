@@ -16,22 +16,57 @@ body {
   font-feature-settings: "tnum";
 }
 
-/* ---------- readable panel (matte, day/night-aware) ----------
+/* ---------- readable panel (frosted glass, day/night-aware) ----------
 
-   The one surface behind every HUD reading. Opaque, so text stays legible over
-   any clip or gradient — no backdrop blur, no sheen, deliberately matte. Its
-   fill, hairline border, soft shadow and base ink all come from the
-   `--sky-panel-*` / `--color-white` variables that buildSkyPalette() writes on
-   `.sky-foreground`: a cream surface with deep-navy ink by day, a surface lifted
-   from the navy ground with cream ink at night. (Vars carry safe night-state
-   fallbacks for the brief moment before the palette mounts.) */
+   The one surface behind every HUD reading — an iOS-26 "Liquid Glass" panel. It
+   is barely tinted so the cinematic Han River shows clearly through; legibility
+   comes from a luminous specular EDGE (a bright rim + a crisp top inner highlight
+   + a faint bottom inner light + a soft drop shadow) and an INK that FLIPS with
+   the backdrop brightness, not from opacity. Its tint, rim, shadow, radius and
+   ink all come from the `--sky-panel-*` variables that buildSkyPalette() writes
+   on `.sky-foreground`: a light tint + dark ink over a bright sky (snow/daylight),
+   a dark smoky tint + near-white ink over a dark sky (rain/night). (Vars carry
+   safe dark-state fallbacks for the brief moment before the palette mounts.)
+
+   `--color-white` is re-scoped to `--sky-panel-ink` here, so every `text-white/*`,
+   `bg-white/*` and `currentColor` element inside a panel (the WIND arrow, weather
+   glyphs, dividers, ticks, hi/lo temps) follows the panel ink and never vanishes —
+   while the over-scene `--color-white` (hero + section headings) is left untouched.
+
+   The capsule radius is the `--sky-panel-radius` token, set in @layer components
+   below so a per-card `rounded-[…]` utility (GlassPanel's `radius` prop) wins. */
 
 .sky-panel {
   position: relative;
-  background-color: var(--sky-panel-bg, rgb(28, 38, 74));
+  /* Re-scope the in-panel ink (see above). */
+  --color-white: var(--sky-panel-ink, rgb(248, 250, 255));
+  background-color: var(--sky-panel-bg, rgba(12, 16, 30, 0.26));
+  /* Soft top sheen — complements the crisp 1px inner highlight in the shadow. */
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.10) 0%,
+    transparent 40%
+  );
   color: var(--color-white);
-  border: 1px solid var(--sky-panel-border, rgba(175, 210, 250, 0.12));
-  box-shadow: var(--sky-panel-shadow, 0 18px 44px -22px rgba(0, 0, 0, 0.6));
+  border: 1px solid var(--sky-panel-border, rgba(255, 255, 255, 0.22));
+  box-shadow: var(
+    --sky-panel-shadow,
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 22px 52px -24px rgba(0, 0, 0, 0.62)
+  );
+  /* More see-through than frosted: a moderate blur with a saturation + brightness
+     lift so the glass reads as luminous and liquid, not a flat pane of frost. */
+  backdrop-filter: blur(22px) saturate(175%) brightness(1.05);
+  -webkit-backdrop-filter: blur(22px) saturate(175%) brightness(1.05);
+}
+
+@layer components {
+  /* Default capsule rounding. In @layer components so GlassPanel's `radius`
+     prop (a Tailwind utility, in the later @layer utilities) overrides it. */
+  .sky-panel {
+    border-radius: var(--sky-panel-radius, 22px);
+  }
 }
 
 /* ---------- the two view layers (hero ↔ data, D-toggle) ----------
@@ -46,9 +81,11 @@ body {
 .sky-data-layer {
   position: fixed;
   inset: 0;
-  transition:
-    opacity 500ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  /* Pure cross-fade — NO transform. The D-toggle blurs the SAME co-registered
+     scene in place (the data backdrop is the hero plate at identical geometry,
+     only blurred), so there is no slide/zoom — just one layer fading over the
+     other. */
+  transition: opacity 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sky-hero-layer {
@@ -59,18 +96,15 @@ body {
   z-index: 30;
 }
 
-/* Inactive: the live view recedes (a hair of zoom + fade); the dashboard waits
-   just below the fold, ready to rise. `inert` already removes them from
+/* Inactive: the layer simply fades out in place. `inert` already removes it from
    interaction, but pointer-events keeps the fading layer click-through too. */
 .sky-hero-layer:not(.is-active) {
   opacity: 0;
-  transform: scale(1.04);
   pointer-events: none;
 }
 
 .sky-data-layer:not(.is-active) {
   opacity: 0;
-  transform: translateY(2.5rem);
   pointer-events: none;
 }
 
@@ -92,6 +126,14 @@ body {
   inset: 0;
   overflow: hidden;
   isolation: isolate; /* keep the grain's blend-mode local to this layer */
+
+  /* The SINGLE blur knob for the data-view cityscape backdrop (.sky-data-plate).
+     iOS-26 "Liquid Glass" keeps the background photo crisp — the frost lives in
+     the cards' own backdrop-filter, not the wallpaper — so this is kept LOW
+     (the Han River landmark stays clearly recognizable behind the deck). Raise it
+     only if a busy plate ever fights the bare section labels for legibility; the
+     .sky-panel cards already blur their own backdrop regardless of this value. */
+  --sky-data-blur: 6px;
 }
 
 /* Solid base layer — the sky ground tone. */
@@ -329,39 +371,46 @@ body {
 /* ---------- data-view backdrop: the same plate, defocused + veiled ----------
    On the D (data) view the live condition plate is reused as a single fixed,
    full-page layer behind the ENTIRE scroll (it lives in .sky-data-bg, a sibling
-   of the scroller, so it never scrolls). Heavily blurred + slightly desaturated;
-   the day/night DARKENING itself is the scrim below, not a fixed brightness, so
-   contrast tracks the sky. Static — no animation, no per-frame state. */
+   of the scroller, so it never scrolls). It is CO-REGISTERED with the hero plate
+   (ImageField): identical `inset: 0`, `background-size: cover`, centred position,
+   and the SAME `scene-pushin` Ken Burns (added as a class in JSX) — so the scene
+   is pixel-aligned across the hero↔data toggle and the ONLY difference is the
+   blur (the --sky-data-blur knob). The push-in's ≥2% over-scan also keeps the
+   light blur from ever revealing a soft edge, so no bleed inset is needed. The
+   day/night DARKENING itself is the scrim below, not a fixed brightness, so
+   contrast tracks the sky. */
 .sky-data-plate {
   position: absolute;
-  inset: -5%; /* extra bleed so the heavier blur never reveals a soft edge */
+  inset: 0; /* matches the hero ImageField layer exactly — co-registered */
   background-size: cover; /* object-fit: cover, behind every section + card */
   background-position: center;
-  filter: blur(56px) brightness(0.88) saturate(0.82);
-  transform: scale(1.08);
+  filter: blur(var(--sky-data-blur, 6px)) brightness(0.85) saturate(0.92);
 }
 
 /* Day/night-aware veil over the blurred plate. Tinted from the SAME
    `--sky-bg-base` the palette computes (light cream by day, deep navy at night),
-   so it LIGHTENS the plate by day and DARKENS it at night — keeping the bare
-   section labels (02 INSTRUMENTS, 신뢰도 분석, the attribution line), which the
-   palette flips navy↔cream with the sky, clearly legible in either, while the
-   blurred plate still reads through around the matte cards. A top-down ramp
-   leaves the plate most present up top and veils the dense lower sections. */
+   so it LIGHTENS the plate by day and DARKENS it at night. With liquid-glass
+   cards the point is the cards floating OVER the river, so this is dialled way
+   down from its old strength — the blurred Han River now reads clearly behind the
+   deck. `--sky-data-veil` is the single master knob (0 = bare river … ~64 = old
+   heavy wash); the per-stop multipliers keep the top-light → bottom-heavier ramp.
+   Raise it if the bare section labels (02 INSTRUMENTS, 신뢰도 분석, attribution)
+   ever lose contrast over a busy plate. */
 .sky-data-scrim {
+  --sky-data-veil: 26;
   position: absolute;
   inset: 0;
   background:
     linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--sky-bg-base, #0c1226) 50%, transparent) 0%,
-      color-mix(in srgb, var(--sky-bg-base, #0c1226) 64%, transparent) 55%,
-      color-mix(in srgb, var(--sky-bg-base, #0c1226) 74%, transparent) 100%
+      color-mix(in srgb, var(--sky-bg-base, #0c1226) calc(var(--sky-data-veil) * 0.8%), transparent) 0%,
+      color-mix(in srgb, var(--sky-bg-base, #0c1226) calc(var(--sky-data-veil) * 1%), transparent) 55%,
+      color-mix(in srgb, var(--sky-bg-base, #0c1226) calc(var(--sky-data-veil) * 1.2%), transparent) 100%
     ),
     radial-gradient(
       130% 100% at 50% -5%,
       transparent 35%,
-      color-mix(in srgb, var(--sky-bg-base, #0c1226) 30%, transparent) 100%
+      color-mix(in srgb, var(--sky-bg-base, #0c1226) calc(var(--sky-data-veil) * 0.5%), transparent) 100%
     );
 }
 
@@ -423,7 +472,7 @@ body {
 /* ---------- wind bearing arrow idle sway ----------
 
    Uses the standalone `rotate` CSS property (CSS Transforms Level 2), which
-   composes with Framer Motion's `transform: rotate()` on the parent div without
+   composes with the parent wrapper's `transform: rotate(bearing)` without
    conflict — they apply to different elements with different CSS properties.
    Tunables: ±2deg sway angle, 4s period, 1.2s initial delay (settle time). */
 @keyframes wind-sway {
@@ -461,6 +510,16 @@ body {
   /* Give grain a fixed, readable opacity instead of animating it. */
   .sky-grain {
     opacity: 0.05;
+  }
+
+  /* scene-pushin's ≥2% over-scan keeps the blur rim outside the viewport in the
+     animated path. With animation killed, restore it statically on both the hero
+     plate (ImageField's .sky-image-layer, which already has scene-pushin gated
+     out in JSX under reduced motion) and the data plate so they stay at identical
+     geometry — co-registered at scale(1.02) in both views. */
+  .sky-image-layer,
+  .sky-data-plate {
+    transform: scale(1.02);
   }
 
   /* View toggle: a simple fade, no transform. */

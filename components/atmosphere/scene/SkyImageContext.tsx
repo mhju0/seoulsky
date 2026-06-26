@@ -1,13 +1,16 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { buildImageGrade, type ImageGrade } from "@/lib/cinematic/skyPalette";
 import {
+  normalizeSrcs,
   pickImageAnchor,
+  pickVariantIndex,
   selectSkyImage,
   type ImageAnchor,
   type SkyImageManifest,
 } from "@/lib/cinematic/skyImageField";
+import { getSeoulParts } from "@/lib/cinematic/seoulTime";
 import { useWeatherField } from "../WeatherFieldContext";
 
 /**
@@ -49,6 +52,10 @@ export function SkyImageProvider({ children }: { children: ReactNode }) {
   // half-loaded image, and a missing plate cleanly resolves to the field).
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
 
+  // Computed once at manifest-load time; 0 is a safe "not yet set" sentinel
+  // since real Seoul dates yield values ≥ 20000101.
+  const daySeedRef = useRef(0);
+
   // Read the still-image manifest once (a static public asset). On failure the
   // provider serves `null` forever → the procedural CSS field stays the scene.
   useEffect(() => {
@@ -56,7 +63,15 @@ export function SkyImageProvider({ children }: { children: ReactNode }) {
     fetch("/sky/manifest.json")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data: SkyImageManifest) => {
-        if (alive && Array.isArray(data?.images)) setManifest(data);
+        if (alive && Array.isArray(data?.images)) {
+          // Compute the Seoul calendar date once, locked in for this mount so the
+          // chosen variant is stable for the whole session (no mid-session swaps).
+          if (daySeedRef.current === 0) {
+            const { year, month, day } = getSeoulParts(new Date());
+            daySeedRef.current = year * 10000 + month * 100 + day;
+          }
+          setManifest(data);
+        }
       })
       .catch(() => {});
     return () => {
@@ -65,32 +80,52 @@ export function SkyImageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const anchor = pickImageAnchor(isDay, goldenFactor);
-  const selectedSrc = useMemo(
-    () => (manifest ? (selectSkyImage(manifest.images, readout.condition, anchor)?.src ?? null) : null),
-    [manifest, readout.condition, anchor],
-  );
 
-  // Preload the selected plate; promote it only once decoded. While it loads we
-  // keep showing the previous plate (no flash); a hard error (404 / not yet
-  // generated) clears to `null` so the field — already condition-tinted — shows.
+  // Ordered candidate list: chosen variant first (for today's slot), then the
+  // remaining variants as fallbacks in case the chosen one 404s.
+  const selectedSrcs = useMemo((): readonly string[] => {
+    if (!manifest) return [];
+    const slot = selectSkyImage(manifest.images, readout.condition, anchor);
+    if (!slot) return [];
+    const all = normalizeSrcs(slot.srcs);
+    if (all.length <= 1) return all;
+    const idx = pickVariantIndex(all.length, daySeedRef.current, `${slot.landmark}:${slot.condition}:${slot.anchor}`);
+    return [all[idx], ...all.filter((_, i) => i !== idx)];
+  }, [manifest, readout.condition, anchor]);
+
+  // Preload the chosen variant; on error try the next candidate in the array
+  // before falling back to null (procedural field). While loading we keep the
+  // previous plate visible — no flash.
   useEffect(() => {
-    if (!selectedSrc) {
+    if (selectedSrcs.length === 0) {
       setLoadedSrc(null);
       return;
     }
     let alive = true;
-    const img = new Image();
-    img.onload = () => {
-      if (alive) setLoadedSrc(selectedSrc);
-    };
-    img.onerror = () => {
-      if (alive) setLoadedSrc(null);
-    };
-    img.src = selectedSrc;
+    let idx = 0;
+
+    function tryNext() {
+      if (!alive) return;
+      if (idx >= selectedSrcs.length) {
+        setLoadedSrc(null);
+        return;
+      }
+      const src = selectedSrcs[idx++];
+      const img = new Image();
+      img.onload = () => {
+        if (alive) setLoadedSrc(src);
+      };
+      img.onerror = () => {
+        if (alive) tryNext();
+      };
+      img.src = src;
+    }
+
+    tryNext();
     return () => {
       alive = false;
     };
-  }, [selectedSrc]);
+  }, [selectedSrcs]);
 
   const grade = useMemo(
     () => buildImageGrade(dayFactor, goldenFactor, rising, elevation, readout.condition),
