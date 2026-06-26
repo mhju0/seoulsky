@@ -18,11 +18,11 @@ interface Props {
   comparison: ProviderComparison | null;
 }
 
-const LEVEL_LABELS: Record<ConfidenceScore["level"], string> = {
-  high: "신뢰도 높음",
-  medium: "신뢰도 보통",
-  low: "신뢰도 낮음",
-  "single-source": "단일 소스 모드",
+const LEVEL_LABELS: Record<ConfidenceScore["level"], { ko: string; en: string }> = {
+  high: { ko: "신뢰 높음", en: "Trustworthy" },
+  medium: { ko: "부분 일치", en: "Mixed" },
+  low: { ko: "상충", en: "Conflicting" },
+  "single-source": { ko: "단일 소스", en: "Single Source" },
 };
 
 function scoreColor(score: number | null): string {
@@ -98,16 +98,25 @@ export default function ConfidencePanel({ confidence, comparison }: Props) {
   return (
     <div className="flex flex-col gap-9 md:flex-row md:items-start md:gap-16">
       <div className="flex shrink-0 flex-col gap-2">
-        <span
-          className={`font-sans text-[clamp(4rem,10vw,7rem)] font-light leading-[0.85] tabular-nums ${scoreColor(
-            confidence.overall,
-          )} [text-shadow:0_2px_24px_rgba(0,0,0,0.45)]`}
-        >
-          {confidence.overall !== null ? confidence.overall : "—"}
-        </span>
         <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/55">
-          Confidence · {LEVEL_LABELS[confidence.level]}
+          신뢰도 · Confidence
         </span>
+        <div className="flex flex-col gap-0.5">
+          <span
+            className={`font-mono text-[clamp(0.75rem,2vw,1rem)] font-light uppercase tracking-[0.2em] ${
+              confidence.overall === null ? "text-white/70" : scoreColor(confidence.overall)
+            }`}
+          >
+            {LEVEL_LABELS[confidence.level].en}
+          </span>
+          <span
+            className={`font-sans text-[clamp(1.6rem,5vw,2.6rem)] font-light leading-[1.1] ${
+              confidence.overall === null ? "text-white" : scoreColor(confidence.overall)
+            } [text-shadow:0_2px_24px_rgba(0,0,0,0.45)]`}
+          >
+            {LEVEL_LABELS[confidence.level].ko}
+          </span>
+        </div>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-7">
