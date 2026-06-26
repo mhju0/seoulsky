@@ -28,18 +28,22 @@ export function MetricLabel({
 }) {
   return (
     <span
-      className={`block font-mono text-[10px] uppercase tracking-[0.34em] [font-variant:small-caps] ${TONE[tone]} ${className}`}
+      className={`block font-mono text-[12px] uppercase tracking-[0.34em] [font-variant:small-caps] ${TONE[tone]} ${className}`}
     >
       {children}
     </span>
   );
 }
 
-type ValueSize = "sm" | "md" | "lg" | "xl" | "hero";
+type ValueSize = "sm" | "md" | "tile" | "lg" | "xl" | "hero";
 
 const VALUE_SIZE: Record<ValueSize, string> = {
   sm: "text-2xl",
-  md: "text-[clamp(2rem,4vw,3rem)]",
+  md: "text-[clamp(2.4rem,4.4vw,3.5rem)]",
+  // Instrument-tile primary reading — substantially larger than `md`, sized to
+  // fill the card's left column at the 3-up desktop grid while still settling on
+  // mobile (2-up). clamp() keeps it fluid; the floor stays readable at 2-up.
+  tile: "text-[clamp(3rem,5.2vw,4.5rem)]",
   lg: "text-[clamp(3rem,7vw,5.5rem)]",
   xl: "text-[clamp(4rem,10vw,8rem)]",
   hero: "text-[clamp(5.5rem,15vw,12rem)]",
@@ -52,12 +56,15 @@ const VALUE_SIZE: Record<ValueSize, string> = {
 export function Value({
   children,
   unit,
+  unitFull = false,
   size = "md",
   tone = "bright",
   className = "",
 }: {
   children: ReactNode;
   unit?: ReactNode;
+  /** When true, the unit renders at full adaptive ink strength (text-white) instead of the default text-white/65. */
+  unitFull?: boolean;
   size?: ValueSize;
   tone?: Tone;
   className?: string;
@@ -68,7 +75,7 @@ export function Value({
     >
       {children}
       {unit != null && (
-        <span className="ml-[0.12em] text-[0.34em] font-light tracking-[0.12em] text-white/65">{unit}</span>
+        <span className={`ml-[0.12em] text-[0.34em] font-light tracking-[0.12em] ${unitFull ? "text-white" : "text-white/65"}`}>{unit}</span>
       )}
     </span>
   );
