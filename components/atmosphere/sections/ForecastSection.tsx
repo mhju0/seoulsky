@@ -33,6 +33,9 @@ function popTint(pop: number | null): string {
 
 const clampPct = (pop: number | null) => (pop == null ? 0 : Math.max(0, Math.min(100, pop)));
 
+/** Swap here if you want "High/Low", "최고/최저", etc. */
+const TEMP_LABEL = { high: "H", low: "L" } as const;
+
 export default function ForecastSection() {
   const { snapshot, readout } = useWeatherField();
 
@@ -85,10 +88,10 @@ export default function ForecastSection() {
                           legible over both bright and dark backdrops. */}
                       <span className="flex items-baseline gap-1.5 font-sans tabular-nums">
                         <span className="font-light text-white text-[clamp(1.4rem,1.9vw,1.8rem)]">
-                          <span className="text-[0.6em]">↑</span>{b.tempHigh}°
+                          <span className="text-[0.6em]">{TEMP_LABEL.high}</span>{b.tempHigh}°
                         </span>
                         <span className="font-light text-white text-[clamp(1rem,1.3vw,1.25rem)]">
-                          <span className="text-[0.6em]">↓</span>{b.tempLow}°
+                          <span className="text-[0.6em]">{TEMP_LABEL.low}</span>{b.tempLow}°
                         </span>
                       </span>
                       {/* Precip-probability indicator: % over a bar scaled by POP. */}
@@ -125,8 +128,8 @@ export default function ForecastSection() {
                     </span>
                     <WeatherGlyph condition={d.condition} size={30} className="text-white" />
                     <span className="flex items-baseline gap-1.5 font-sans tabular-nums">
-                      <span className="text-xl font-light text-white"><span className="text-[0.6em]">↑</span>{Math.round(d.temperatureMax)}°</span>
-                      <span className="text-base font-light text-white"><span className="text-[0.6em]">↓</span>{Math.round(d.temperatureMin)}°</span>
+                      <span className="text-xl font-light text-white"><span className="text-[0.6em]">{TEMP_LABEL.high}</span>{Math.round(d.temperatureMax)}°</span>
+                      <span className="text-base font-light text-white"><span className="text-[0.6em]">{TEMP_LABEL.low}</span>{Math.round(d.temperatureMin)}°</span>
                     </span>
                     <span className="flex items-center gap-1.5 font-mono text-[12px] tabular-nums text-white">
                       <span className={`h-1.5 w-1.5 rounded-full ${popTint(d.precipitationProbability)}`} aria-hidden />
