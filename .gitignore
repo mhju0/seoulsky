@@ -63,4 +63,5 @@ next-env.d.ts
 /docs/
 
 # claude
-CLAUDE.md
+CLAUDE.mdpnpm-lock.yaml
+pnpm-workspace.yaml
