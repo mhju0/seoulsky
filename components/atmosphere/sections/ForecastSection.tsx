@@ -1,6 +1,7 @@
 "use client";
 
 import { dayLabel, makeIsNightAt } from "@/lib/format";
+import { buildForecastBlocks } from "@/lib/forecast/blocks";
 import GlassPanel from "../glass/GlassPanel";
 import WeatherGlyph from "../glass/WeatherGlyph";
 import { MetricLabel } from "../EtchedType";
@@ -9,18 +10,17 @@ import { useWeatherField } from "../WeatherFieldContext";
 import { SectionHeading, SkySection } from "./SectionParts";
 
 /**
- * Section 3 — Forecast. A full-screen, rain-forward read of the next 24 hours and
- * the week ahead. The shared sky snapshot already carries the hourly + daily
+ * Section 4 — Forecast. A full-screen, rain-forward read of the hours just ahead
+ * and the week ahead. The shared sky snapshot already carries the hourly + daily
  * series (incl. Open-Meteo precip probability), so this reads from context with no
- * extra fetch. Two scaled-up blocks: the 24-hour strip stretched edge-to-edge so
- * its hours fill the card, and the 7-day row as seven equal full-width cards —
+ * extra fetch. Two scaled-up blocks: a glanceable time-of-day strip — the next
+ * ~15 hours folded into five wide, no-scroll blocks (지금 → 새벽/아침/…) by
+ * {@link buildForecastBlocks} — and the 7-day row as seven equal full-width cards,
  * each carrying 강수확률 (POP) alongside the condition + temperatures.
  *
- * (The celestial dial + wind trend live in Section 4, Sun & Sky.)
+ * (The former Sun & Sky section — celestial dial + wind trend — has been removed;
+ * Ground Station is now Section 5, with Radar inserted as Section 3.)
  */
-
-const KST = "Asia/Seoul";
-const hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: KST, hour: "numeric", hour12: true });
 
 /** Probability → indicator tint, graduating from a faint sky to a saturated
  *  blue so heavier rain chances read louder across the strip and the week row. */
@@ -36,7 +36,7 @@ const clampPct = (pop: number | null) => (pop == null ? 0 : Math.max(0, Math.min
 export default function ForecastSection() {
   const { snapshot, readout } = useWeatherField();
 
-  const hourly = (snapshot?.hourly ?? []).slice(0, 24);
+  const blocks = buildForecastBlocks(snapshot?.hourly ?? []);
   const daily = (snapshot?.daily ?? []).slice(0, 7);
   // Per-hour day/night for the icon face, from the daily sun times (fixed-hour
   // fallback inside makeIsNightAt when a provider has none).
@@ -44,47 +44,60 @@ export default function ForecastSection() {
 
   return (
     <SkySection>
-      <SectionHeading index="03" en="Forecast" ko="예보" />
+      <SectionHeading index="04" en="Forecast" ko="예보" />
 
       <div className="flex flex-1 flex-col justify-center gap-10 sm:gap-14">
-        {/* Hourly — the next 24h stretched edge-to-edge: one equal column per hour
-            so the last hour lands at the card's right edge. Each column carries a
-            precip-probability bar beneath the temperature. */}
+        {/* Time-of-day — the next ~15h folded into five wide, glanceable blocks
+            (지금 → 새벽/아침/…) inside one frosted capsule. A 5-col grid, so every
+            block stays visible at any width with no horizontal scroll. The period
+            label is the glance anchor; each block carries hi/lo + a precip bar. */}
         <ScrollReveal amount={0.12}>
           <GlassPanel className="px-6 py-7 sm:px-8 sm:py-8">
-            <MetricLabel>Next 24 Hours · 시간별 · 강수확률</MetricLabel>
-            {hourly.length > 0 ? (
+            <MetricLabel tone="bright">Next Hours · 시간대별 · 강수확률</MetricLabel>
+            {blocks.length > 0 ? (
               <div
-                className="mt-6 grid grid-cols-[repeat(24,minmax(0,1fr))] gap-x-1"
+                className="mt-6 grid grid-cols-5 gap-x-3 sm:gap-x-5"
                 role="group"
-                aria-label="시간별 예보 — 24시간 · 기온 및 강수확률"
+                aria-label="시간대별 예보 — 기온 및 강수확률"
               >
-                {hourly.map((h, i) => {
-                  const pct = clampPct(h.precipitationProbability);
+                {blocks.map((b, i) => {
+                  const pct = clampPct(b.precipMax);
                   return (
-                    <div key={h.time} className="flex flex-col items-center gap-2.5">
-                      <span className="whitespace-nowrap font-mono text-[9px] tracking-[0.04em] text-white/60">
-                        {i === 0 ? "지금" : hourFmt.format(new Date(h.time))}
+                    <div key={b.representativeTime} className="flex flex-col items-center gap-2.5 text-center">
+                      {/* Period label — the largest, most prominent glance target. */}
+                      <span className="font-sans font-normal leading-none tracking-tight text-white text-[clamp(1.15rem,1.6vw,1.5rem)]">
+                        {b.label}
+                      </span>
+                      <span className="font-mono text-[11px] tracking-[0.04em] text-white">
+                        {b.rangeLabel}
                       </span>
                       {/* '지금' mirrors the live readout (KMA-preferred current condition,
-                          same source the on-screen video uses) so it never diverges from
-                          what's playing; later hours stay on the Open-Meteo hourly series. */}
+                          the same source the on-screen scene uses) so it never diverges
+                          from what's showing; later blocks use their representative hour. */}
                       <WeatherGlyph
-                        condition={i === 0 ? readout.condition : h.condition}
-                        night={isNightAt(h.time)}
-                        size={24}
-                        className="text-white/90"
+                        condition={i === 0 ? readout.condition : b.condition}
+                        night={isNightAt(b.representativeTime)}
+                        size={32}
+                        className="text-white"
                       />
-                      <span className="font-sans text-[15px] font-light tabular-nums text-white/95">
-                        {Math.round(h.temperature)}°
+                      {/* hi/lo — the 7-day card's treatment, scaled up. ↑↓ glyphs
+                          at 0.6em inherit the parent's adaptive ink so they stay
+                          legible over both bright and dark backdrops. */}
+                      <span className="flex items-baseline gap-1.5 font-sans tabular-nums">
+                        <span className="font-light text-white text-[clamp(1.4rem,1.9vw,1.8rem)]">
+                          <span className="text-[0.6em]">↑</span>{b.tempHigh}°
+                        </span>
+                        <span className="font-light text-white text-[clamp(1rem,1.3vw,1.25rem)]">
+                          <span className="text-[0.6em]">↓</span>{b.tempLow}°
+                        </span>
                       </span>
                       {/* Precip-probability indicator: % over a bar scaled by POP. */}
                       <div className="mt-0.5 flex w-full flex-col items-center gap-1">
-                        <span className="font-mono text-[9px] tabular-nums text-white/55">
-                          {h.precipitationProbability == null ? "—" : `${Math.round(pct)}%`}
+                        <span className="font-mono text-[12px] tabular-nums text-white">
+                          {b.precipMax == null ? "—" : `${Math.round(pct)}%`}
                         </span>
                         <div className="h-1 w-full overflow-hidden rounded-full bg-white/10" aria-hidden>
-                          <div className={`h-full rounded-full ${popTint(h.precipitationProbability)}`} style={{ width: `${pct}%` }} />
+                          <div className={`h-full rounded-full ${popTint(b.precipMax)}`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     </div>
@@ -92,7 +105,7 @@ export default function ForecastSection() {
                 })}
               </div>
             ) : (
-              <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.2em] text-white/45">
+              <p className="mt-6 font-mono text-[12px] uppercase tracking-[0.2em] text-white">
                 시간별 예보 없음
               </p>
             )}
@@ -102,20 +115,20 @@ export default function ForecastSection() {
         {/* Daily — seven equal full-width cards, each adding 강수확률 to hi/lo + icon. */}
         {daily.length > 0 && (
           <ScrollReveal amount={0.12} delay={0.06}>
-            <MetricLabel className="mb-4 px-1">7-Day · 주간 · 강수확률</MetricLabel>
+            <MetricLabel tone="bright" className="mb-4 px-1">7-Day · 주간 · 강수확률</MetricLabel>
             <div className="grid grid-cols-7 gap-3 sm:gap-4">
               {daily.map((d) => (
-                <GlassPanel key={d.date} radius="rounded-[20px]" className="px-3 py-6">
+                <GlassPanel key={d.date} className="px-3 py-6">
                   <div className="flex flex-col items-center gap-3.5">
-                    <span className="font-mono text-[11px] tracking-[0.08em] text-white/65">
+                    <span className="font-mono text-[12px] tracking-[0.08em] text-white">
                       {dayLabel(d.date)}
                     </span>
-                    <WeatherGlyph condition={d.condition} size={30} className="text-white/90" />
+                    <WeatherGlyph condition={d.condition} size={30} className="text-white" />
                     <span className="flex items-baseline gap-1.5 font-sans tabular-nums">
-                      <span className="text-lg font-light text-white/95">{Math.round(d.temperatureMax)}°</span>
-                      <span className="text-sm font-light text-white/55">{Math.round(d.temperatureMin)}°</span>
+                      <span className="text-xl font-light text-white"><span className="text-[0.6em]">↑</span>{Math.round(d.temperatureMax)}°</span>
+                      <span className="text-base font-light text-white"><span className="text-[0.6em]">↓</span>{Math.round(d.temperatureMin)}°</span>
                     </span>
-                    <span className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums text-white/60">
+                    <span className="flex items-center gap-1.5 font-mono text-[12px] tabular-nums text-white">
                       <span className={`h-1.5 w-1.5 rounded-full ${popTint(d.precipitationProbability)}`} aria-hidden />
                       {d.precipitationProbability == null ? "—" : `${Math.round(d.precipitationProbability)}%`}
                     </span>

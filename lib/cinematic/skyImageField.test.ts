@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pickImageAnchor, selectSkyImage, type SkyImage } from "./skyImageField.ts";
+import { pickImageAnchor, pickVariantIndex, selectSkyImage, type SkyImage } from "./skyImageField.ts";
 
 const img = (
   landmark: string,
@@ -10,7 +10,7 @@ const img = (
   landmark,
   condition,
   anchor,
-  src: `/sky/${landmark}__${condition}__${anchor}.webp`,
+  srcs: `/sky/${landmark}__${condition}__${anchor}.webp`,
 });
 
 const LIB: SkyImage[] = [
@@ -31,7 +31,7 @@ test("pickImageAnchor picks golden near the horizon, else day/night by isDay", (
 
 test("selectSkyImage matches the exact condition + anchor", () => {
   const hit = selectSkyImage(LIB, "clear", "golden");
-  assert.equal(hit?.src, "/sky/hanriver__clear__golden.webp");
+  assert.equal(hit?.srcs, "/sky/hanriver__clear__golden.webp");
 });
 
 test("selectSkyImage folds wet conditions onto the rain plate", () => {
@@ -84,4 +84,37 @@ test("selectSkyImage broadens for unmappable conditions", () => {
 
 test("selectSkyImage returns null for an empty library", () => {
   assert.equal(selectSkyImage([], "clear", "day"), null);
+});
+
+test("pickVariantIndex returns 0 for single-element arrays", () => {
+  assert.equal(pickVariantIndex(1, 20260621, "hanriver:clear:day"), 0);
+  assert.equal(pickVariantIndex(1, 20260101, "hanriver:rain:night"), 0);
+});
+
+test("pickVariantIndex is stable for the same day + slot", () => {
+  const a = pickVariantIndex(2, 20260621, "hanriver:clear:golden");
+  const b = pickVariantIndex(2, 20260621, "hanriver:clear:golden");
+  assert.equal(a, b);
+  assert.ok(a === 0 || a === 1);
+});
+
+test("pickVariantIndex varies across days for the same slot", () => {
+  // Not guaranteed to differ every single day, but across a week there must be variation.
+  const results = new Set<number>();
+  for (let d = 1; d <= 7; d++) results.add(pickVariantIndex(2, 20260600 + d, "hanriver:clear:golden"));
+  assert.ok(results.size > 1, "expected at least two different picks across 7 days");
+});
+
+test("pickVariantIndex varies across slots on the same day", () => {
+  const seed = 20260621;
+  const slots = [
+    "hanriver:clear:golden",
+    "hanriver:clear:night",
+    "hanriver:rain:golden",
+    "hanriver:fog:night",
+  ];
+  const picks = slots.map((s) => pickVariantIndex(2, seed, s));
+  // Different slots must not ALL pick the same index.
+  const unique = new Set(picks);
+  assert.ok(unique.size > 1, "expected different slots to pick different variants on at least some slots");
 });

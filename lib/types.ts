@@ -171,6 +171,37 @@ export interface SkyRadar {
 }
 
 /**
+ * One KMA radar composite frame (기상청 레이더 합성영상) — the imagery shown in the
+ * /sky radar scope. Observed-only (the composite has no nowcast), 5-min cadence.
+ */
+export interface KmaRadarFrame {
+  /** Composite time key, yyyyMMddHHmm in KST (the API's `time` param + proxy `t`). */
+  t: string;
+  /** ISO instant (UTC) of the frame, for KST display formatting. */
+  time: string;
+  /** Always false — the KMA composite is observed-only (no nowcast). */
+  nowcast: false;
+}
+
+/** Lat/lon extent the rendered echo PNG covers, for georeferencing it on the basemap. */
+export interface RadarBounds {
+  west: number;
+  east: number;
+  south: number;
+  north: number;
+}
+
+/** The /api/radar/frames payload: the timeline frame list + required attribution. */
+export interface KmaRadarFrames {
+  available: boolean;
+  frames: KmaRadarFrame[];
+  /** Required visible credit wherever the radar imagery is shown. */
+  attribution: string;
+  /** Geo extent of the echo raster; null/absent when unavailable. */
+  bounds?: RadarBounds | null;
+}
+
+/**
  * Normalized current air quality. Fused with priority AirKorea → Open-Meteo Air
  * Quality → none. Used to *subtly* shape the scene's haze/visibility — never to
  * produce alarming medical copy. All fields plain + serializable.

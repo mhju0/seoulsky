@@ -40,6 +40,9 @@
 /data/reliability/*.jsonl
 /data/reliability/*.json
 
+# radar georeference cache (built once from the KMA latlon grids; regenerable)
+/data/radar/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

@@ -47,8 +47,13 @@ export interface SkyImage {
   landmark: string;
   condition: GalleryCondition;
   anchor: ImageAnchor;
-  /** Public path, e.g. `/sky/hanriver__clear__day.webp`. May 404 until generated. */
-  src: string;
+  /**
+   * One or more public paths for this slot (base first, then __v2/__v3 variants).
+   * A bare string is accepted for backward compatibility and treated as a 1-element
+   * array. Paths may 404 until generated; missing variants fall back to the next
+   * entry; if all 404 the procedural CSS field shows.
+   */
+  srcs: string | string[];
 }
 
 /** The image manifest document (only the fields the runtime consumes). */
@@ -68,6 +73,29 @@ const GOLDEN_ANCHOR_THRESHOLD = 0.5;
 export function pickImageAnchor(isDay: boolean, goldenFactor: number): ImageAnchor {
   if (goldenFactor >= GOLDEN_ANCHOR_THRESHOLD) return "golden";
   return isDay ? "day" : "night";
+}
+
+/** Normalises a slot's srcs field to an array (handles legacy bare-string entries). */
+export function normalizeSrcs(srcs: string | string[]): string[] {
+  return Array.isArray(srcs) ? srcs : [srcs];
+}
+
+/**
+ * Picks a deterministic variant index for a given slot on a given day.
+ *
+ * `daySeed` should be the Seoul calendar date as `year * 10000 + month * 100 + day`
+ * (e.g. 20260621), so the chosen variant rotates at Seoul midnight and is stable
+ * for the rest of the day. Different slots produce different indices because `slotKey`
+ * (e.g. `"hanriver:clear:golden"`) is mixed into the hash, so neighbouring
+ * condition/anchor pairs vary independently.
+ */
+export function pickVariantIndex(count: number, daySeed: number, slotKey: string): number {
+  if (count <= 1) return 0;
+  let h = 0;
+  for (let i = 0; i < slotKey.length; i++) {
+    h = (Math.imul(31, h) + slotKey.charCodeAt(i)) | 0;
+  }
+  return ((daySeed + (h >>> 0)) >>> 0) % count;
 }
 
 /**
