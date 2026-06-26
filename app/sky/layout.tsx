@@ -50,7 +50,7 @@ export default function SkyLayout({ children }: { children: ReactNode }) {
           </p>
           <p style={{ maxWidth: "44ch", fontSize: "0.8rem", lineHeight: 1.7, color: "#7c8aa0", margin: 0 }}>
             라이브 경험을 보려면 JavaScript를 켜 주세요. 데이터: Open-Meteo · MET Norway
-            {" / "}선택: 기상청(KMA) · 대기질: AirKorea · 레이더: RainViewer.
+            {" / "}선택: 기상청(KMA) · 대기질: AirKorea · 레이더: 기상청(KMA).
           </p>
         </div>
       </noscript>

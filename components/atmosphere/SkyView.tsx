@@ -6,7 +6,7 @@ import ArrivalSection from "./sections/ArrivalSection";
 import ForecastSection from "./sections/ForecastSection";
 import GroundStationSection from "./sections/GroundStationSection";
 import InstrumentsSection from "./sections/InstrumentsSection";
-import SunSkySection from "./sections/SunSkySection";
+import RadarSection from "./sections/RadarSection";
 import { useWeatherField, useWeatherView } from "./WeatherFieldContext";
 
 /**
@@ -17,14 +17,15 @@ import { useWeatherField, useWeatherView } from "./WeatherFieldContext";
  *   • Hero — the full-screen live view (the still landmark plate on the fixed
  *     SceneStage below) with the de-glassed Arrival readout floating over it and a
  *     subtle "press D" hint. No scroll.
- *   • Data — the rest of the dashboard (instruments → forecast → sun & sky → ground station)
+ *   • Data — the rest of the dashboard (instruments → radar → forecast → ground station)
  *     in a self-contained scrolling container with its own opaque day/night
  *     gradient backdrop, so nothing heavy renders behind it (the scene is paused).
  *
- * Both layers are always mounted and cross-fade on the toggle (~500ms; the data
- * view rises as the live view recedes), so the only transition is the D-toggle —
- * there is no scroll-coupled opacity. `prefers-reduced-motion` collapses the
- * transform to a simple fade (handled in CSS).
+ * Both layers are always mounted and cross-fade in place on the toggle (~500ms,
+ * pure opacity — no slide/zoom), so the only transition is the D-toggle and there
+ * is no scroll-coupled opacity. Because the data backdrop is the hero plate at
+ * identical geometry (only blurred), the D-toggle reads as the SAME scene blurring
+ * where it sits — co-registered, no jump.
  *
  * The whole foreground is wrapped so the day/night palette ({@link buildSkyPalette})
  * applies as CSS variables once, here: the gradient colours, the panel surfaces,
@@ -64,16 +65,17 @@ export default function SkyView() {
         aria-hidden={isHero}
         inert={isHero}
       >
-        {/* Data backdrop. When a still plate is showing it is reused here —
-            defocused + darkened behind the data grid — so the D-toggle is a depth
-            transition across the SAME scene. With no plate (the procedural
-            fallback) it shows the ambient sky field: 4 independently drifting
+        {/* Data backdrop. When a still plate is showing it is reused here at the
+            EXACT geometry of the hero plate (inset 0, cover, centred, same
+            scene-pushin) — only blurred + darkened behind the data grid — so the
+            D-toggle blurs the SAME co-registered scene in place, no shift. With no
+            plate (the procedural fallback) it shows the ambient sky field: 4 independently drifting
             colour blooms + a breathing veil + animated matte grain. All layers
             fade with the data layer so the scene behind never shows through. */}
         <div aria-hidden className="sky-data-bg pointer-events-none">
           {plateSrc ? (
             <>
-              <div className="sky-data-plate" style={{ backgroundImage: `url("${plateSrc}")` }} />
+              <div className="sky-data-plate scene-pushin" style={{ backgroundImage: `url("${plateSrc}")` }} />
               <div className="sky-data-scrim" />
             </>
           ) : (
@@ -92,8 +94,8 @@ export default function SkyView() {
         <div className="sky-data-scroll scroll-thin">
           <div className="relative z-10 text-white">
             <InstrumentsSection />
+            <RadarSection />
             <ForecastSection />
-            <SunSkySection />
             <GroundStationSection />
           </div>
         </div>

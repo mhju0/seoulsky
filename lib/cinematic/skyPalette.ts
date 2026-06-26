@@ -12,13 +12,19 @@ import type { WeatherCondition } from "@/lib/types";
  *     day) + `goldenFactor` (a warm horizon cast at dawn/dusk), so the backdrop
  *     glides smoothly through blue-hour → golden-hour → daylight.
  *
- *   • INK + PANEL surfaces switch on the `isDay` boolean instead of lerping.
- *     Lerping a light theme into a dark one necessarily passes through a
- *     mid-grey where ink and surface collapse to the same tone — an
- *     unavoidable low-contrast instant. Because legibility is the priority we
- *     snap between two always-high-contrast pairs (cream-on-navy at night,
- *     navy-on-cream by day) at the horizon, where the gradient is already a
- *     quiet dusty mid so the change reads as calm rather than abrupt.
+ *   • The over-scene INK (the hero readout + bare section headings) switches on
+ *     the `isDay` boolean instead of lerping. Lerping a light theme into a dark
+ *     one necessarily passes through a mid-grey where ink and surface collapse to
+ *     the same tone — an unavoidable low-contrast instant. Because legibility is
+ *     the priority we snap between two always-high-contrast pairs at the horizon,
+ *     where the gradient is already a quiet dusty mid so the change reads as calm.
+ *
+ *   • The PANEL surface + its ink are an iOS-26 "Liquid Glass" treatment: the
+ *     card is nearly invisible, so its ink must flip to stay legible against
+ *     whatever the cinematic plate is showing. That flip keys off a single
+ *     `backdropIsLight` signal — the perceptual luminance of the backdrop base
+ *     nudged by weather (snow/fog read bright, storms read dark) — NOT `isDay`,
+ *     so a snowy noon gets dark ink while a clear night gets light ink.
  *
  * Palette anchors are the brand colours: deep navy #182350, powder blue
  * #AFD2FA, floral white #FEFAEF, camel #B9915E.
@@ -30,6 +36,11 @@ const NAVY: RGB = [24, 35, 80];    // #182350 — deep navy (day ink, night grou
 const POWDER: RGB = [175, 210, 250]; // #AFD2FA — powder blue (day air bloom)
 const CREAM: RGB = [254, 250, 239];  // #FEFAEF — floral white (night ink, day surface)
 const CAMEL: RGB = [185, 145, 94];   // #B9915E — warm camel (golden-hour cast)
+
+// Liquid-glass PANEL ink — flips on the backdrop-brightness signal (not isDay).
+// Tunables: nudge for stronger/softer in-panel contrast.
+const PANEL_INK_DARK: RGB = [22, 28, 46];     // dark ink, used over a LIGHT backdrop
+const PANEL_INK_LIGHT: RGB = [248, 250, 255]; // near-white ink, used over a DARK backdrop
 
 // Condition tint targets
 const SLATE: RGB = [80, 105, 148];  // rain / cool blue-slate
@@ -47,20 +58,6 @@ const mix = (a: RGB, b: RGB, t: number): RGB => [
 const triplet = (c: RGB) => `${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])}`;
 const rgb = (c: RGB) => `rgb(${triplet(c)})`;
 const rgba = (c: RGB, a: number) => `rgba(${triplet(c)}, ${a})`;
-
-/**
- * Ink as an "r, g, b" triplet for the two instruments (SunArc, WindGraph) that
- * paint hairlines/axes with literal `rgba()` strings the `--color-white`
- * remap can't reach. Navy on the day's cream panel, cream on the night's navy.
- */
-export function inkTriplet(isDay: boolean): string {
-  return triplet(isDay ? NAVY : CREAM);
-}
-
-/** A warm instrument accent (sun marker, windy line) that reads on either surface. */
-export function instrumentWarm(isDay: boolean): string {
-  return isDay ? "#c2893f" : "#ffd9a8";
-}
 
 // ---------------------------------------------------------------------------
 // Condition-to-tint mapping
@@ -95,6 +92,27 @@ const COND_TINTS: Record<WeatherCondition, ConditionTint> = {
   "sleet":          { cool: 0.28, muted: 0.18, storm: 0,   speed: 0.92 },
   "thunderstorm":   { cool: 0.15, muted: 0.12, storm: 0.7, speed: 0.72 },
   "unknown":        { cool: 0,    muted: 0,    storm: 0,   speed: 1.0  },
+};
+
+// Signed brightness bias added to the backdrop's base luminance before
+// thresholding the `backdropIsLight` panel-ink signal. Hazy/bright weather
+// (snow, fog, overcast) reads lighter than its base tone; storms/heavy-rain read
+// darker. It mostly matters near the dawn/dusk threshold; deep night stays dark
+// and full noon stays light regardless.
+// Tunables: push a condition's value to shift where its panel ink flips.
+const COND_BRIGHTNESS: Record<WeatherCondition, number> = {
+  "clear":          0,
+  "partly-cloudy":  0.02,
+  "cloudy":         0.05,
+  "overcast":       0.06,
+  "fog":            0.10,
+  "drizzle":        -0.02,
+  "rain":           -0.05,
+  "heavy-rain":     -0.08,
+  "snow":           0.14,
+  "sleet":          0.04,
+  "thunderstorm":   -0.10,
+  "unknown":        0,
 };
 
 // Base ambient drift durations in seconds for the 4 independent blooms.
@@ -149,13 +167,36 @@ export function buildSkyPalette(
     lerp(0.3, 0.55, d) + g * 0.18,
   )}, transparent 60%)`;
 
-  // --- Discrete ink + panel surface (switch on isDay) ----------------------
+  // --- Over-scene ink (switch on isDay) ------------------------------------
+  // The hero readout + bare section headings. Unchanged — only the PANEL ink
+  // below follows the backdrop-brightness signal.
   const ink = isDay ? NAVY : CREAM;
-  const panelBg = isDay ? "rgb(255, 253, 247)" : "rgb(28, 38, 74)";
-  const panelBorder = isDay ? rgba(NAVY, 0.1) : rgba(POWDER, 0.12);
-  const panelShadow = isDay
-    ? "0 1px 2px rgba(24,35,80,0.05), 0 18px 40px -20px rgba(24,35,80,0.22)"
-    : "0 1px 0 rgba(255,255,255,0.04) inset, 0 18px 44px -22px rgba(0,0,0,0.6)";
+
+  // --- Backdrop-brightness signal → panel tint + ink flip ------------------
+  // Perceptual luminance of the computed backdrop base (which tracks the sun via
+  // dayFactor), nudged by the weather so snow/fog read bright and storms read
+  // dark. This single boolean decides the liquid-glass panel's tint + ink so
+  // nothing inside ever disappears against the plate.
+  const baseLum = (base[0] * 0.299 + base[1] * 0.587 + base[2] * 0.114) / 255;
+  const backdropIsLight = baseLum + COND_BRIGHTNESS[condition] > 0.5;
+
+  // --- Liquid-glass panel surface ------------------------------------------
+  // iOS-26 "Liquid Glass": a barely-there tint (the Han River shows through), an
+  // ink that flips with the backdrop, and a luminous specular edge (rim + crisp
+  // top inner highlight + faint bottom inner light + soft drop shadow). The edge
+  // is emitted per-mode so it always defines the card, even over a same-toned sky.
+  // Tunables: panelBg alpha = transparency; the rgba(255,255,255,…) insets =
+  // specular intensity; the last shadow term = float depth.
+  const panelInk = backdropIsLight ? PANEL_INK_DARK : PANEL_INK_LIGHT;
+  const panelBg = backdropIsLight
+    ? "rgba(248, 250, 255, 0.20)"  // light smoky tint over a bright backdrop
+    : "rgba(12, 16, 30, 0.26)";    // dark smoky tint over a dark backdrop
+  const panelBorder = backdropIsLight
+    ? "rgba(255, 255, 255, 0.50)"  // crisp bright rim still pops on a light sky
+    : "rgba(255, 255, 255, 0.22)"; // luminous rim on a dark sky
+  const panelShadow = backdropIsLight
+    ? "inset 0 1px 0 rgba(255,255,255,0.70), inset 0 -1px 0 rgba(255,255,255,0.12), 0 22px 50px -26px rgba(24,35,80,0.30)"
+    : "inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(255,255,255,0.06), 0 22px 52px -24px rgba(0,0,0,0.62)";
 
   // --- Ambient living-sky bloom colors (per-condition + day/night) ---------
   const tint = COND_TINTS[condition];
@@ -207,9 +248,16 @@ export function buildSkyPalette(
 
   return {
     ["--color-white" as string]: rgb(ink),
+    // Liquid-glass panel ink — re-scoped onto --color-white inside .sky-panel so
+    // every text-white/*, bg-white/* and currentColor descendant flips with the
+    // backdrop. Kept separate from the over-scene --color-white above.
+    ["--sky-panel-ink" as string]: rgb(panelInk),
     ["--sky-panel-bg" as string]: panelBg,
     ["--sky-panel-border" as string]: panelBorder,
     ["--sky-panel-shadow" as string]: panelShadow,
+    // Capsule rounding for every .sky-panel (overridable per-card via the
+    // GlassPanel `radius` prop, which emits a Tailwind utility that wins).
+    ["--sky-panel-radius" as string]: "28px",
     ["--sky-bg-base" as string]: rgb(base),
     // Legacy gradient vars — kept for any external references.
     ["--sky-bloom-a" as string]: bloomA,

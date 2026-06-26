@@ -27,7 +27,7 @@ export function SkySection({
   return (
     <section
       id={id}
-      className={`relative flex min-h-svh w-full scroll-mt-0 flex-col px-[clamp(1.25rem,5vw,4.5rem)] ${
+      className={`relative flex min-h-svh w-full scroll-mt-0 flex-col px-[clamp(1.25rem,4vw,3.25rem)] ${
         center
           ? "justify-center py-[clamp(3rem,12vh,8rem)]"
           : "justify-start py-[clamp(4rem,10vh,7rem)]"
@@ -42,9 +42,9 @@ export function SkySection({
 export function SectionHeading({ index, en, ko }: { index: string; en: string; ko: string }) {
   return (
     <div className="mb-9 flex items-center gap-4">
-      <span className="font-mono text-[11px] tabular-nums tracking-[0.3em] text-white/45">{index}</span>
+      <span className="font-mono text-[12px] tabular-nums tracking-[0.3em] text-white">{index}</span>
       <span aria-hidden className="h-px w-12 bg-white/20" />
-      <MetricLabel tone="muted">
+      <MetricLabel tone="bright">
         {en} · {ko}
       </MetricLabel>
     </div>
