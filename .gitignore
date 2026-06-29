@@ -71,3 +71,4 @@ pnpm-workspace.yaml
 
 # serena (tool dir)
 .serena/
+/public/cinematic/locations/
