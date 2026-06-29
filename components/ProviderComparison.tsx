@@ -57,8 +57,8 @@ function SecondaryRow({
 }) {
   return (
     <div className="flex items-baseline justify-between border-b border-white/10 py-1.5 last:border-0">
-      <MetricLabel className="!tracking-[0.16em] text-white/40">{label}</MetricLabel>
-      <span className="font-sans text-sm font-light tabular-nums text-white/70">
+      <MetricLabel className="!tracking-[0.16em] text-white/60">{label}</MetricLabel>
+      <span className="font-sans text-sm font-light tabular-nums text-white/80">
         {value !== null ? `${Math.round(value * 10) / 10}${unit}` : "—"}
         <Delta delta={delta} strongAt={1} />
       </span>
@@ -102,7 +102,7 @@ export default function ProviderComparison({ snapshots, comparison }: Props) {
                   {/* Primary — precipitation. "데이터 없음" when the source carries
                       no precip series (never shown as 0%). */}
                   <div>
-                    <MetricLabel className="!tracking-[0.18em] text-white/55">강수 확률</MetricLabel>
+                    <MetricLabel className="!tracking-[0.18em] text-white/70">강수 확률</MetricLabel>
                     <div className="mt-1 flex items-baseline">
                       {rain !== null ? (
                         <span className="font-sans text-3xl font-light tabular-nums text-white/95">
@@ -155,7 +155,7 @@ export default function ProviderComparison({ snapshots, comparison }: Props) {
               )}
 
               {s.current && (
-                <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-white/45">
+                <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-white/65">
                   업데이트 {timeAgoKo(s.status.lastUpdated)}
                   {s.status.fromCache && " · 캐시"}
                 </p>
