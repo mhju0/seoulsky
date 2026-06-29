@@ -13,7 +13,7 @@ type Tone = "bright" | "muted" | "faint";
 const TONE: Record<Tone, string> = {
   bright: "text-white",
   muted: "text-white/80",
-  faint: "text-white/55",
+  faint: "text-white/70",
 };
 
 /** A small-caps mono label — the etched instrument caption above a reading. */
@@ -113,7 +113,7 @@ export function PoeticLine({
 }) {
   return (
     <p
-      className={`etched-shadow max-w-[36ch] font-sans text-xl font-light leading-relaxed tracking-wide text-white/85 ${className}`}
+      className={`etched-shadow max-w-[36ch] font-sans text-xl font-light leading-relaxed tracking-wide text-white ${className}`}
     >
       {children}
     </p>

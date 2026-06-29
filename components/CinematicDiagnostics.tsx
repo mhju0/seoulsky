@@ -25,7 +25,7 @@ import type { SkySnapshot } from "@/lib/types";
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-white/10 py-2 last:border-0">
-      <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.16em] text-white/55">{label}</span>
+      <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.16em] text-white/70">{label}</span>
       <span className="text-right font-sans text-sm font-light text-white/95">{value}</span>
     </div>
   );
@@ -33,7 +33,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 function ColumnLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-white/55">{children}</p>
+    <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-white/65">{children}</p>
   );
 }
 

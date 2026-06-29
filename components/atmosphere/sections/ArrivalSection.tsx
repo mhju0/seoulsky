@@ -86,14 +86,15 @@ export default function ArrivalSection() {
           </div>
         </Parallax>
 
-        {/* Poetic line — etched, generously led, comfortable over the live view. */}
-        <PoeticLine className="mt-9">{line}</PoeticLine>
+        {/* Poetic line — pushed down one additional line-height for breathing
+            room; full-white with text-shadow keeps it legible over bright plates. */}
+        <PoeticLine className="mt-14">{line}</PoeticLine>
 
-        {/* Seoul time — tertiary metrics, quiet under the secondary condition. */}
-        <div className="mt-10 flex flex-wrap items-center gap-x-5 font-mono text-sm tracking-[0.1em] text-white/65">
+        {/* Seoul time — closer to the poetic line, brightened to read clearly. */}
+        <div className="mt-11 flex flex-wrap items-center gap-x-5 font-mono text-sm tracking-[0.1em] text-white/90">
           <span>{clock ? dateFmt.format(clock) : "—"}</span>
-          <span className="tabular-nums text-white/50">{clock ? timeFmt.format(clock) : "--:--"}</span>
-          <span className="text-white/35">KST</span>
+          <span className="tabular-nums text-white/75">{clock ? timeFmt.format(clock) : "--:--"}</span>
+          <span className="text-white/50">KST</span>
         </div>
       </ScrollReveal>
     </SkySection>

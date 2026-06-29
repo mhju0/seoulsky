@@ -79,8 +79,8 @@ function SecondaryRow({ label, score }: { label: string; score: number | null })
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/45">{label}</span>
-        <span className="font-sans text-xs font-light tabular-nums text-white/55">
+        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</span>
+        <span className="font-sans text-xs font-light tabular-nums text-white/75">
           {score !== null ? `${score}%` : "—"}
         </span>
       </div>
@@ -98,7 +98,7 @@ export default function ConfidencePanel({ confidence, comparison }: Props) {
   return (
     <div className="flex flex-col gap-9 md:flex-row md:items-start md:gap-16">
       <div className="flex shrink-0 flex-col gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/55">
+        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/70">
           신뢰도 · Confidence
         </span>
         <div className="flex flex-col gap-0.5">
@@ -134,10 +134,10 @@ export default function ConfidencePanel({ confidence, comparison }: Props) {
           </div>
         </div>
 
-        <p className="max-w-xl text-sm leading-relaxed text-white/60">{confidence.explanation}</p>
+        <p className="max-w-xl text-sm leading-relaxed text-white/75">{confidence.explanation}</p>
 
         <div className="max-w-xl border-l border-white/20 pl-4">
-          <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-white/65">
+          <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-white/75">
             지금 무엇을 믿어야 할까요?
           </p>
           <p className="text-sm leading-relaxed text-white/95">{confidence.recommendation}</p>

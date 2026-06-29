@@ -40,6 +40,11 @@ body {
   position: relative;
   /* Re-scope the in-panel ink (see above). */
   --color-white: var(--sky-panel-ink, rgb(248, 250, 255));
+  /* Secondary ink: 75% of panel ink — for active supporting labels (section
+     captions, metric labels, data timestamps). Stays adaptive with backdrop
+     brightness. Role-(b) inactive/placeholder text uses lower-opacity
+     text-white/NN classes directly and is NOT routed through this var. */
+  --sky-panel-ink-secondary: color-mix(in srgb, var(--sky-panel-ink, rgb(248, 250, 255)) 75%, transparent);
   background-color: var(--sky-panel-bg, rgba(12, 16, 30, 0.26));
   /* Soft top sheen — complements the crisp 1px inner highlight in the shadow. */
   background-image: linear-gradient(
