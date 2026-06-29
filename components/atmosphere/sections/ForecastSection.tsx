@@ -73,11 +73,11 @@ export default function ForecastSection() {
             block stays visible at any width with no horizontal scroll. The period
             label is the glance anchor; each block carries hi/lo + a precip bar. */}
         <ScrollReveal amount={0.12}>
-          <GlassPanel className="px-6 py-7 sm:px-8 sm:py-8">
+          <GlassPanel className="px-4 py-7 sm:px-8 sm:py-8">
             <MetricLabel tone="bright">Next Hours · 시간대별 · 강수확률</MetricLabel>
             {blocks.length > 0 ? (
               <div
-                className="mt-6 grid grid-cols-5 gap-x-3 sm:gap-x-5"
+                className="mt-6 grid grid-cols-5 gap-x-2 sm:gap-x-5"
                 role="group"
                 aria-label="시간대별 예보 — 기온 및 강수확률"
               >
@@ -104,11 +104,11 @@ export default function ForecastSection() {
                       {/* hi/lo — the 7-day card's treatment, scaled up. ↑↓ glyphs
                           at 0.6em inherit the parent's adaptive ink so they stay
                           legible over both bright and dark backdrops. */}
-                      <span className="flex items-baseline gap-1.5 font-sans tabular-nums">
-                        <span className="font-light text-white text-[clamp(1.4rem,1.9vw,1.8rem)]">
+                      <span className="flex flex-col items-center gap-0.5 font-sans tabular-nums sm:flex-row sm:items-baseline sm:gap-1.5">
+                        <span className="font-light text-white text-base sm:text-[clamp(1.4rem,1.9vw,1.8rem)]">
                           <span className="text-[0.6em]">{TEMP_LABEL.high}</span>{b.tempHigh}°
                         </span>
-                        <span className="font-light text-white text-[clamp(1rem,1.3vw,1.25rem)]">
+                        <span className="font-light text-white text-xs sm:text-[clamp(1rem,1.3vw,1.25rem)]">
                           <span className="text-[0.6em]">{TEMP_LABEL.low}</span>{b.tempLow}°
                         </span>
                       </span>
@@ -137,17 +137,17 @@ export default function ForecastSection() {
         {daily.length > 0 && (
           <ScrollReveal amount={0.12} delay={0.06}>
             <MetricLabel tone="bright" className="mb-4 px-1">7-Day · 주간 · 강수확률</MetricLabel>
-            <div className="grid grid-cols-7 gap-3 sm:gap-4">
+            <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-7 sm:gap-4">
               {daily.map((d) => (
-                <GlassPanel key={d.date} className="px-3 py-6">
+                <GlassPanel key={d.date} className="px-2 py-5 sm:px-3 sm:py-6">
                   <div className="flex flex-col items-center gap-3.5">
                     <span className="font-mono text-[12px] tracking-[0.08em] text-white">
                       {dayLabel(d.date)}
                     </span>
                     <WeatherGlyph condition={glyphCondition(d.condition, d.precipitationProbability)} size={30} className="text-white" />
-                    <span className="flex items-baseline gap-1.5 font-sans tabular-nums">
-                      <span className="text-xl font-light text-white"><span className="text-[0.6em]">{TEMP_LABEL.high}</span>{Math.round(d.temperatureMax)}°</span>
-                      <span className="text-base font-light text-white"><span className="text-[0.6em]">{TEMP_LABEL.low}</span>{Math.round(d.temperatureMin)}°</span>
+                    <span className="flex flex-col items-center gap-0.5 font-sans tabular-nums sm:flex-row sm:items-baseline sm:gap-1.5">
+                      <span className="text-base font-light text-white sm:text-xl"><span className="text-[0.6em]">{TEMP_LABEL.high}</span>{Math.round(d.temperatureMax)}°</span>
+                      <span className="text-xs font-light text-white sm:text-base"><span className="text-[0.6em]">{TEMP_LABEL.low}</span>{Math.round(d.temperatureMin)}°</span>
                     </span>
                     <span className="flex items-center gap-1.5 font-mono text-[12px] tabular-nums text-white">
                       <span className={`h-1.5 w-1.5 rounded-full ${popTint(d.precipitationProbability)}`} aria-hidden />
