@@ -2,6 +2,7 @@
 
 import { dayLabel, makeIsNightAt } from "@/lib/format";
 import { buildForecastBlocks } from "@/lib/forecast/blocks";
+import type { WeatherCondition } from "@/lib/types";
 import GlassPanel from "../glass/GlassPanel";
 import WeatherGlyph from "../glass/WeatherGlyph";
 import { MetricLabel } from "../EtchedType";
@@ -32,6 +33,23 @@ function popTint(pop: number | null): string {
 }
 
 const clampPct = (pop: number | null) => (pop == null ? 0 : Math.max(0, Math.min(100, pop)));
+
+/**
+ * Presentation-only reconciliation of the forecast glyph with its POP. Open-Meteo's
+ * `weather_code` is the modal/most-likely sky state while POP is a probability (a max
+ * aggregate for the daily row), so a dry code can legitimately pair with a high rain
+ * chance — leaving a ☀️ glyph beside "86%". When the chance is at least even (≥50%)
+ * we upgrade a *dry* face (clear / partly-cloudy only) to the existing "rain" glyph so
+ * the icon no longer contradicts the number. All other conditions — cloudy/overcast
+ * (already non-sunny) and every precip/snow/thunder face — pass through untouched, and
+ * no POP number, bar, or text is changed. This stays inside the forecast cards: it does
+ * not touch WeatherGlyph, fusion, or the KMA-anchored live scene. */
+function glyphCondition(condition: WeatherCondition, pop: number | null): WeatherCondition {
+  if (pop != null && pop >= 50 && (condition === "clear" || condition === "partly-cloudy")) {
+    return "rain";
+  }
+  return condition;
+}
 
 /** Swap here if you want "High/Low", "최고/최저", etc. */
 const TEMP_LABEL = { high: "H", low: "L" } as const;
@@ -78,7 +96,7 @@ export default function ForecastSection() {
                           the same source the on-screen scene uses) so it never diverges
                           from what's showing; later blocks use their representative hour. */}
                       <WeatherGlyph
-                        condition={i === 0 ? readout.condition : b.condition}
+                        condition={i === 0 ? readout.condition : glyphCondition(b.condition, b.precipMax)}
                         night={isNightAt(b.representativeTime)}
                         size={32}
                         className="text-white"
@@ -126,7 +144,7 @@ export default function ForecastSection() {
                     <span className="font-mono text-[12px] tracking-[0.08em] text-white">
                       {dayLabel(d.date)}
                     </span>
-                    <WeatherGlyph condition={d.condition} size={30} className="text-white" />
+                    <WeatherGlyph condition={glyphCondition(d.condition, d.precipitationProbability)} size={30} className="text-white" />
                     <span className="flex items-baseline gap-1.5 font-sans tabular-nums">
                       <span className="text-xl font-light text-white"><span className="text-[0.6em]">{TEMP_LABEL.high}</span>{Math.round(d.temperatureMax)}°</span>
                       <span className="text-base font-light text-white"><span className="text-[0.6em]">{TEMP_LABEL.low}</span>{Math.round(d.temperatureMin)}°</span>
