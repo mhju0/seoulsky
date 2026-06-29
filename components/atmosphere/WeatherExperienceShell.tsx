@@ -18,6 +18,7 @@ import {
   WeatherClockProvider,
   WeatherFieldProvider,
   WeatherViewProvider,
+  WeatherViewToggleProvider,
   type WeatherFieldValue,
   type WeatherView,
 } from "./WeatherFieldContext";
@@ -106,6 +107,11 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
   // keyboard-driven: D toggles hero ↔ data, Esc always returns to the hero.
   const [view, setView] = useState<WeatherView>("hero");
 
+  // The single hero ↔ data toggle. Fired by both the desktop D key and the
+  // on-screen "데이터 · explore" tap target (the only touch affordance), so the
+  // two paths share one source of truth with no duplicated state logic.
+  const toggleView = useCallback(() => setView((v) => (v === "hero" ? "data" : "hero")), []);
+
   // Client-only capability detection (no SSR/hydration divergence).
   useEffect(() => {
     const reducedNow = prefersReducedMotion();
@@ -132,7 +138,7 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
       // QWERTY-position key, independent of layout/IME, and is unaffected by Shift.
       switch (e.code) {
         case "KeyD":
-          setView((v) => (v === "hero" ? "data" : "hero"));
+          toggleView();
           break;
         case "Escape":
           setView("hero");
@@ -143,7 +149,7 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [toggleView]);
 
   // Pause the GL loop while the tab is hidden (battery / GPU).
   useEffect(() => {
@@ -255,7 +261,9 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
             the shared scene, cross-fading on the D-toggle. The live clock is scoped
             here — only the sections that display ticking time subscribe to it. */}
         <WeatherViewProvider value={view}>
-          <WeatherClockProvider value={clock}>{children}</WeatherClockProvider>
+          <WeatherViewToggleProvider value={toggleView}>
+            <WeatherClockProvider value={clock}>{children}</WeatherClockProvider>
+          </WeatherViewToggleProvider>
         </WeatherViewProvider>
       </SkyImageProvider>
     </WeatherFieldProvider>

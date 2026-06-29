@@ -77,3 +77,17 @@ export const WeatherViewProvider = WeatherViewContext.Provider;
 export function useWeatherView(): WeatherView {
   return useContext(WeatherViewContext);
 }
+
+/**
+ * The shell-owned toggle that flips hero ↔ data — the SAME callback the desktop
+ * D key fires. Exposed via context so the on-screen "데이터 · explore" affordance
+ * in {@link SkyView} can drive the view on touch (where there is no keyboard),
+ * without duplicating the state logic. Defaults to a no-op outside a provider.
+ */
+const WeatherViewToggleContext = createContext<() => void>(() => {});
+
+export const WeatherViewToggleProvider = WeatherViewToggleContext.Provider;
+
+export function useWeatherViewToggle(): () => void {
+  return useContext(WeatherViewToggleContext);
+}
