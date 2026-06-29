@@ -7,7 +7,7 @@ import ForecastSection from "./sections/ForecastSection";
 import GroundStationSection from "./sections/GroundStationSection";
 import InstrumentsSection from "./sections/InstrumentsSection";
 import RadarSection from "./sections/RadarSection";
-import { useWeatherField, useWeatherView } from "./WeatherFieldContext";
+import { useWeatherField, useWeatherView, useWeatherViewToggle } from "./WeatherFieldContext";
 
 /**
  * The readable HUD over the live scene at /sky. Two discrete, keyboard-toggled
@@ -36,6 +36,7 @@ export default function SkyView() {
   const { isDay, dayFactor, goldenFactor, readout } = useWeatherField();
   const { src: plateSrc } = useSkyImage();
   const view = useWeatherView();
+  const toggleView = useWeatherViewToggle();
   const isHero = view === "hero";
 
   return (
@@ -48,14 +49,24 @@ export default function SkyView() {
       >
         <ArrivalSection />
 
-        {/* Subtle keyboard hint — the only navigation affordance. */}
-        <div className="sky-on-media pointer-events-none absolute inset-x-0 bottom-[clamp(1.75rem,5vh,3.25rem)] z-10 flex items-center justify-center gap-2.5">
-          <kbd className="rounded border border-white/30 px-1.5 py-0.5 font-mono text-[11px] tracking-wider text-white/75">
-            D
-          </kbd>
-          <span className="font-mono text-[11px] uppercase tracking-[0.34em] text-white/55">
-            데이터 · explore
-          </span>
+        {/* The navigation affordance. Doubles as the touch entry point to the data
+            deck (no keyboard on mobile): a real button firing the SAME shell toggle
+            the D key calls. The full-width bar stays click-through; only the button
+            itself captures taps, with generous padding for a comfortable hit area. */}
+        <div className="sky-on-media pointer-events-none absolute inset-x-0 bottom-[clamp(1.75rem,5vh,3.25rem)] z-10 flex items-center justify-center">
+          <button
+            type="button"
+            onClick={toggleView}
+            aria-label="데이터 덱 열기"
+            className="pointer-events-auto flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+          >
+            <kbd className="rounded border border-white/30 px-1.5 py-0.5 font-mono text-[11px] tracking-wider text-white/75">
+              D
+            </kbd>
+            <span className="font-mono text-[11px] uppercase tracking-[0.34em] text-white/55">
+              데이터 · explore
+            </span>
+          </button>
         </div>
       </div>
 
