@@ -440,7 +440,7 @@ export default function InstrumentsSection() {
   const visSub = visKo(readout.visibility);
   const uvSub = uvKo(readout.uvIndex);
   const airSub = airKo; // qualitative band word, always the sub when a band exists
-  const precipSub = precipRaw === 0 ? "강수 없음" : null;
+  const precipSub = precipRaw === 0 ? "강수 없음" : precipRaw != null ? "현재 시각" : null;
 
   // Scale-bar marker positions (null → no dot, never a fabricated 0).
   const visPct = readout.visibility == null ? null : clamp01(readout.visibility / 20000) * 100;
