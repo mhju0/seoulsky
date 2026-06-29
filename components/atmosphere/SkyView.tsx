@@ -110,6 +110,36 @@ export default function SkyView() {
             <GroundStationSection />
           </div>
         </div>
+
+        {/* Return-to-hero affordance — the touch counterpart to the desktop Esc
+            key, so mobile users (no keyboard) can leave the data deck. Fires the
+            SAME shell toggle the D key calls; from the data view it returns to the
+            hero. Pinned to the top-start of the viewport (it does not scroll with
+            the deck) and inert with the whole data layer while the hero shows. The
+            ESC hint only appears where a keyboard exists (sm+). */}
+        <button
+          type="button"
+          onClick={toggleView}
+          aria-label="처음 화면으로"
+          className="absolute left-[clamp(1.25rem,4vw,3.25rem)] top-[clamp(1rem,3.2vh,1.9rem)] z-20 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 backdrop-blur-md transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
+        >
+          <svg
+            aria-hidden
+            viewBox="0 0 24 24"
+            className="h-4 w-4 text-white"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          <span className="font-mono text-[11px] tracking-[0.28em] text-white">처음으로</span>
+          <kbd className="hidden rounded border border-white/30 px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-white/70 sm:inline-block">
+            ESC
+          </kbd>
+        </button>
       </div>
     </div>
   );
