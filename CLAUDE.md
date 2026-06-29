@@ -14,7 +14,7 @@ It runs with **zero API keys** for the core scene (Open-Meteo + RainViewer basel
 
 - **Next.js 16** (App Router) · **React 19** · **TypeScript 5** (strict)
 - **Tailwind CSS v4** via `@tailwindcss/postcss` — config-less; `app/globals.css` uses `@import "tailwindcss"` + `@theme inline`. Most of the visual system is hand-written CSS in `globals.css` (the `.sky-*` classes), not utility soup.
-- **framer-motion** (scroll reveals, `useInView`-gated lazy fetch) · **recharts** (the wind chart in the Sun & Sky section)
+- **framer-motion** (scroll reveals, `useInView`-gated lazy fetch). [Verified] `recharts` is still in `package.json` but **unused** (0 imports) — its only consumer, the Sun & Sky wind chart, was removed in `91a61a4`; the dep is safe to drop.
 - The WebGL background is **hand-rolled raw WebGL** (`components/atmosphere/AtmosphericFieldBackground.tsx`, a single fullscreen shader driven by mutable refs), dynamically imported with `ssr: false`. Despite ESLint comments mentioning react-three-fiber, three.js is not a dependency.
 
 ## Commands
@@ -74,7 +74,7 @@ Memoized, fixed, `z-0`, edge-to-edge. Back-to-front, with a guaranteed never-bla
 ### The HUD (`components/atmosphere/SkyView.tsx`)
 Two always-mounted layers cross-fade on the D-toggle (~500ms; no scroll-coupled opacity):
 - **Hero** — `ArrivalSection` (de-glassed readout over the live scene) + a "press D" hint.
-- **Data** — a scrolling dashboard with its own opaque day/night gradient backdrop (so the scene pauses behind it): `InstrumentsSection` → `RadarSection` (section 03) → `ForecastSection` → `SunSkySection` → `GroundStationSection`.
+- **Data** — a scrolling dashboard with its own opaque day/night gradient backdrop (so the scene pauses behind it): `InstrumentsSection` → `RadarSection` (section 03) → `ForecastSection` → `GroundStationSection`. ([Verified] 4 sections — `SkyView.tsx`. The former `SunSkySection` / Sun & Wind block was removed in `91a61a4`, which is why `recharts` is now unused.)
 
 The day/night palette is applied **once** as CSS variables on the `.sky-foreground` root via `buildSkyPalette` (`lib/cinematic/skyPalette.ts`); it also remaps Tailwind's `white` so existing `text-white/*` becomes the correct ink for the current sky. Note: the data view's text was flattened to **full-strength adaptive ink across the board** (the prior `text-white/NN` opacity hierarchy was removed) — keep new data-view text on the adaptive `text-white` token, never a hardcoded colour, so it still flips correctly on dark backdrops.
 
@@ -124,9 +124,32 @@ The displayed radar is KMA's **raw reflectivity grid** (apihub.kma.go.kr), rende
   - **`KMA_APIHUB_KEY`** — apihub.kma.go.kr radar authKey (HSR 500 m product). Powers the radar **echo**. Without it the radar section still renders the CARTO basemap + Korean labels but has no precip frames (empty state); the rest of the app is unaffected. Server-only — never `NEXT_PUBLIC_`.
   - **`RADAR_DATA_DIR`** (optional) — overrides where the latlon geo grid is cached (`data/radar/` by default). On a read-only / serverless FS the disk write fails gracefully to in-memory (refetched each cold start); set this to `/tmp/...` there so the cache persists across invocations.
   - **`KMA_RADAR_API_KEY`** — **retired** (old data.go.kr `getCmpImg` PNG path). Remove it from `.env.local`.
-- **Asset/repo hygiene:** `public/cinematic/generated/*.mp4` is tracked via **Git LFS** (`.gitattributes`); `.webm/.mov/.png` cinematic assets and the entire `docs/` directory are gitignored. Still plates live in `public/sky/` as tracked `.webp`. The radar latlon cache lives in gitignored `/data/radar/`.
+- **Asset/repo hygiene:** `public/cinematic/generated/*.mp4` is tracked via **Git LFS** (`.gitattributes`); `.webm/.mov/.png` cinematic assets and **new** files under `docs/` are gitignored (`/docs/` is in `.gitignore`). [Verified] **Caveat:** 4 spec docs committed before that rule remain **tracked** — `docs/{weather-sources,future-weather-sources,cinematic-plates,shot-prompts}.md` (`git ls-files docs/`); everything else in `docs/` is ignored. Still plates live in `public/sky/` as tracked `.webp`. The radar latlon cache lives in gitignored `/data/radar/`.
 - **Seoul-only by design** — fixed coordinates and station IDs in `lib/seoul.ts`. This is an unofficial personal project; not for aviation/safety use.
 
 ## Reference docs
 
-`docs/` (gitignored) holds the design/runbook history: `SEOULSKY_V2_SKYFARER_PLAN_AND_RUNBOOK.md` (the migration to the current `/sky` experience), `weather-sources.md` + `future-weather-sources.md` (fusion/caching/attribution spec), `cinematic-plates.md` + `shot-prompts.md` (the asset-generation pipeline), and the earlier "Descent" concept docs. `public/cinematic/README.md` documents the (legacy) video plate library.
+`docs/` (mostly gitignored — but the 4 spec `.md` below are tracked, see *Asset/repo hygiene*) holds the design/runbook history: `SEOULSKY_V2_SKYFARER_PLAN_AND_RUNBOOK.md` (the migration to the current `/sky` experience, untracked), `weather-sources.md` + `future-weather-sources.md` (fusion/caching/attribution spec), `cinematic-plates.md` + `shot-prompts.md` (the asset-generation pipeline), and the earlier "Descent" concept docs. `cinematic-plates.md`, `shot-prompts.md` and `public/cinematic/README.md` describe the **retired video-plate era** — historical reference, not current architecture (the live background is the still `ImageField`).
+
+## Roadmap — remaining phases to portfolio-ready
+
+> **Goal:** a live, public Vercel URL for `/sky`. This section is the single source of truth for project status and the path there. Every state claim is tagged `[Verified]` / `[Inferred]` / `[Unknown]` with a git/file citation — re-derive from the repo, don't trust prose.
+
+### Verified current state (as of 2026-06-29)
+
+- **Git:** on `main`, **0 unpushed commits** (`origin/main` == `HEAD`) `[Verified: git log origin/main..HEAD empty]`. Working tree: **1 modified tracked** (`public/sky/manifest.json`) + **5 untracked `__v2` plates** + an untracked `.serena/` tool dir `[Verified: git status --short]`. The manifest edit adds those 5 plates → uncommitted "image variants" work. No merge/rebase/detached state. Branches: local `main`; remotes `origin/main`, `origin/reliability-state` `[Verified: git branch -a]`.
+- **Build/test:** Next `16.2.9` / React `19.2.4` `[Verified: package.json]`. **18 test files** `[Verified: find lib -name '*.test.ts' | wc -l]`. `recharts ^3.8.1` is a dep but **unused** (0 imports) `[Verified: grep -rn recharts app components lib]`. `npm run build` **not run this pass — verify before deploy** `[Unknown]`.
+- **Routes:** only `app/sky` + `app/api/{sky,weather,radar}`; `/`, `/atmosphere`, `/diagnostics` are redirects with no page dirs `[Verified: app/page.tsx, next.config.ts, find app]`.
+- **Scene plates:** all **18 base slots** filled (6 conditions × 3 anchors) + 18 `__v2` + 1 `__v3` = **37 `.webp`** `[Verified: ls public/sky, manifest.json]`. Data view = **4 sections** (Instruments → Radar → Forecast → GroundStation); no Sun & Sky `[Verified: SkyView.tsx]`.
+- **Precip reliability is LIVE and merged** (supersedes any "on a branch / eventsScored=0" note): merged to `main` via `07fa279` (PR #1) `[Verified: git log]`; daily cron `precip-reliability.yml` on `main`; `origin/reliability-state` carries **5 daily persist commits, 2026-06-21→06-25** `[Verified: git log origin/reliability-state]`; **`eventsScored: 15`**, weights diverged from equal (met-norway ≈0.43 vs 0.20 equal), `observed_mm` populated → **ASOS ground-truth key is active** `[Verified: git show origin/reliability-state:data/reliability/source-weights.json + daily-skill.jsonl]`. **`MULTI_SOURCE_PRECIP` default OFF** `[Verified: app/api/sky/route.ts:31]` → runtime `/api/sky` is still byte-for-byte single-source; the learned weights don't yet tilt the live scene. ⚠️ **No persist commit since 2026-06-25 (4-day gap)** — verify the GitHub Action is still green `[Inferred: gap in git log origin/reliability-state; cause Unknown]`.
+- **Deployment: none yet** — no `vercel.json`, no `.vercel/`, no live URL in any doc/README `[Verified: ls, grep]`. This is the gap to portfolio-ready.
+
+### Phases
+
+1. **Land pending work + green build** — commit the 5 `__v2` plates + `manifest.json` (decide `.serena/` → `.gitignore`); confirm `npm run build`, `npm test` (18 files), `npx tsc --noEmit` all pass; push `main`. **BLOCKING** (Vercel deploys from pushed git and the build must pass). *Build not yet run — verify.*
+2. **Deploy to Vercel** — import the repo, first production build, confirm `/sky` renders and the `/`, `/atmosphere`, `/diagnostics` redirects work in prod. **BLOCKING** — this is the live URL. Depends on Phase 1.
+3. **Production env + feature completeness** — set `KMA_APIHUB_KEY` (radar echo) + `RADAR_DATA_DIR=/tmp/...` (serverless FS), optionally the other provider keys; decide `MULTI_SOURCE_PRECIP`. **Non-blocking** (core scene is keyless; radar/precip degrade gracefully). Post-launch enrichment. Depends on Phase 2.
+4. **Portfolio polish** — add the live URL to `README.md` (+ a screenshot/GIF), drop the unused `recharts` dep, sync the README architecture prose. **Non-blocking**, post-launch. Depends on Phase 2.
+5. **Reliability + asset follow-ups (optional/deferred)** — investigate the 06-25 cron gap, decide `MULTI_SOURCE_PRECIP` rollout once `eventsScored ≥ 20` (`FULL_CONFIDENCE_EVENTS`), eyeball the KMA radar echo against live precip over Seoul (open caveat above), expand the landmark gallery beyond Han River. **Optional/deferred.**
+
+**5 phases remaining to portfolio-ready (2 blocking: 1–2; 3 optional: 3–5).**

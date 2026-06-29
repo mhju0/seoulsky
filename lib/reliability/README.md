@@ -115,6 +115,8 @@ npm run reliability:daily
 
 ## Deployment — scheduling & durable cross-run persistence
 
+> **Status (verified, 2026-06-29):** this workflow is **merged to `main`** (PR #1, `07fa279`) and the **cron is live**. `origin/reliability-state` carries daily persist commits 2026-06-21→06-25, and `source-weights.json` reads **`eventsScored: 15`** (past `WARMUP_EVENTS` 5, nearing `FULL_CONFIDENCE_EVENTS` 20) with weights already diverged from equal (met-norway up) — i.e. the **ASOS ground-truth key is active and scoring**. The runtime `/api/sky` is nonetheless still `equal-fallback` (single source) because **`MULTI_SOURCE_PRECIP` is OFF** by default. ⚠️ No persist commit since 2026-06-25 (4-day gap as of writing) — confirm the Action is still green in the Actions tab.
+
 `.github/workflows/precip-reliability.yml` runs the batch **daily** (`schedule`,
 21:10 UTC ≈ 06:10 KST, after the KMA ASOS daily data publishes) plus on-demand via
 **Run workflow** (`workflow_dispatch`). It closes the persistence gap that artifacts
