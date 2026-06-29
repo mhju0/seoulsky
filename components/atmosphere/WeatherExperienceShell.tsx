@@ -127,11 +127,14 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
       if (isTypingTarget(document.activeElement)) return;
-      switch (e.key.toLowerCase()) {
-        case "d":
+      // Match the physical key via e.code, not e.key: under a Korean IME the D key
+      // yields e.key "ㅇ", so e.key-based matching silently breaks. e.code is the
+      // QWERTY-position key, independent of layout/IME, and is unaffected by Shift.
+      switch (e.code) {
+        case "KeyD":
           setView((v) => (v === "hero" ? "data" : "hero"));
           break;
-        case "escape":
+        case "Escape":
           setView("hero");
           break;
         default:

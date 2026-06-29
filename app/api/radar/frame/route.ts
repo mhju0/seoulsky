@@ -9,6 +9,10 @@ import { isValidFrameKey } from "@/lib/radar/kma";
  * frame is immutable, so the response is cached hard.
  */
 export const dynamic = "force-dynamic";
+// Cold start fetches the ~13 MB echo grid (AbortSignal.timeout 25s in apihub.ts) plus
+// boot + reproject/encode. That can exceed Vercel's low default function ceiling, so raise
+// it to Hobby's max (60s). This widens the budget; it can't make a >60s upstream succeed.
+export const maxDuration = 60;
 
 export async function GET(req: Request) {
   const t = new URL(req.url).searchParams.get("t") ?? "";
