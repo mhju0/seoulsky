@@ -3,6 +3,10 @@ import path from "node:path";
 import { cachedFetch } from "../cache.ts";
 import { cropToSeoul, CROP_W, encodePng } from "./grid.ts";
 import { buildGeo, type GeoModel, reproject } from "./geo.ts";
+// Committed, bundler-inlined georeference model. A static JSON import is guaranteed to be
+// traced into the serverless function (unlike a runtime read of the gitignored disk cache),
+// so the steady-state path needs no latlon fetch at cold start. See buildOrReadGeo.
+import bundledGeo from "./geo-HSR.json" with { type: "json" };
 
 /**
  * SERVER-ONLY data layer for the high-resolution KMA radar (apihub.kma.go.kr).
@@ -53,11 +57,24 @@ async function fetchLatLon(which: "lon" | "lat"): Promise<string> {
 
 let geoMemo: Promise<GeoModel> | null = null;
 
+/** Shape-check a candidate model: has the affine fit and matches the current crop window.
+ *  The CROP_W guard makes a stale bundle/disk cache self-invalidate if the crop changes. */
+function isUsableGeo(g: unknown): g is GeoModel {
+  const c = g as GeoModel | null;
+  return !!(c?.inv && c?.bbox && c.crop?.w === CROP_W);
+}
+
 async function buildOrReadGeo(): Promise<GeoModel> {
+  // 1) Bundled model — inlined by the bundler, so it ships inside the function. The HSR grid
+  //    geometry is fixed, so this is the steady state and skips the cold-start latlon fetch.
+  if (isUsableGeo(bundledGeo)) return bundledGeo;
+
+  // 2) Fallback boundary — only reached if the bundled model is missing/stale (e.g. a crop
+  //    change): the original disk cache, else a one-time rebuild from the latlon API.
   const file = path.join(radarDataDir(), GEO_FILE);
   try {
     const cached = JSON.parse(await readFile(file, "utf8")) as GeoModel;
-    if (cached?.inv && cached?.bbox && cached.crop?.w === CROP_W) return cached;
+    if (isUsableGeo(cached)) return cached;
   } catch {
     // Not cached yet (or unreadable) → build it from the latlon API once.
   }
