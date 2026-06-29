@@ -458,7 +458,7 @@ export default function InstrumentsSection() {
             resetting Framer Motion animation state so the stagger replays cleanly. */}
         <motion.div
           key={entranceKey}
-          className="mx-auto grid w-full max-w-[80rem] grid-cols-2 gap-6 lg:grid-cols-3"
+          className="mx-auto grid w-full max-w-[80rem] grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
           initial={reduce ? false : "hidden"}
           animate={isActive ? "visible" : "hidden"}
           variants={reduce ? {} : GRID_VARIANTS}
