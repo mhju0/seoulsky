@@ -31,7 +31,7 @@
 | 프레임워크 | **Next.js 16** App Router · **React 19** · **TypeScript 5** strict |
 | 스타일 | **Tailwind CSS v4** config-less · 비주얼 시스템은 `globals.css`의 `.sky-*` CSS |
 | 배경 | **raw WebGL** 단일 쿼드 커스텀 셰이더, three.js 없음 |
-| 애니메이션 | **framer-motion** 스크롤 리빌 · **recharts** 바람 차트 |
+| 애니메이션 | **framer-motion** 스크롤 리빌 · `useInView` 지연 로드 |
 | 데이터 | Open-Meteo + RainViewer (키 없이 동작), 공식 출처는 선택적 보강 |
 | AI 애셋 | **Higgsfield** 오프라인 빌드 파이프라인 전용 |
 

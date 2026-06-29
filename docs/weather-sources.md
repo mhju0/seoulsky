@@ -47,6 +47,8 @@ SeoulSky가 사용하는 모든 데이터 소스의 **목적 · 인증 · 신선
 
 ## 3. RainViewer — 강수 레이더
 
+> **갱신(2026-06):** `/sky`에 *표시되는* 강수 레이더 **이미지**는 이제 기상청 apihub의 **HSR 500m 반사도 격자**를 서버에서 렌더링합니다(`KMA_APIHUB_KEY`, `lib/radar/*`). RainViewer는 **접근 신호(approach signal) 전용**으로 남아 헤드라인 카피에만 쓰입니다 — 아래 설명은 그 접근-신호 역할 기준입니다. 표시 이미지 파이프라인은 `CLAUDE.md`의 *Radar imagery* 참조.
+
 - **목적**: 서울 부근 강수 유무와 **보수적 접근 방향**(서/북서/남서)을 추려 카메라·카피에 살짝 반영. 접근 신호는 프레임이 뒷받침할 때만 표기 — 절대 지어내지 않음.
 - **엔드포인트**: `https://api.rainviewer.com/public/weather-maps.json` (프레임 목록 + 타일 호스트). 타일은 8-bit RGBA PNG.
 - **인증**: 없음.
