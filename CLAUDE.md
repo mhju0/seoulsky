@@ -153,3 +153,47 @@ The displayed radar is KMA's **raw reflectivity grid** (apihub.kma.go.kr), rende
 5. **Reliability + asset follow-ups (optional/deferred)** — investigate the 06-25 cron gap, decide `MULTI_SOURCE_PRECIP` rollout once `eventsScored ≥ 20` (`FULL_CONFIDENCE_EVENTS`), eyeball the KMA radar echo against live precip over Seoul (open caveat above), expand the landmark gallery beyond Han River. **Optional/deferred.**
 
 **5 phases remaining to portfolio-ready (2 blocking: 1–2; 3 optional: 3–5).**
+
+## Claude conventions
+
+<!-- `_reference_instructions.md`에서 그대로 복사한 공통 규칙 (Models · Effort · Prompt 형식 · Git commit 형식). 프로젝트 간 byte-identical로 유지 — 여기서 직접 고치지 말고 `_reference_instructions.md`에서 관리한다. -->
+
+## Claude Code Prompts
+Claude Code 프롬프트를 요청하면 항상:
+- 추천 model + effort
+- command 코드블록 1개, 그리고 별도의 prompt body 코드블록 1개
+- 프롬프트는 간결하게 (불필요하게 길게 쓰지 마)
+
+Format: claude --model <model> --effort <effort>
+
+(prompt body는 별도 코드블록)
+
+Models
+- haiku / claude-haiku-4-5 — 소소한 수정, 오타, 포맷팅, 저위험 단일 파일
+- sonnet / claude-sonnet-5 — 기본값. 일반 버그 수정, 기능, 소규모 refactor, 테스트
+- opus / claude-opus-4-8 — 복잡/cross-file, 어려운 디버깅, DB/auth/security/scheduling/notification 로직
+- fable / claude-fable-5 — 가장 어려운 작업: 깊은 audit, 대규모 refactor, 긴 multi-step 조사
+
+Effort
+- low — 단순, 저위험
+- medium — 일반 기본값
+- high — 대부분의 실제 버그 수정·기능 작업
+- xhigh — 깊은 추론, multi-file 조사, 신중한 audit
+- max — 매우 어렵거나 high-stakes
+- ultracode — 대규모 multi-step agentic 작업용 Claude Code 전용 모드
+
+기본: 애매하면 sonnet medium. data integrity/auth/DB/schema/security/scheduling/notification은 최소 sonnet high.
+
+## Git Commits
+내가 직접 실행할 git add/commit을 줄 때는 항상:
+- git add와 git commit을 하나의 "bash" 코드블록에 함께 넣어라 (한 번 클릭으로 전체 복사 가능하게).
+- 별도 편집 없이 그대로 paste해서 실행 가능해야 한다. placeholder 금지, 실제 파일 경로와 실제 commit message를 넣어라.
+- commit message는 professional English로.
+- 형식:
+
+  git add path/to/fileA path/to/fileB
+  git commit -m "Professional English commit message here"
+
+Claude Code는 필요하면 스스로 git add / git commit을 실행해도 된다.
+모든 git 작업을 나에게 넘길 필요는 없다. 다만 위 포맷 규칙은
+"내가 직접 실행하도록 명령을 제시할 때" 적용된다.
