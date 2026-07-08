@@ -476,7 +476,7 @@ export default function RadarSection() {
 
       <div ref={sectionRef} className="flex flex-1 flex-col justify-center">
         <ScrollReveal amount={0.12}>
-          <GlassPanel className="px-5 py-5 sm:px-6 sm:py-6">
+          <GlassPanel className="mx-auto w-full max-w-[80rem] px-5 py-5 sm:px-6 sm:py-6">
             {!available || !bounds ? (
               <RadarEmpty near={near} failed={failed} loaded={summary !== null} />
             ) : (

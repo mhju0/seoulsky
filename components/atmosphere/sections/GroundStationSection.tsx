@@ -161,7 +161,7 @@ export default function GroundStationSection() {
     <SkySection id="ground">
       <SectionHeading index="05" en="Confidence" ko="예보 신뢰도" />
 
-      <div ref={deckRef} className="flex flex-col gap-4 sm:gap-5">
+      <div ref={deckRef} className="mx-auto flex w-full max-w-[80rem] flex-col gap-4 sm:gap-5">
         {/* Confidence-first summary for normal users. */}
         <ScrollReveal amount={0.1}>
           <GlassPanel className="px-5 py-6 sm:px-7 sm:py-7">

@@ -67,7 +67,7 @@ export default function ForecastSection() {
     <SkySection compact>
       <SectionHeading index="04" en="Forecast" ko="앞으로의 날씨" compact />
 
-      <div className="flex flex-1 flex-col justify-center gap-7 sm:gap-8">
+      <div className="mx-auto flex w-full max-w-[80rem] flex-1 flex-col justify-center gap-7 sm:gap-8">
         {/* Time-of-day — the next ~15h folded into five wide, glanceable blocks
             (지금 → 새벽/아침/…) inside one frosted capsule. A 5-col grid, so every
             block stays visible at any width with no horizontal scroll. The period
