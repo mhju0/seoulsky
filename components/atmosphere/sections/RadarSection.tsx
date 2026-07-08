@@ -422,24 +422,24 @@ export default function RadarSection() {
   }, []);
 
   return (
-    <SkySection>
-      <SectionHeading index="03" en="Radar" ko="비구름 레이더" />
+    <SkySection compact>
+      <SectionHeading index="03" en="Radar" ko="비구름 레이더" compact />
 
       <div ref={sectionRef} className="flex flex-1 flex-col justify-center">
         <ScrollReveal amount={0.12}>
-          <GlassPanel className="px-5 py-6 sm:px-7 sm:py-7">
+          <GlassPanel className="px-5 py-5 sm:px-6 sm:py-6">
             {!available || !bounds ? (
               <RadarEmpty near={near} failed={failed} loaded={summary !== null} />
             ) : (
               <>
-                <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+                <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
                   {/* Scope */}
-                  <div className="mx-auto w-full max-w-[32rem] lg:mx-0 lg:flex-[0_0_50%]">
+                  <div className="mx-auto w-full max-w-[32rem] lg:mx-0 lg:flex-[0_0_auto] lg:max-w-[clamp(21rem,52vh,32rem)]">
                     <RadarScope frame={frames[activeIndex]} nowMs={nowMs} bounds={bounds} />
                   </div>
 
                   {/* Readout + legend */}
-                  <div className="flex flex-1 flex-col justify-center gap-6">
+                  <div className="flex flex-1 flex-col justify-center gap-5">
                     <div className="flex flex-col gap-2">
                       <MetricLabel tone="bright">Now over Seoul · 서울 상공</MetricLabel>
                       <p className="font-sans text-[clamp(1.4rem,3vw,2rem)] font-light leading-tight text-white">
@@ -468,7 +468,7 @@ export default function RadarSection() {
                 </div>
 
                 {/* Timeline: play/pause + scrubber spanning the observed past → now. */}
-                <div className="mt-7 flex items-center gap-4">
+                <div className="mt-5 flex items-center gap-4">
                   <button
                     type="button"
                     onClick={() => setPlaying((p) => !p)}
@@ -491,7 +491,7 @@ export default function RadarSection() {
                   </div>
                 </div>
 
-                <p className="mt-4 font-mono text-[11px] leading-relaxed tracking-[0.1em] text-white">
+                <p className="mt-3 font-mono text-[11px] leading-relaxed tracking-[0.1em] text-white">
                   최근 약 1시간 관측 · 고해상도 강수 레이더 · 서울 중심 · 출처 © 기상청(KMA) · {BASEMAP.attribution}
                 </p>
               </>

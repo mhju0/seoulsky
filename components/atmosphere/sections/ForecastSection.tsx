@@ -64,27 +64,27 @@ export default function ForecastSection() {
   const isNightAt = makeIsNightAt(snapshot?.daily ?? []);
 
   return (
-    <SkySection>
-      <SectionHeading index="04" en="Forecast" ko="앞으로의 날씨" />
+    <SkySection compact>
+      <SectionHeading index="04" en="Forecast" ko="앞으로의 날씨" compact />
 
-      <div className="flex flex-1 flex-col justify-center gap-10 sm:gap-14">
+      <div className="flex flex-1 flex-col justify-center gap-7 sm:gap-8">
         {/* Time-of-day — the next ~15h folded into five wide, glanceable blocks
             (지금 → 새벽/아침/…) inside one frosted capsule. A 5-col grid, so every
             block stays visible at any width with no horizontal scroll. The period
             label is the glance anchor; each block carries hi/lo + a precip bar. */}
         <ScrollReveal amount={0.12}>
-          <GlassPanel className="px-4 py-7 sm:px-8 sm:py-8">
+          <GlassPanel className="px-4 py-5 sm:px-7 sm:py-6">
             <MetricLabel tone="bright">Next Hours · 시간대별 · 강수확률</MetricLabel>
             {blocks.length > 0 ? (
               <div
-                className="mt-6 grid grid-cols-5 gap-x-2 sm:gap-x-5"
+                className="mt-5 grid grid-cols-5 gap-x-2 sm:gap-x-4"
                 role="group"
                 aria-label="시간대별 예보 — 기온 및 강수확률"
               >
                 {blocks.map((b, i) => {
                   const pct = clampPct(b.precipMax);
                   return (
-                    <div key={b.representativeTime} className="flex flex-col items-center gap-2.5 text-center">
+                    <div key={b.representativeTime} className="flex flex-col items-center gap-2 text-center sm:gap-2.5">
                       {/* Period label — the largest, most prominent glance target. */}
                       <span className="font-sans font-normal leading-none tracking-tight text-white text-[clamp(1.15rem,1.6vw,1.5rem)]">
                         {b.label}
@@ -136,11 +136,11 @@ export default function ForecastSection() {
         {/* Daily — seven equal full-width cards, each adding 강수확률 to hi/lo + icon. */}
         {daily.length > 0 && (
           <ScrollReveal amount={0.12} delay={0.06}>
-            <MetricLabel tone="bright" className="mb-4 px-1">7-Day · 주간 · 강수확률</MetricLabel>
-            <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-7 sm:gap-4">
+            <MetricLabel tone="bright" className="mb-3 px-1">7-Day · 주간 · 강수확률</MetricLabel>
+            <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-7 sm:gap-3">
               {daily.map((d) => (
-                <GlassPanel key={d.date} className="px-2 py-5 sm:px-3 sm:py-6">
-                  <div className="flex flex-col items-center gap-3.5">
+                <GlassPanel key={d.date} className="px-2 py-4 sm:px-3 sm:py-4">
+                  <div className="flex flex-col items-center gap-2.5">
                     <span className="font-mono text-[12px] tracking-[0.08em] text-white">
                       {dayLabel(d.date)}
                     </span>
