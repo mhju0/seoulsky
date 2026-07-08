@@ -1,6 +1,6 @@
 import { cachedFetch } from "../cache.ts";
 import { CACHE_TTL_MS } from "../seoul.ts";
-import { readWeights } from "./store.ts";
+import { readWeights } from "./weightsStore.ts";
 import type { WeightsState } from "./types.ts";
 
 /**
