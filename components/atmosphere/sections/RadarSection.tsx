@@ -423,7 +423,7 @@ export default function RadarSection() {
 
   return (
     <SkySection>
-      <SectionHeading index="03" en="Radar" ko="강수 레이더" />
+      <SectionHeading index="03" en="Radar" ko="비구름 레이더" />
 
       <div ref={sectionRef} className="flex flex-1 flex-col justify-center">
         <ScrollReveal amount={0.12}>

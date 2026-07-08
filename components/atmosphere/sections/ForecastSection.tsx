@@ -65,7 +65,7 @@ export default function ForecastSection() {
 
   return (
     <SkySection>
-      <SectionHeading index="04" en="Forecast" ko="예보" />
+      <SectionHeading index="04" en="Forecast" ko="앞으로의 날씨" />
 
       <div className="flex flex-1 flex-col justify-center gap-10 sm:gap-14">
         {/* Time-of-day — the next ~15h folded into five wide, glanceable blocks

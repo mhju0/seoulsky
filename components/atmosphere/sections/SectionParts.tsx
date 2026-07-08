@@ -6,7 +6,7 @@ import { MetricLabel } from "../EtchedType";
 
 /**
  * Shared chrome for the four /sky scroll sections — the section shell, the quiet
- * EN·KO heading, and the live-status badge. Pure presentation; the panels and the
+ * KO·EN heading, and the live-status badge. Pure presentation; the panels and the
  * data live in the section bodies. Every section flows in the normal document
  * scroll over the fixed scene, so reveal/parallax here never drives the scene.
  */
@@ -38,15 +38,17 @@ export function SkySection({
   );
 }
 
-/** The etched caption that opens a section: an index, a hairline tick, EN · KO. */
+/** The etched caption that opens a section: an index, a hairline tick, KO · EN. */
 export function SectionHeading({ index, en, ko }: { index: string; en: string; ko: string }) {
   return (
     <div className="mb-9 flex items-center gap-4">
       <span className="font-mono text-[12px] tabular-nums tracking-[0.3em] text-white">{index}</span>
       <span aria-hidden className="h-px w-12 bg-white/20" />
-      <MetricLabel tone="bright">
-        {en} · {ko}
-      </MetricLabel>
+      <h2 className="m-0">
+        <MetricLabel tone="bright">
+          {ko} · {en}
+        </MetricLabel>
+      </h2>
     </div>
   );
 }

@@ -120,7 +120,7 @@ export default function GroundStationSection() {
 
   return (
     <SkySection id="ground">
-      <SectionHeading index="05" en="Ground Station" ko="지상 관측소" />
+      <SectionHeading index="05" en="Confidence" ko="예보 신뢰도" />
 
       <div ref={deckRef} className="flex flex-col gap-4 sm:gap-5">
         {/* Provenance header. */}
@@ -144,8 +144,10 @@ export default function GroundStationSection() {
                   <p className="mt-0.5 font-mono text-[10px] tracking-[0.3em] text-white">SEOUL · KST</p>
                 </div>
                 <button
+                  type="button"
                   onClick={load}
                   disabled={refreshing}
+                  aria-label={refreshing ? "예보 신뢰도 데이터 동기화 중" : "예보 신뢰도 데이터 새로고침"}
                   className="font-mono text-[11px] uppercase tracking-[0.2em] text-white transition hover:text-white/80 disabled:opacity-50"
                 >
                   {refreshing ? "동기화 중" : "↻ 새로고침"}
@@ -194,7 +196,9 @@ export default function GroundStationSection() {
               기상 소스에 연결할 수 없습니다. 네트워크 상태를 확인한 뒤 다시 시도하세요.
             </p>
             <button
+              type="button"
               onClick={load}
+              aria-label="예보 신뢰도 데이터 다시 시도"
               className="mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-white transition hover:text-white/80"
             >
               ↻ 다시 시도
@@ -252,7 +256,7 @@ export default function GroundStationSection() {
               </div>
             </DeckPanel>
 
-            <DeckPanel label="시네마틱 엔진" sub="영상 선택 · 라이브러리 · 폴백" delay={0.1}>
+            <DeckPanel label="고급 · 시네마틱 엔진" sub="영상 선택 · 라이브러리 · 폴백" delay={0.1}>
               <CinematicDiagnostics sky={snapshot} />
             </DeckPanel>
 

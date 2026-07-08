@@ -450,7 +450,7 @@ export default function InstrumentsSection() {
 
   return (
     <SkySection>
-      <SectionHeading index="02" en="Instruments" ko="계기" />
+      <SectionHeading index="02" en="Current Conditions" ko="지금 상태" />
       {/* Heading stays pinned at the section top; the grid centres in the space
           below it (equal top/bottom) so the deck never sits top-weighted. */}
       <div className="flex flex-1 flex-col justify-center">

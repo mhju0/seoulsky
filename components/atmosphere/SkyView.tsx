@@ -57,14 +57,14 @@ export default function SkyView() {
           <button
             type="button"
             onClick={toggleView}
-            aria-label="데이터 덱 열기"
-            className="pointer-events-auto flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+            aria-label="상세 날씨 보기"
+            className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded-full px-4 py-2.5 transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
           >
             <kbd className="rounded border border-white/30 px-1.5 py-0.5 font-mono text-[11px] tracking-wider text-white/75">
               D
             </kbd>
             <span className="font-mono text-[11px] uppercase tracking-[0.34em] text-white/55">
-              데이터 · explore
+              상세 날씨 보기
             </span>
           </button>
         </div>
@@ -121,7 +121,7 @@ export default function SkyView() {
           type="button"
           onClick={toggleView}
           aria-label="처음 화면으로"
-          className="absolute left-[clamp(1.25rem,4vw,3.25rem)] top-[clamp(1rem,3.2vh,1.9rem)] z-20 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 backdrop-blur-md transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
+          className="absolute left-[clamp(1.25rem,4vw,3.25rem)] top-[clamp(1rem,3.2vh,1.9rem)] z-20 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 backdrop-blur-md transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
         >
           <svg
             aria-hidden
