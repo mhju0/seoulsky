@@ -57,7 +57,7 @@ export default function ArrivalSection() {
       <div aria-hidden className="sky-hero-vignette pointer-events-none absolute inset-0" />
       <ScrollReveal className="sky-on-media relative z-10 flex max-w-[680px] flex-col" amount={0.1}>
         {/* City + live status. */}
-        <div className="mb-8 flex items-center gap-3">
+        <div className="mb-6 flex items-center gap-3 sm:mb-8">
           <span
             className="inline-block h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: accentCss, boxShadow: `0 0 16px ${accentCss}` }}
@@ -88,10 +88,10 @@ export default function ArrivalSection() {
 
         {/* Poetic line — pushed down one additional line-height for breathing
             room; full-white with text-shadow keeps it legible over bright plates. */}
-        <PoeticLine className="mt-14">{line}</PoeticLine>
+        <PoeticLine className="mt-10 sm:mt-14">{line}</PoeticLine>
 
         {/* Seoul time — closer to the poetic line, brightened to read clearly. */}
-        <div className="mt-11 flex flex-wrap items-center gap-x-5 font-mono text-sm tracking-[0.1em] text-white/90">
+        <div className="mt-8 flex flex-wrap items-center gap-x-5 font-mono text-sm tracking-[0.1em] text-white/90 sm:mt-11">
           <span>{clock ? dateFmt.format(clock) : "—"}</span>
           <span className="tabular-nums text-white/75">{clock ? timeFmt.format(clock) : "--:--"}</span>
           <span className="text-white/50">KST</span>

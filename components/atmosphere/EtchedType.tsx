@@ -113,7 +113,7 @@ export function PoeticLine({
 }) {
   return (
     <p
-      className={`etched-shadow max-w-[36ch] font-sans text-xl font-light leading-relaxed tracking-wide text-white ${className}`}
+      className={`etched-shadow max-w-[36ch] break-keep font-sans text-xl font-light leading-relaxed tracking-wide text-white ${className}`}
     >
       {children}
     </p>

@@ -86,7 +86,7 @@ function applyReviewCond(snapshot: SkySnapshot | null, cond?: WeatherCondition):
 
 function Loader() {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#04060d]">
+    <div className="sky-fixed-viewport z-50 flex items-center justify-center bg-[#04060d]">
       <div className="h-2 w-2 animate-ping rounded-full bg-white/70" />
     </div>
   );

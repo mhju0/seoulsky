@@ -86,11 +86,36 @@ body {
 .sky-data-layer {
   position: fixed;
   inset: 0;
+  height: 100vh;
+  overflow: hidden;
   /* Pure cross-fade — NO transform. The D-toggle blurs the SAME co-registered
      scene in place (the data backdrop is the hero plate at identical geometry,
      only blurred), so there is no slide/zoom — just one layer fading over the
      other. */
   transition: opacity 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sky-fixed-viewport {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+@supports (height: 100svh) {
+  .sky-hero-layer,
+  .sky-data-layer,
+  .sky-fixed-viewport {
+    height: 100svh;
+  }
+}
+
+@supports (height: 100dvh) {
+  .sky-hero-layer,
+  .sky-data-layer,
+  .sky-fixed-viewport {
+    height: 100dvh;
+  }
 }
 
 .sky-hero-layer {
@@ -352,6 +377,8 @@ body {
 .sky-image-layer {
   transition: filter 900ms ease;
   will-change: filter, transform;
+  background-size: cover;
+  background-position: center;
 }
 
 /* The incoming plate cross-dissolves in over the outgoing one (~700ms). */
@@ -377,8 +404,8 @@ body {
    On the D (data) view the live condition plate is reused as a single fixed,
    full-page layer behind the ENTIRE scroll (it lives in .sky-data-bg, a sibling
    of the scroller, so it never scrolls). It is CO-REGISTERED with the hero plate
-   (ImageField): identical `inset: 0`, `background-size: cover`, centred position,
-   and the SAME `scene-pushin` Ken Burns (added as a class in JSX) — so the scene
+   (ImageField): identical `inset: 0`, `background-size: cover`, responsive crop
+   position, and the SAME `scene-pushin` Ken Burns (added as a class in JSX) — so the scene
    is pixel-aligned across the hero↔data toggle and the ONLY difference is the
    blur (the --sky-data-blur knob). The push-in's ≥2% over-scan also keeps the
    light blur from ever revealing a soft edge, so no bleed inset is needed. The
@@ -390,6 +417,13 @@ body {
   background-size: cover; /* object-fit: cover, behind every section + card */
   background-position: center;
   filter: blur(var(--sky-data-blur, 6px)) brightness(0.85) saturate(0.92);
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .sky-image-layer,
+  .sky-data-plate {
+    background-position: 64% center;
+  }
 }
 
 /* Day/night-aware veil over the blurred plate. Tinted from the SAME

@@ -53,7 +53,7 @@ export default function SkyView() {
             deck (no keyboard on mobile): a real button firing the SAME shell toggle
             the D key calls. The full-width bar stays click-through; only the button
             itself captures taps, with generous padding for a comfortable hit area. */}
-        <div className="sky-on-media pointer-events-none absolute inset-x-0 bottom-[clamp(1.75rem,5vh,3.25rem)] z-10 flex items-center justify-center">
+        <div className="sky-on-media pointer-events-none absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-10 flex items-center justify-center sm:bottom-[clamp(1.75rem,5vh,3.25rem)]">
           <button
             type="button"
             onClick={toggleView}

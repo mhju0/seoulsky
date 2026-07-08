@@ -94,7 +94,7 @@ function SceneStage({
   const fieldPaused = hidden || plateSrc != null;
 
   return (
-    <div className="fixed inset-0 z-0 overflow-hidden bg-[#04060d]">
+    <div className="sky-fixed-viewport z-0 bg-[#04060d]">
       {/* 1 — procedural field: the never-blank base + tail of the fallback chain. */}
       <div className="absolute inset-0">
         {useFallback ? (

@@ -64,8 +64,6 @@ export default function ImageField({ reducedMotion }: ImageFieldProps) {
           }`}
           style={{
             backgroundImage: `url("${layer.src}")`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
             filter: grade.filter,
           }}
         />
