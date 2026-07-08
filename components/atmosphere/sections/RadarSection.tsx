@@ -233,6 +233,55 @@ function RadarScope({
   );
 }
 
+function RadarMapPlaceholder({ active }: { active: boolean }) {
+  return (
+    <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#070a14] ring-1 ring-white/10" aria-hidden>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_48%,rgba(255,255,255,0.08),transparent_28%),linear-gradient(135deg,rgba(148,163,184,0.12),rgba(15,23,42,0.08)_42%,rgba(56,189,248,0.10))]" />
+      <div className="absolute inset-x-[12%] top-[31%] h-px rotate-[-8deg] bg-white/12" />
+      <div className="absolute inset-x-[18%] top-[58%] h-px rotate-[10deg] bg-white/10" />
+      <div className="absolute left-[20%] top-[22%] h-16 w-px rotate-[18deg] bg-white/10" />
+      <div className="absolute right-[24%] top-[18%] h-28 w-px rotate-[-16deg] bg-white/10" />
+      <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/60 shadow-[0_0_18px_rgba(255,255,255,0.55)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_45%,transparent_58%,rgba(4,6,12,0.56)_100%)]" />
+      {active && (
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50 motion-safe:animate-pulse" />
+      )}
+    </div>
+  );
+}
+
+function RadarStatePanel({
+  title,
+  description,
+  detail,
+  loading = false,
+}: {
+  title: string;
+  description: string;
+  detail: string;
+  loading?: boolean;
+}) {
+  return (
+    <div
+      className="flex flex-col gap-5 lg:flex-row lg:items-center lg:gap-6"
+      role={loading ? "status" : undefined}
+      aria-live={loading ? "polite" : undefined}
+    >
+      <div className="mx-auto w-full max-w-[32rem] lg:mx-0 lg:flex-[0_0_auto] lg:max-w-[clamp(21rem,52vh,32rem)]">
+        <RadarMapPlaceholder active={loading} />
+      </div>
+      <div className="flex flex-1 flex-col justify-center gap-3">
+        <MetricLabel tone="bright">Radar · 비구름 레이더</MetricLabel>
+        <p className="font-sans text-[clamp(1.35rem,2.5vw,1.9rem)] font-light leading-tight text-white">
+          {title}
+        </p>
+        <p className="max-w-md text-sm leading-relaxed text-white/75">{description}</p>
+        <p className="font-mono text-[11px] leading-relaxed tracking-[0.12em] text-white/65">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
 // ---- timeline scrubber (local state) ----------------------------------------
 
 function Scrubber({
@@ -507,28 +556,35 @@ export default function RadarSection() {
 function RadarEmpty({ near, failed, loaded }: { near: boolean; failed: boolean; loaded: boolean }) {
   if (!near) {
     return (
-      <p className="py-6 font-mono text-[11px] uppercase tracking-[0.25em] text-white">↓ 강수 레이더를 불러옵니다</p>
+      <RadarStatePanel
+        loading
+        title="레이더 지도 준비 중"
+        description="기상청 레이더 이미지를 불러오고 있어요."
+        detail="서울 중심 · 고해상도 강수 레이더 · © 기상청(KMA)"
+      />
     );
   }
   // Failed fetch, or the fetch resolved with no usable frames → honest empty state.
   if (failed || loaded) {
     return (
-      <div className="py-4">
-        <p className="font-sans text-lg font-light text-white">레이더 없음</p>
-        <p className="mt-2 max-w-md text-sm leading-relaxed text-white">
-          {failed
-            ? "기상청 레이더 영상을 불러올 수 없습니다. 잠시 후 다시 시도됩니다."
-            : "현재 사용 가능한 레이더 영상이 없습니다."}{" "}
-          · © 기상청 (KMA)
-        </p>
-      </div>
+      <RadarStatePanel
+        title="표시할 레이더 데이터가 없어요."
+        description={
+          failed
+            ? "기상청 레이더 이미지를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요."
+            : "현재 사용 가능한 레이더 이미지가 없습니다. 잠시 후 다시 확인해 주세요."
+        }
+        detail="출처 © 기상청(KMA)"
+      />
     );
   }
   // In view, fetch still in flight.
   return (
-    <div className="flex items-center gap-3 py-6">
-      <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white/70" />
-      <span className="font-mono text-xs uppercase tracking-[0.25em] text-white">레이더 프레임 수신 중</span>
-    </div>
+    <RadarStatePanel
+      loading
+      title="레이더 지도 준비 중"
+      description="기상청 레이더 이미지를 불러오고 있어요."
+      detail="최근 약 1시간 관측 프레임을 준비하는 중입니다."
+    />
   );
 }

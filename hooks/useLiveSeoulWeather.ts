@@ -36,6 +36,7 @@ export function useLiveSeoulWeather(): LiveWeather {
   const load = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
+    setStatus((prev) => (prev === "live" ? prev : "loading"));
     try {
       const res = await fetch("/api/sky", { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

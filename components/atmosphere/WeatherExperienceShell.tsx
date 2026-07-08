@@ -92,8 +92,30 @@ function Loader() {
   );
 }
 
+function InitialWeatherFailure({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-[clamp(1.5rem,5vh,3rem)] z-40 flex justify-center px-5">
+      <div
+        role="status"
+        aria-live="polite"
+        className="pointer-events-auto max-w-md rounded-[1.35rem] border border-white/18 bg-[#050814]/70 px-5 py-4 text-white shadow-[0_22px_60px_-28px_rgba(0,0,0,0.8)] backdrop-blur-xl"
+      >
+        <p className="font-sans text-base font-light">현재 서울 날씨를 불러오지 못했습니다.</p>
+        <p className="mt-1 text-sm leading-relaxed text-white/70">잠시 후 다시 시도해 주세요.</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-3 min-h-11 rounded-full border border-white/20 px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
+        >
+          다시 시도
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function WeatherExperienceShell({ children }: { children: ReactNode }) {
-  const { snapshot, status, lastUpdatedAt } = useLiveSeoulWeather();
+  const { snapshot, status, lastUpdatedAt, refresh } = useLiveSeoulWeather();
   const clock = useSeoulClock();
 
   const [quality, setQuality] = useState<QualitySettings | null>(null);
@@ -236,6 +258,7 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
   // opaque gradient), so suspend the gallery + FX + field exactly as when the tab
   // is hidden — no video decoding behind the dashboard.
   const sceneHidden = hidden || view === "data";
+  const initialWeatherFailed = status === "error" && snapshot === null;
 
   return (
     <WeatherFieldProvider value={fieldValue}>
@@ -256,6 +279,8 @@ export default function WeatherExperienceShell({ children }: { children: ReactNo
           canvasFailed={canvasFailed}
           onCanvasError={onCanvasError}
         />
+
+        {initialWeatherFailed && <InitialWeatherFailure onRetry={refresh} />}
 
         {/* The two view layers render their own scrim + readable foreground above
             the shared scene, cross-fading on the D-toggle. The live clock is scoped
