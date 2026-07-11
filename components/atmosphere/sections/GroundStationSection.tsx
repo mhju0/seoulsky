@@ -161,8 +161,8 @@ export default function GroundStationSection() {
     <SkySection id="ground">
       <SectionHeading
         index="05"
-        title="예보의 근거"
-        description="서로 다른 기상 소스가 같은 이야기를 하는지 확인합니다. 화면 뒤에서 작동하는 판단의 기록입니다."
+        title="예보 신뢰도"
+        description="여러 기상 서비스의 예보를 비교한 결과입니다."
       />
 
       <div ref={deckRef} className="mx-auto flex w-full max-w-[80rem] flex-col gap-4 sm:gap-5">
@@ -171,9 +171,9 @@ export default function GroundStationSection() {
           <div className="sky-film-surface px-5 py-7 sm:px-8 sm:py-9 lg:px-10">
             <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
               <div>
-                <MetricLabel tone="bright">신뢰도 요약</MetricLabel>
-                <p className="sky-display mt-3 text-[clamp(1.8rem,4vw,3.5rem)] text-white">
-                  이 예보를 얼마나 믿어도 될까요?
+                <MetricLabel tone="bright">예보 비교</MetricLabel>
+                <p className="mt-3 font-sans text-[clamp(1.6rem,3vw,2.5rem)] font-semibold tracking-[-0.035em] text-white">
+                  종합 신뢰도
                 </p>
                 <p className="mt-1 font-mono text-xs tracking-[0.12em] text-white">
                   {clock ? formatHeaderDate(clock) : " "} · 대한민국 서울
@@ -245,7 +245,7 @@ export default function GroundStationSection() {
 
         {!near && (
           <p className="py-6 font-mono text-[11px] uppercase tracking-[0.25em] text-white">
-            ↓ 지상 관측소 데이터를 불러옵니다
+            예보 비교 데이터를 불러옵니다
           </p>
         )}
 
@@ -253,7 +253,7 @@ export default function GroundStationSection() {
           <div className="flex items-center gap-3 py-6">
             <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white/70" />
             <span className="font-mono text-xs uppercase tracking-[0.25em] text-white">
-              교차 검증 데이터 수신 중
+              예보를 비교하는 중
             </span>
           </div>
         )}

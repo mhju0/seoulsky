@@ -3,8 +3,7 @@ import SkyView from "@/components/atmosphere/SkyView";
 
 export const metadata: Metadata = {
   title: "서울의 하늘 — 지금 서울의 날씨",
-  description:
-    "실시간 서울 날씨를 도시의 빛과 비, 공기의 흐름으로 천천히 펼쳐 보는 시네마틱 경험",
+  description: "서울의 현재 날씨, 시간별 예보, 레이더와 예보 신뢰도를 확인하세요.",
 };
 
 /**

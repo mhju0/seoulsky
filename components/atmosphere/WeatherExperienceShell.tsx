@@ -88,12 +88,12 @@ function Loader() {
   return (
     <div className="sky-fixed-viewport z-50 flex items-center justify-center bg-[#04060d]">
       <div role="status" className="flex flex-col items-center text-center text-[#f6f0e4]">
-        <span className="sky-display text-2xl">서울의 하늘</span>
+        <span className="font-sans text-2xl font-semibold tracking-[-0.035em]">서울의 하늘</span>
         <span className="mt-4 h-px w-24 overflow-hidden bg-white/15">
           <span className="block h-full w-1/2 animate-pulse bg-white/70" />
         </span>
         <span className="mt-3 font-sans text-[11px] tracking-[0.16em] text-white/55">
-          오늘의 빛을 불러오는 중
+          날씨 정보를 불러오는 중
         </span>
       </div>
     </div>

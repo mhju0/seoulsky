@@ -53,11 +53,11 @@ function glyphCondition(condition: WeatherCondition, pop: number | null): Weathe
 const TEMP_LABEL = { high: "최고", low: "최저" } as const;
 
 function rainStory(pop: number | null): string {
-  if (pop == null) return "아직 강수 확률을 읽어 오는 중입니다.";
-  if (pop < 20) return "우산 없이 걸어도 좋은 시간이 이어집니다.";
-  if (pop < 50) return "가벼운 비가 스칠 수 있어 하늘을 한 번 더 살펴보세요.";
-  if (pop < 80) return "외출 전 우산을 챙기는 편이 좋겠습니다.";
-  return "비가 올 가능성이 높습니다. 이동 시간의 레이더를 확인해 보세요.";
+  if (pop == null) return "강수 확률 정보가 없습니다.";
+  if (pop < 20) return "비 올 가능성이 낮습니다.";
+  if (pop < 50) return "비가 올 수 있습니다.";
+  if (pop < 80) return "우산을 챙기세요.";
+  return "비 올 가능성이 높습니다.";
 }
 
 export default function ForecastSection() {
@@ -77,8 +77,8 @@ export default function ForecastSection() {
     <SkySection id="flow" compact>
       <SectionHeading
         index="02"
-        title="오늘의 흐름"
-        description="서울의 하루를 온도와 빛, 비의 가능성으로 천천히 펼쳐 봅니다."
+        title="시간별·7일 날씨"
+        description="시간대별 날씨와 7일 예보입니다."
         compact
       />
 
@@ -89,7 +89,7 @@ export default function ForecastSection() {
               <div className="grid items-stretch gap-8 lg:grid-cols-[minmax(15rem,0.72fr)_minmax(0,1.8fr)] lg:gap-12">
                 <div className="flex flex-col justify-between border-l border-white/25 pl-5 sm:pl-7">
                   <div>
-                    <MetricLabel tone="bright">다음 열다섯 시간</MetricLabel>
+                    <MetricLabel tone="bright">시간별 날씨</MetricLabel>
                     <p className="sky-display mt-5 break-keep text-[clamp(1.75rem,3.2vw,3rem)] text-white">
                       {rainStory(peakRain)}
                     </p>
@@ -99,7 +99,7 @@ export default function ForecastSection() {
                       {peakRain == null ? "—" : Math.round(peakRain)}
                     </span>
                     <span className="mb-2 font-sans text-sm tracking-[0.12em] text-white/70">
-                      % · 가장 높은 강수 확률
+                      % · 최고 강수 확률
                     </span>
                   </div>
                 </div>
@@ -161,7 +161,7 @@ export default function ForecastSection() {
 
         {daily.length > 0 && (
           <ScrollReveal amount={0.12} delay={0.06}>
-            <MetricLabel tone="bright" className="mb-4 px-1">이어지는 일주일</MetricLabel>
+            <MetricLabel tone="bright" className="mb-4 px-1">7일 날씨</MetricLabel>
             <div className="scroll-thin overflow-x-auto border-y border-white/18">
               <ol className="grid min-w-[48rem] grid-cols-7">
                 {daily.map((d) => (

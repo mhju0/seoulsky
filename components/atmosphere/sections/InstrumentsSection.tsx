@@ -444,8 +444,8 @@ export default function InstrumentsSection() {
     <SkySection id="air">
       <SectionHeading
         index="03"
-        title="공기의 결"
-        description="숫자보다 먼저 몸으로 느끼는 것들. 바람과 습도, 시야와 공기의 상태를 한 장면에 담았습니다."
+        title="현재 날씨"
+        description="강수 확률, 바람, 습도, 가시거리, 대기질 정보입니다."
       />
       <div className="flex flex-1 flex-col justify-center">
         <motion.div
@@ -461,71 +461,76 @@ export default function InstrumentsSection() {
           >
             <div className="flex items-center gap-2 text-white/85">
               {ICONS.precip}
-              <MetricLabel tone="bright">지금 비가 올 가능성</MetricLabel>
+              <MetricLabel tone="bright">현재 강수 확률</MetricLabel>
             </div>
             <div className="my-10">
               <Value size="lg" unit={precipRaw == null ? undefined : "%"} unitFull>
                 {precipDisplay}
               </Value>
-              <p className="sky-display mt-5 max-w-[16ch] break-keep text-[clamp(1.35rem,2.5vw,2rem)] text-white">
+              <p className="mt-5 max-w-[18ch] break-keep font-sans text-[clamp(1.25rem,2.2vw,1.75rem)] font-medium leading-snug tracking-[-0.025em] text-white">
                 {precipRaw == null
-                  ? "강수 관측을 기다리고 있습니다."
+                  ? "강수 정보가 없습니다."
                   : precipRaw < 20
-                    ? "지금은 비 걱정 없이 걸어도 좋겠습니다."
+                    ? "비 올 가능성이 낮습니다."
                     : precipRaw < 50
-                      ? "하늘이 바뀔 수 있으니 가벼운 우산을 생각해 보세요."
-                      : "외출 전에 우산을 챙기는 편이 좋겠습니다."}
+                      ? "비가 올 수 있습니다."
+                      : "우산을 챙기세요."}
               </p>
             </div>
             <ScaleBar pct={precipPct} gradient={SCALE_GRADIENTS.precip} lo="맑음" hi="비" />
           </motion.article>
 
-          <Reading
-            icon={ICONS.wind}
-            label="바람"
-            value={windDisplay}
-            unit={windRaw == null ? undefined : "m/s"}
-            sub={windSub}
-            viz={<WindDial fromDeg={readout.windDirection} />}
-            reduce={reduce}
-          />
-          <Reading
-            icon={ICONS.humidity}
-            label="습도"
-            value={humidDisplay}
-            unit={humidRaw == null ? undefined : "%"}
-            sub={humidSub}
-            viz={<HumidityRing value={humidRaw} />}
-            reduce={reduce}
-          />
-          <Reading
-            icon={ICONS.visibility}
-            label="가시거리"
-            value={visDisplay}
-            unit={visRaw == null ? undefined : "km"}
-            sub={visSub}
-            viz={<ScaleBar pct={visPct} gradient={SCALE_GRADIENTS.visibility} lo="0" hi="20km" />}
-            reduce={reduce}
-          />
-          <Reading
-            icon={ICONS.air}
-            label="대기질과 자외선"
-            value={airDisplay}
-            unit={airUnit}
-            sub={
-              <span className="flex flex-wrap gap-x-3 gap-y-1">
-                <span>미세먼지 {airSub ?? "—"}</span>
-                <span>자외선 {uvDisplay} · {uvSub ?? "관측 없음"}</span>
-              </span>
-            }
-            viz={
-              <div className="flex w-full flex-col gap-4">
-                <ScaleBar pct={airPct} gradient={SCALE_GRADIENTS.air} lo="좋음" hi="나쁨" />
-                <ScaleBar pct={uvPct} gradient={SCALE_GRADIENTS.uv} lo="낮음" hi="높음" />
-              </div>
-            }
-            reduce={reduce}
-          />
+          <motion.div
+            variants={reduce ? {} : CARD_VARIANTS}
+            className="sky-film-surface grid gap-x-8 gap-y-8 px-6 py-7 sm:col-span-2 sm:grid-cols-2 sm:px-8 sm:py-9 lg:col-span-2"
+          >
+            <Reading
+              icon={ICONS.wind}
+              label="바람"
+              value={windDisplay}
+              unit={windRaw == null ? undefined : "m/s"}
+              sub={windSub}
+              viz={<WindDial fromDeg={readout.windDirection} />}
+              reduce={reduce}
+            />
+            <Reading
+              icon={ICONS.humidity}
+              label="습도"
+              value={humidDisplay}
+              unit={humidRaw == null ? undefined : "%"}
+              sub={humidSub}
+              viz={<HumidityRing value={humidRaw} />}
+              reduce={reduce}
+            />
+            <Reading
+              icon={ICONS.visibility}
+              label="가시거리"
+              value={visDisplay}
+              unit={visRaw == null ? undefined : "km"}
+              sub={visSub}
+              viz={<ScaleBar pct={visPct} gradient={SCALE_GRADIENTS.visibility} lo="0" hi="20km" />}
+              reduce={reduce}
+            />
+            <Reading
+              icon={ICONS.air}
+              label="대기질과 자외선"
+              value={airDisplay}
+              unit={airUnit}
+              sub={
+                <span className="flex flex-wrap gap-x-3 gap-y-1">
+                  <span>미세먼지 {airSub ?? "—"}</span>
+                  <span>자외선 {uvDisplay} · {uvSub ?? "관측 없음"}</span>
+                </span>
+              }
+              viz={
+                <div className="flex w-full flex-col gap-4">
+                  <ScaleBar pct={airPct} gradient={SCALE_GRADIENTS.air} lo="좋음" hi="나쁨" />
+                  <ScaleBar pct={uvPct} gradient={SCALE_GRADIENTS.uv} lo="낮음" hi="높음" />
+                </div>
+              }
+              reduce={reduce}
+            />
+          </motion.div>
         </motion.div>
       </div>
     </SkySection>

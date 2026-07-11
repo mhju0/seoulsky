@@ -473,8 +473,8 @@ export default function RadarSection() {
     <SkySection id="rain" compact>
       <SectionHeading
         index="04"
-        title="다가오는 비"
-        description="지난 한 시간의 구름이 서울 위를 어떻게 지나왔는지, 천천히 시간을 돌려 확인합니다."
+        title="레이더"
+        description="최근 1시간 동안 서울 주변의 비구름을 보여줍니다."
         compact
       />
 

@@ -42,7 +42,7 @@ export function SkySection({
   );
 }
 
-/** A Korean film-chapter title that opens each scene in the data narrative. */
+/** A direct section title with a quiet numeric index. */
 export function SectionHeading({
   index,
   title,
@@ -55,17 +55,16 @@ export function SectionHeading({
   compact?: boolean;
 }) {
   return (
-    <div className={`${compact ? "mb-8 sm:mb-10" : "mb-12"} flex max-w-3xl items-start gap-5 sm:gap-7`}>
-      <span className="sky-film-index mt-1 font-mono text-[10px] tabular-nums tracking-[0.28em] text-white/60">
-        장면 {index}
+    <div className={`sky-data-heading ${compact ? "mb-8" : "mb-10"} flex max-w-3xl items-start gap-4 sm:gap-5`}>
+      <span className="mt-2 font-mono text-[11px] font-medium tabular-nums tracking-[0.12em] text-white/65">
+        {index}
       </span>
-      <span aria-hidden className="mt-3 h-px w-10 shrink-0 bg-white/25 sm:w-16" />
       <div>
-        <h2 className="sky-display m-0 break-keep text-[clamp(2rem,4.2vw,4rem)] text-white">
+        <h2 className="m-0 break-keep font-sans text-[clamp(2rem,3.3vw,3.25rem)] font-semibold leading-tight tracking-[-0.045em] text-white">
           {title}
         </h2>
         {description && (
-          <p className="sky-copy mt-3 break-keep text-sm font-light text-white/72 sm:text-base">
+          <p className="sky-copy mt-2 break-keep text-sm font-normal text-white/78 sm:text-base">
             {description}
           </p>
         )}

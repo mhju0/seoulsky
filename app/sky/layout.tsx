@@ -42,10 +42,10 @@ export default function SkyLayout({ children }: { children: ReactNode }) {
             서울의 하늘
           </h1>
           <p style={{ maxWidth: "40ch", lineHeight: 1.7, color: "#cbd5e1", margin: 0 }}>
-            실시간 서울 날씨를 도시의 빛과 비, 공기의 흐름으로 천천히 펼쳐 보여줍니다.
+            서울의 현재 날씨, 시간별 예보, 레이더와 예보 신뢰도를 확인하세요.
           </p>
           <p style={{ fontSize: "0.85rem", letterSpacing: "0.18em", color: "#94a3b8", margin: 0 }}>
-            오늘의 흐름 · 공기의 결 · 다가오는 비 · 예보의 근거
+            시간별·7일 날씨 · 현재 날씨 · 레이더 · 예보 신뢰도
           </p>
           <p style={{ maxWidth: "44ch", fontSize: "0.8rem", lineHeight: 1.7, color: "#7c8aa0", margin: 0 }}>
             라이브 경험을 보려면 JavaScript를 켜 주세요. 데이터: Open-Meteo · MET Norway

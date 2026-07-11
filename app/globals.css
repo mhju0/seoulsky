@@ -3,7 +3,7 @@
 @theme inline {
   --font-sans: var(--font-geist-sans), var(--font-noto-kr), ui-sans-serif, system-ui,
     sans-serif;
-  --font-serif: var(--font-noto-serif-kr), ui-serif, Georgia, serif;
+  --font-serif: var(--font-noto-kr), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -27,10 +27,10 @@ html {
 }
 
 .sky-display {
-  font-family: var(--font-noto-serif-kr), ui-serif, Georgia, serif;
-  font-weight: 300;
-  letter-spacing: -0.045em;
-  line-height: 1.16;
+  font-family: var(--font-noto-kr), "Apple SD Gothic Neo", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.22;
   text-wrap: balance;
 }
 
@@ -40,21 +40,27 @@ html {
   text-wrap: pretty;
 }
 
+.sky-data-heading {
+  text-shadow: 0 1px 18px color-mix(in srgb, var(--sky-bg-base, #0c1226) 82%, transparent);
+}
+
 /* Primary data-stage material: a cinematic exposure plane, not another card.
    It carries one controlled glass wash and square film-frame corners so the
    large editorial compositions contrast with the small diagnostic panels. */
 .sky-film-surface {
   position: relative;
   overflow: hidden;
+  --color-white: var(--sky-panel-ink, rgb(248, 250, 255));
+  color: var(--color-white);
   background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.085), transparent 42%),
-    color-mix(in srgb, var(--sky-panel-bg, rgba(12, 16, 30, 0.26)) 88%, transparent);
-  border-block: 1px solid var(--sky-panel-border, rgba(255, 255, 255, 0.2));
+    linear-gradient(115deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    var(--sky-data-surface-bg, rgba(12, 16, 30, 0.72));
+  border: 1px solid var(--sky-data-surface-border, rgba(255, 255, 255, 0.28));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 32px 80px -56px rgba(3, 6, 16, 0.9);
-  backdrop-filter: blur(18px) saturate(145%);
-  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(26px) saturate(120%);
+  -webkit-backdrop-filter: blur(26px) saturate(120%);
 }
 
 .sky-film-surface::after {
@@ -89,11 +95,6 @@ html {
   height: 1px;
   background: var(--sky-panel-ink, white);
   opacity: 0.62;
-}
-
-.sky-film-index {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
 }
 
 @media (max-width: 767px) {
@@ -249,7 +250,7 @@ html {
      (the Han River landmark stays clearly recognizable behind the deck). Raise it
      only if a busy plate ever fights the bare section labels for legibility; the
      .sky-panel cards already blur their own backdrop regardless of this value. */
-  --sky-data-blur: 6px;
+  --sky-data-blur: 12px;
 }
 
 /* Solid base layer — the sky ground tone. */
@@ -502,7 +503,7 @@ html {
   inset: 0; /* matches the hero ImageField layer exactly — co-registered */
   background-size: cover; /* object-fit: cover, behind every section + card */
   background-position: center;
-  filter: blur(var(--sky-data-blur, 6px)) brightness(0.85) saturate(0.92);
+  filter: blur(var(--sky-data-blur, 12px)) brightness(0.88) saturate(0.78);
 }
 
 @media (max-width: 767px) and (orientation: portrait) {
@@ -522,7 +523,7 @@ html {
    Raise it if the bare section labels (02 INSTRUMENTS, 신뢰도 분석, attribution)
    ever lose contrast over a busy plate. */
 .sky-data-scrim {
-  --sky-data-veil: 26;
+  --sky-data-veil: 48;
   position: absolute;
   inset: 0;
   background:

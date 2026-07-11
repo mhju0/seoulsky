@@ -138,7 +138,7 @@ export default function ConfidencePanel({ confidence, comparison }: Props) {
 
         <div className="max-w-xl border-l border-white/20 pl-4">
           <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-white/75">
-            지금 무엇을 믿어야 할까요?
+            권장 사항
           </p>
           <p className="text-sm leading-relaxed text-white/95">{confidence.recommendation}</p>
         </div>

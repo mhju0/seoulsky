@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
+import { Geist, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,16 +12,9 @@ const notoSansKr = Noto_Sans_KR({
   subsets: ["latin"],
 });
 
-const notoSerifKr = Noto_Serif_KR({
-  variable: "--font-noto-serif-kr",
-  subsets: ["latin"],
-  weight: ["300", "400", "500"],
-});
-
 export const metadata: Metadata = {
   title: "서울의 하늘 — 오늘의 서울 날씨",
-  description:
-    "서울의 하늘과 날씨를 한 편의 장면처럼 보여주는 시네마틱 기상 경험",
+  description: "서울의 현재 날씨, 시간별 예보, 레이더와 예보 신뢰도를 확인하세요.",
 };
 
 export const viewport: Viewport = {
@@ -34,10 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ko"
-      className={`${geistSans.variable} ${notoSansKr.variable} ${notoSerifKr.variable}`}
-    >
+    <html lang="ko" className={`${geistSans.variable} ${notoSansKr.variable}`}>
       <body className="min-h-screen font-sans antialiased">{children}</body>
     </html>
   );
