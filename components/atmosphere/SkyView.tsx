@@ -57,14 +57,22 @@ export default function SkyView() {
           <button
             type="button"
             onClick={toggleView}
-            aria-label="상세 날씨 보기"
+            aria-label="상세 날씨 보기 (D 키)"
             className="group pointer-events-auto flex min-h-11 items-center gap-2.5 rounded-full px-4 py-2.5 transition-colors hover:bg-white/5 active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
           >
             <span className="h-px w-8 bg-white/45 transition-all duration-300 group-hover:w-12" />
             <span className="font-sans text-[12px] font-medium tracking-[0.16em] text-white/72">
               상세 날씨 보기
             </span>
-            <span aria-hidden className="text-sm text-white/55">↓</span>
+            {/* Desktop-only keycap for the D shortcut (there is no keyboard on
+                mobile, where the tap itself is the affordance). Replaces the old
+                ↓ arrow, which read as "scroll" when the action is a view toggle. */}
+            <kbd
+              aria-hidden
+              className="hidden h-[1.35rem] min-w-[1.35rem] items-center justify-center rounded-[5px] border border-white/30 px-1.5 font-sans text-[11px] font-medium leading-none text-white/60 transition-colors group-hover:border-white/45 group-hover:text-white/85 sm:inline-flex"
+            >
+              D
+            </kbd>
           </button>
         </div>
       </div>
