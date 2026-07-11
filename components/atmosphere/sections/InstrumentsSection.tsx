@@ -65,172 +65,7 @@ function useCountUp(target: number | null, entranceKey: number, duration = 820):
   return display;
 }
 
-// ---- shared viz vocabulary --------------------------------------------------
-//
-// Every tile carries ONE right-side visualization, drawn from a small, consistent
-// kit so the six tiles read as a set rather than a zoo of idioms:
-//   • angular metric (WIND)        → a compass dial
-//   • cyclic 0–100 ratio (HUMIDITY)→ a fill ring
-//   • every scalar metric          → the SAME horizontal gradient scale bar + dot
-// All strokes/markers use `currentColor` (the panel ink, which flips with the
-// backdrop-brightness signal) so nothing vanishes in either adaptive mode. The
-// gradient stops below are the one place to tune the scale-bar palettes.
-
-const SCALE_GRADIENTS = {
-  // WHO UV ramp: green → yellow → orange → red → violet.
-  uv: "linear-gradient(90deg, #34d399 0%, #fde047 27%, #fb923c 52%, #f87171 73%, #c084fc 100%)",
-  // KMA air bands 1→4: good → moderate → poor → very poor.
-  air: "linear-gradient(90deg, #34d399 0%, #fbbf24 42%, #fb923c 70%, #f87171 100%)",
-  // Precip probability: faint sky → saturated blue.
-  precip: "linear-gradient(90deg, rgba(125,211,252,0.5) 0%, #38bdf8 55%, #3b82f6 100%)",
-} as const;
-
-const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
-
-/**
- * The shared scalar idiom: a horizontal gradient track with a position dot.
- * `pct` (0–100, null = unknown → no dot) places the marker. The dot is the panel
- * ink so it stays legible over any gradient stop in both modes; a panel-tinted
- * halo separates it from the band beneath. `lo`/`hi` caption the scale extremes.
- */
-function ScaleBar({
-  pct,
-  gradient,
-  lo,
-  hi,
-}: {
-  pct: number | null;
-  gradient: string;
-  lo: string;
-  hi: string;
-}) {
-  return (
-    <div className="flex w-full flex-col gap-2">
-      <div
-        className="relative h-2.5 w-full rounded-full ring-1 ring-inset ring-white/15"
-        style={{ background: gradient }}
-        aria-hidden
-      >
-        {pct != null && (
-          // The marker sits on the (mode-independent) gradient, so it is a FIXED
-          // white dot with a dark ring + shadow — legible on every gradient stop
-          // (pale or saturated) and in both adaptive backdrop modes.
-          <span
-            className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white"
-            style={{
-              left: `${clamp01(pct / 100) * 100}%`,
-              boxShadow: "0 0 0 1.5px rgba(2,6,20,0.6), 0 1px 4px rgba(0,0,0,0.45)",
-            }}
-          />
-        )}
-      </div>
-      <div className="flex justify-between font-mono text-[10px] tracking-[0.12em] text-white">
-        <span>{lo}</span>
-        <span>{hi}</span>
-      </div>
-    </div>
-  );
-}
-
-/** Humidity fill ring — enlarged. Strokes use currentColor so it follows the ink. */
-function HumidityRing({ value }: { value: number | null }) {
-  const r = 42;
-  const circ = 2 * Math.PI * r;
-  const dash = value == null ? 0 : clamp01(value / 100) * circ;
-  return (
-    <svg viewBox="0 0 100 100" className="h-[clamp(4.25rem,6.5vw,5.5rem)] w-[clamp(4.25rem,6.5vw,5.5rem)]" aria-hidden>
-      <circle cx="50" cy="50" r={r} fill="none" stroke="currentColor" strokeOpacity={0.15} strokeWidth="6" />
-      {value != null && (
-        <circle
-          cx="50"
-          cy="50"
-          r={r}
-          fill="none"
-          stroke="currentColor"
-          strokeOpacity={0.6}
-          strokeWidth="6"
-          strokeDasharray={`${dash} ${circ - dash}`}
-          strokeLinecap="round"
-          transform="rotate(-90 50 50)"
-        />
-      )}
-    </svg>
-  );
-}
-
-/**
- * Compass dial for wind. A static ring + cardinal ticks/labels, with a pointer
- * rotated to the reported bearing (north-up; a wind from 270° points the needle
- * west, agreeing with the "서 270°" sub-label). When the bearing is unknown the
- * dial shows with no pointer (never a fabricated 0°/N). The needle keeps the
- * gentle idle sway (.wind-sway, globals.css), disabled under reduced motion.
- */
-function WindDial({ fromDeg }: { fromDeg: number | null }) {
-  const has = fromDeg != null;
-  const bearing = has ? ((fromDeg % 360) + 360) % 360 : 0;
-  const size = "h-[clamp(4.25rem,6.5vw,5.5rem)] w-[clamp(4.25rem,6.5vw,5.5rem)]";
-  const cardinals: [string, number, number][] = [
-    ["북", 50, 13],
-    ["동", 88, 53],
-    ["남", 50, 92],
-    ["서", 12, 53],
-  ];
-  return (
-    <div className={`relative grid place-items-center ${size}`}>
-      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden>
-        <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" strokeOpacity={0.16} strokeWidth="1.4" />
-        {/* minor ticks every 30°, cardinal ticks longer */}
-        {Array.from({ length: 12 }, (_, i) => {
-          const major = i % 3 === 0;
-          const a = (i * 30 * Math.PI) / 180;
-          const r0 = major ? 38 : 41;
-          const x1 = 50 + Math.sin(a) * r0;
-          const y1 = 50 - Math.cos(a) * r0;
-          const x2 = 50 + Math.sin(a) * 44;
-          const y2 = 50 - Math.cos(a) * 44;
-          return (
-            <line
-              key={i}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke="currentColor"
-              strokeOpacity={major ? 0.4 : 0.18}
-              strokeWidth={major ? 1.4 : 1}
-            />
-          );
-        })}
-        {cardinals.map(([t, x, y]) => (
-          <text
-            key={t}
-            x={x}
-            y={y}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="currentColor"
-            fillOpacity={1}
-            style={{ fontSize: "9px", fontFamily: "var(--font-mono, monospace)" }}
-          >
-            {t}
-          </text>
-        ))}
-      </svg>
-      {has && (
-        <div className="absolute inset-0" style={{ transform: `rotate(${bearing}deg)` }}>
-          <svg viewBox="0 0 100 100" className="wind-sway h-full w-full" style={{ transformOrigin: "50px 50px" }} aria-hidden>
-            {/* needle: a filled arrowhead at the rim (the FROM direction) + stem to centre */}
-            <path d="M50 16 L45 28 L55 28 Z" fill="currentColor" fillOpacity={0.85} />
-            <line x1="50" y1="27" x2="50" y2="62" stroke="currentColor" strokeOpacity={0.6} strokeWidth="2" strokeLinecap="round" />
-            <circle cx="50" cy="50" r="3" fill="currentColor" fillOpacity={0.7} />
-          </svg>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---- tile icons (small, currentColor) ---------------------------------------
+// ---- reading icons (small, currentColor) ------------------------------------
 
 const ICON_PROPS = {
   width: 15,
@@ -277,7 +112,7 @@ const ICONS: Record<string, ReactNode> = {
   ),
 };
 
-// ---- tile card --------------------------------------------------------------
+// ---- entrance variants --------------------------------------------------------
 
 const CARD_VARIANTS = {
   hidden: { opacity: 0, y: 20 },
@@ -287,54 +122,6 @@ const CARD_VARIANTS = {
     transition: { duration: 0.85, ease: [0.22, 1, 0.36, 1] as const },
   },
 };
-
-/** One open, editorial reading. Shared rules connect the values without boxing them. */
-function Reading({
-  icon,
-  label,
-  value,
-  unit,
-  sub,
-  viz,
-  reduce,
-  className = "",
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  unit?: string;
-  sub?: ReactNode;
-  viz: ReactNode;
-  reduce: boolean;
-  className?: string;
-}) {
-  return (
-    <motion.article
-      variants={reduce ? {} : CARD_VARIANTS}
-      className={`sky-reading flex min-h-[15rem] flex-col justify-between gap-6 ${className}`}
-    >
-      <div className="flex items-center gap-2 text-white/85">
-        {icon}
-        <MetricLabel tone="bright">{label}</MetricLabel>
-      </div>
-      <div className="flex items-end justify-between gap-5">
-        <div className="min-w-0">
-          <Value size="md" unit={unit} unitFull>
-            {value}
-          </Value>
-          {sub != null && (
-            <span className="mt-3 block break-keep font-sans text-xs tracking-[0.08em] text-white/72">
-              {sub}
-            </span>
-          )}
-        </div>
-        <div className="flex w-[42%] max-w-[8.5rem] shrink-0 items-center justify-center">{viz}</div>
-      </div>
-    </motion.article>
-  );
-}
-
-// ---- stagger container variants ---------------------------------------------
 
 const GRID_VARIANTS = {
   hidden: {},
@@ -350,25 +137,21 @@ const toMsNum = (kmh: number | null) => (kmh == null ? null : kmh / 3.6);
 const uvKo = (uv: number | null): string | null =>
   uv == null ? null : uv < 3 ? "낮음" : uv < 6 ? "보통" : uv < 8 ? "높음" : uv < 11 ? "매우 높음" : "위험";
 const AIR_KO: Record<1 | 2 | 3 | 4, string> = { 1: "좋음", 2: "보통", 3: "나쁨", 4: "매우 나쁨" };
-const AIR_POS: Record<1 | 2 | 3 | 4, number> = { 1: 14, 2: 40, 3: 66, 4: 90 };
+
 // ---- section ----------------------------------------------------------------
 
 /**
- * Section 3 — Instruments. Five live readings composed as an open editorial field
- * state: wind (speed + compass dial), humidity (+ fill ring & derived dew point),
- * UV index, air quality, and precipitation chance — the three scalars
- * sharing one horizontal gradient scale-bar idiom. On entrance (D key) tiles
- * cascade in with a staggered fade+rise; numeric values count up from 0. Both
- * effects re-trigger on each entrance. Missing values render "—" (never zero) and
- * their viz drops its marker — nothing is fabricated. Desktop-only hover lift; all
- * animation respects prefers-reduced-motion.
+ * Section 2 — 현재 날씨. Five live readings — precipitation chance, wind,
+ * humidity, air quality, UV — laid out as ONE full-width bordered strip of
+ * equal columns, the same grid treatment the forecast section below uses, so
+ * both sections read as a single aligned system. Each column is just
+ * label → large numeral → quiet sub-line: no dials, rings, or gradient bars,
+ * so the state of the sky reads in one pass.
  *
- * Tunables:
- *   - Count-up duration: useCountUp(..., 820) — 700–900ms is the sweet spot.
- *   - Stagger delay: GRID_VARIANTS.visible.transition.staggerChildren (0.07s).
- *   - Wind sway: globals.css @keyframes wind-sway (±2deg, 4s period).
- *   - Scale-bar palettes: SCALE_GRADIENTS (top of file).
- *   - Value/label type scale: EtchedType `tile` size + the !text-[13px] label.
+ * On entrance (D key) the columns cascade in with a staggered fade+rise and the
+ * numerals count up from 0; both re-trigger on each entrance. Missing values
+ * render "—" (never zero) — nothing is fabricated. All animation respects
+ * prefers-reduced-motion.
  */
 export default function InstrumentsSection() {
   const { readout } = useWeatherField();
@@ -397,104 +180,103 @@ export default function InstrumentsSection() {
   const airAnim = useCountUp(airRaw, entranceKey);
   const precipAnim = useCountUp(precipRaw, entranceKey);
 
-  const windDisplay = windAnim == null ? "—" : windAnim.toFixed(1);
-  const humidDisplay = humidAnim == null ? "—" : `${Math.round(humidAnim)}`;
-  const uvDisplay = uvAnim == null ? "—" : `${Math.round(uvAnim)}`;
-  const precipDisplay = precipAnim == null ? "—" : `${Math.round(precipAnim)}`;
-
-  const airKo = readout.airBand == null ? null : AIR_KO[readout.airBand];
-  // The big value is always a number or "—" (never a long band word, which would
-  // overflow the value slot at tile size). The band word rides the sub line, and
-  // the scale-bar marker still encodes the level — so a band-without-PM source
-  // shows "—" + e.g. "나쁨" + a positioned dot, honestly and without overflow.
-  const airDisplay = airAnim == null ? "—" : `${Math.round(airAnim)}`;
-  const airUnit = airRaw == null ? undefined : "µg/m³";
-
   // Supporting lines — all honest: derived (dew point) or standard band cut points.
   const windSub =
     readout.windDirection == null
       ? readout.windDirectionKo || null
       : `${readout.windDirectionKo} ${Math.round(readout.windDirection)}°`.trim();
   const dew = dewPointC(readout.temperature, readout.humidity);
-  const humidSub = dew == null ? null : `이슬점 ${Math.round(dew)}°`;
-  const uvSub = uvKo(readout.uvIndex);
-  const airSub = airKo; // qualitative band word, always the sub when a band exists
-  // Scale-bar marker positions (null → no dot, never a fabricated 0).
-  const uvPct = readout.uvIndex == null ? null : clamp01(readout.uvIndex / 11) * 100;
-  const airPct = readout.airBand == null ? null : AIR_POS[readout.airBand];
-  const precipPct = precipRaw;
+  const airKo = readout.airBand == null ? null : AIR_KO[readout.airBand];
+
+  const readings: {
+    key: string;
+    icon: ReactNode;
+    label: string;
+    value: string;
+    unit?: string;
+    sub: string | null;
+  }[] = [
+    {
+      key: "precip",
+      icon: ICONS.precip,
+      label: "강수 확률",
+      value: precipAnim == null ? "—" : `${Math.round(precipAnim)}`,
+      unit: precipRaw == null ? undefined : "%",
+      sub: null,
+    },
+    {
+      key: "wind",
+      icon: ICONS.wind,
+      label: "바람",
+      value: windAnim == null ? "—" : windAnim.toFixed(1),
+      unit: windRaw == null ? undefined : "m/s",
+      sub: windSub,
+    },
+    {
+      key: "humidity",
+      icon: ICONS.humidity,
+      label: "습도",
+      value: humidAnim == null ? "—" : `${Math.round(humidAnim)}`,
+      unit: humidRaw == null ? undefined : "%",
+      sub: dew == null ? null : `이슬점 ${Math.round(dew)}°`,
+    },
+    {
+      // The big value is always a number or "—" (never a long band word). The
+      // band word rides the sub line — so a band-without-PM source shows
+      // "—" + e.g. "나쁨", honestly and without overflow.
+      key: "air",
+      icon: ICONS.air,
+      label: "대기질",
+      value: airAnim == null ? "—" : `${Math.round(airAnim)}`,
+      unit: airRaw == null ? undefined : "µg/m³",
+      sub: `미세먼지 ${airKo ?? "관측 없음"}`,
+    },
+    {
+      key: "uv",
+      icon: ICONS.uv,
+      label: "자외선",
+      value: uvAnim == null ? "—" : `${Math.round(uvAnim)}`,
+      sub: uvKo(readout.uvIndex) ?? "관측 없음",
+    },
+  ];
 
   return (
-    <SkySection id="air">
-      <SectionHeading
-        index="03"
-        title="현재 날씨"
-      />
-      <div className="flex flex-1 flex-col justify-center">
-        <motion.div
-          key={entranceKey}
-          className="mx-auto grid w-full max-w-[80rem] grid-cols-1 gap-x-7 gap-y-9 sm:grid-cols-2 lg:grid-cols-[0.95fr_1fr_1fr] lg:gap-x-10"
-          initial={reduce ? false : "hidden"}
-          animate={isActive ? "visible" : "hidden"}
-          variants={reduce ? {} : GRID_VARIANTS}
-        >
-          <motion.article
-            variants={reduce ? {} : CARD_VARIANTS}
-            className="sky-film-surface flex min-h-[24rem] flex-col justify-between px-6 py-7 sm:col-span-2 sm:px-8 sm:py-9 lg:col-span-1"
+    <SkySection id="air" compact>
+      <SectionHeading index="02" title="현재 날씨" compact />
+      <div className="mx-auto flex w-full max-w-[80rem] flex-1 flex-col justify-center">
+        <div className="scroll-thin overflow-x-auto border-y border-white/18">
+          <motion.ol
+            key={entranceKey}
+            className="grid min-w-[42rem] grid-cols-5"
+            aria-label="현재 관측 — 강수확률·바람·습도·대기질·자외선"
+            initial={reduce ? false : "hidden"}
+            animate={isActive ? "visible" : "hidden"}
+            variants={reduce ? {} : GRID_VARIANTS}
           >
-            <div className="flex items-center gap-2 text-white/85">
-              {ICONS.precip}
-              <MetricLabel tone="bright">현재 강수 확률</MetricLabel>
-            </div>
-            <div className="my-10">
-              <Value size="lg" unit={precipRaw == null ? undefined : "%"} unitFull>
-                {precipDisplay}
-              </Value>
-            </div>
-            <ScaleBar pct={precipPct} gradient={SCALE_GRADIENTS.precip} lo="맑음" hi="비" />
-          </motion.article>
-
-          <motion.div
-            variants={reduce ? {} : CARD_VARIANTS}
-            className="sky-film-surface grid gap-x-8 gap-y-8 px-6 py-7 sm:col-span-2 sm:grid-cols-2 sm:px-8 sm:py-9 lg:col-span-2"
-          >
-            <Reading
-              icon={ICONS.wind}
-              label="바람"
-              value={windDisplay}
-              unit={windRaw == null ? undefined : "m/s"}
-              sub={windSub}
-              viz={<WindDial fromDeg={readout.windDirection} />}
-              reduce={reduce}
-            />
-            <Reading
-              icon={ICONS.humidity}
-              label="습도"
-              value={humidDisplay}
-              unit={humidRaw == null ? undefined : "%"}
-              sub={humidSub}
-              viz={<HumidityRing value={humidRaw} />}
-              reduce={reduce}
-            />
-            <Reading
-              icon={ICONS.air}
-              label="대기질"
-              value={airDisplay}
-              unit={airUnit}
-              sub={`미세먼지 ${airSub ?? "관측 없음"}`}
-              viz={<ScaleBar pct={airPct} gradient={SCALE_GRADIENTS.air} lo="좋음" hi="나쁨" />}
-              reduce={reduce}
-            />
-            <Reading
-              icon={ICONS.uv}
-              label="자외선"
-              value={uvDisplay}
-              sub={uvSub ?? "관측 없음"}
-              viz={<ScaleBar pct={uvPct} gradient={SCALE_GRADIENTS.uv} lo="낮음" hi="높음" />}
-              reduce={reduce}
-            />
-          </motion.div>
-        </motion.div>
+            {readings.map((r) => (
+              <motion.li
+                key={r.key}
+                variants={reduce ? {} : CARD_VARIANTS}
+                className="flex min-h-[13rem] flex-col justify-between gap-6 border-l border-white/14 px-4 py-5 first:border-l-0"
+              >
+                <div className="flex items-center gap-2 text-white/85">
+                  {r.icon}
+                  <MetricLabel tone="bright">{r.label}</MetricLabel>
+                </div>
+                <div>
+                  <Value size="md" unit={r.unit} unitFull>
+                    {r.value}
+                  </Value>
+                  {/* Non-breaking space keeps the sub-line slot so all five
+                      numerals sit on one shared baseline across the strip. */}
+                  <span className="mt-3 block break-keep font-sans text-xs tracking-[0.08em] text-white/72">
+                    {r.sub ?? " "}
+                  </span>
+                </div>
+              </motion.li>
+            ))}
+          </motion.ol>
+        </div>
       </div>
     </SkySection>
   );

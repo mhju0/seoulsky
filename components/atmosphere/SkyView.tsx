@@ -17,7 +17,7 @@ import { useWeatherField, useWeatherView, useWeatherViewToggle } from "./Weather
  *   • Hero — the full-screen live view (the still landmark plate on the fixed
  *     SceneStage below) with the de-glassed Arrival readout floating over it and a
  *     subtle "press D" hint. No scroll.
- *   • Data — the rest of the dashboard (instruments → radar → forecast → ground station)
+ *   • Data — the rest of the dashboard (현재 날씨 → forecast → radar → ground station)
  *     in a self-contained scrolling container with its own opaque day/night
  *     gradient backdrop, so nothing heavy renders behind it (the scene is paused).
  *
@@ -103,8 +103,8 @@ export default function SkyView() {
 
         <div className="sky-data-scroll scroll-thin">
           <div className="relative z-10 text-white">
-            <ForecastSection />
             <InstrumentsSection />
+            <ForecastSection />
             <RadarSection />
             <GroundStationSection />
           </div>

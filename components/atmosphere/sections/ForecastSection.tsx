@@ -10,16 +10,14 @@ import { useWeatherField } from "../WeatherFieldContext";
 import { SectionHeading, SkySection } from "./SectionParts";
 
 /**
- * Section 4 — Forecast. A full-screen, rain-forward read of the hours just ahead
+ * Section 3 — Forecast. A full-screen, rain-forward read of the hours just ahead
  * and the week ahead. The shared sky snapshot already carries the hourly + daily
  * series (incl. Open-Meteo precip probability), so this reads from context with no
- * extra fetch. Two scaled-up blocks: a glanceable time-of-day strip — the next
+ * extra fetch. Two full-width strips sharing one bordered-grid treatment (the
+ * same idiom as 현재 날씨 above, so the sections align edge-to-edge): the next
  * ~15 hours folded into five wide, no-scroll blocks (지금 → 새벽/아침/…) by
- * {@link buildForecastBlocks} — and the 7-day row as seven equal full-width cards,
- * each carrying 강수확률 (POP) alongside the condition + temperatures.
- *
- * (The former Sun & Sky section — celestial dial + wind trend — has been removed;
- * Ground Station is now Section 5, with Radar inserted as Section 3.)
+ * {@link buildForecastBlocks}, and the 7-day row as seven equal cards, each
+ * carrying 강수확률 (POP) alongside the condition + temperatures.
  */
 
 /** Probability → indicator tint, graduating from a faint sky to a saturated
@@ -60,89 +58,70 @@ export default function ForecastSection() {
   // Per-hour day/night for the icon face, from the daily sun times (fixed-hour
   // fallback inside makeIsNightAt when a provider has none).
   const isNightAt = makeIsNightAt(snapshot?.daily ?? []);
-  const peakRain = blocks.reduce<number | null>((peak, block) => {
-    if (block.precipMax == null) return peak;
-    return peak == null ? block.precipMax : Math.max(peak, block.precipMax);
-  }, null);
 
   return (
     <SkySection id="flow" compact>
       <SectionHeading
-        index="02"
+        index="03"
         title="시간별·7일 날씨"
         compact
       />
 
       <div className="mx-auto flex w-full max-w-[80rem] flex-1 flex-col justify-center gap-10 sm:gap-12">
         <ScrollReveal amount={0.12}>
-          <div className="sky-film-surface px-5 py-7 sm:px-8 sm:py-9 lg:px-10">
-            {blocks.length > 0 ? (
-              <div className="grid items-stretch gap-8 lg:grid-cols-[minmax(15rem,0.72fr)_minmax(0,1.8fr)] lg:gap-12">
-                <div className="flex flex-col justify-between border-l border-white/25 pl-5 sm:pl-7">
-                  <MetricLabel tone="bright">시간별 날씨</MetricLabel>
-                  <div className="mt-8 flex items-end gap-3">
-                    <span className="font-sans text-[clamp(4.25rem,8vw,7rem)] font-light tabular-nums leading-none text-white">
-                      {peakRain == null ? "—" : Math.round(peakRain)}
-                    </span>
-                    <span className="mb-2 font-sans text-sm tracking-[0.12em] text-white/70">
-                      % · 최고 강수 확률
-                    </span>
-                  </div>
-                </div>
-
-                <div className="scroll-thin overflow-x-auto pb-2">
-                  <ol
-                    className="grid min-w-[42rem] grid-cols-5 border-y border-white/18"
-                    aria-label="시간대별 예보 — 기온 및 강수확률"
-                  >
-                    {blocks.map((b, i) => {
-                      const pct = clampPct(b.precipMax);
-                      return (
-                        <li
-                          key={b.representativeTime}
-                          className="relative flex min-h-[17rem] flex-col justify-between border-l border-white/14 px-4 py-5 first:border-l-0"
-                        >
-                          <div>
-                            <span className="sky-display text-2xl text-white">{b.label}</span>
-                            <span className="mt-1 block font-mono text-[10px] tracking-[0.08em] text-white/65">
-                              {b.rangeLabel}
-                            </span>
-                          </div>
-                          <WeatherGlyph
-                            condition={i === 0 ? readout.condition : glyphCondition(b.condition, b.precipMax)}
-                            night={isNightAt(b.representativeTime)}
-                            size={36}
-                            className="text-white"
-                          />
-                          <div>
-                            <div className="flex items-baseline gap-2 font-sans tabular-nums">
-                              <span className="text-2xl font-light text-white">{b.tempHigh}°</span>
-                              <span className="text-sm font-light text-white/65">{b.tempLow}°</span>
-                            </div>
-                            <div className="mt-3 flex items-center justify-between gap-2">
-                              <span className="text-[11px] text-white/60">비</span>
-                              <span className="font-mono text-xs tabular-nums text-white">
-                                {b.precipMax == null ? "—" : `${Math.round(pct)}%`}
-                              </span>
-                            </div>
-                          </div>
-                          <span
-                            aria-hidden
-                            className={`absolute inset-x-0 bottom-0 h-1 origin-left ${popTint(b.precipMax)}`}
-                            style={{ transform: `scaleX(${pct / 100})` }}
-                          />
-                        </li>
-                      );
-                    })}
-                  </ol>
-                </div>
-              </div>
-            ) : (
-              <p className="font-sans text-sm tracking-[0.1em] text-white/75">
-                시간별 예보를 불러오는 중입니다.
-              </p>
-            )}
-          </div>
+          <MetricLabel tone="bright" className="mb-4 px-1">시간별 날씨</MetricLabel>
+          {blocks.length > 0 ? (
+            <div className="scroll-thin overflow-x-auto border-y border-white/18">
+              <ol
+                className="grid min-w-[42rem] grid-cols-5"
+                aria-label="시간대별 예보 — 기온 및 강수확률"
+              >
+                {blocks.map((b, i) => {
+                  const pct = clampPct(b.precipMax);
+                  return (
+                    <li
+                      key={b.representativeTime}
+                      className="relative flex min-h-[15rem] flex-col justify-between border-l border-white/14 px-4 py-5 first:border-l-0"
+                    >
+                      <div>
+                        <span className="sky-display text-2xl text-white">{b.label}</span>
+                        <span className="mt-1 block font-mono text-[10px] tracking-[0.08em] text-white/65">
+                          {b.rangeLabel}
+                        </span>
+                      </div>
+                      <WeatherGlyph
+                        condition={i === 0 ? readout.condition : glyphCondition(b.condition, b.precipMax)}
+                        night={isNightAt(b.representativeTime)}
+                        size={36}
+                        className="text-white"
+                      />
+                      <div>
+                        <div className="flex items-baseline gap-2 font-sans tabular-nums">
+                          <span className="text-2xl font-light text-white">{b.tempHigh}°</span>
+                          <span className="text-sm font-light text-white/65">{b.tempLow}°</span>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <span className="text-[11px] text-white/60">비</span>
+                          <span className="font-mono text-xs tabular-nums text-white">
+                            {b.precipMax == null ? "—" : `${Math.round(pct)}%`}
+                          </span>
+                        </div>
+                      </div>
+                      <span
+                        aria-hidden
+                        className={`absolute inset-x-0 bottom-0 h-1 origin-left ${popTint(b.precipMax)}`}
+                        style={{ transform: `scaleX(${pct / 100})` }}
+                      />
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          ) : (
+            <p className="font-sans text-sm tracking-[0.1em] text-white/75">
+              시간별 예보를 불러오는 중입니다.
+            </p>
+          )}
         </ScrollReveal>
 
         {daily.length > 0 && (
