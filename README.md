@@ -15,7 +15,7 @@ Primary route: `/sky`<br>
 Timezone and weather context: `Asia/Seoul`<br>
 Controls: press `D` on desktop, or use **상세 날씨 보기** on mobile, to switch between the cinematic hero and the data deck. Press `Esc` to return to the hero.
 
-![SeoulSky hero view showing rainy Seoul](public/screenshots/hero.png)
+![SeoulSky hero view — clear night over Seoul](public/screenshots/hero.png)
 
 ## What It Is
 
@@ -39,9 +39,9 @@ Mobile is functional-only. It should avoid obvious breakage such as overlap, bad
 
 The data deck is organized around Korean product labels with English-readable intent:
 
-- `지금 상태` / Current conditions: wind, humidity, visibility, UV, air quality, and precipitation chance.
-- `비구름 레이더` / Rain radar: Seoul-centered radar imagery, timeline, and play/scrub controls.
-- `앞으로의 날씨` / Forecast: near-term blocks and 7-day forecast.
+- `현재 날씨` / Current conditions: current temperature and condition, plus precipitation chance, wind, humidity, air quality, UV, and the next sunrise/sunset.
+- `레이더` / Rain radar: Seoul-centered radar imagery, timeline, and play/scrub controls.
+- `시간별·7일 날씨` / Forecast: time-of-day blocks and 7-day forecast.
 - `예보 신뢰도` / Forecast confidence: confidence, source agreement, update time, and advanced diagnostics behind disclosure.
 
 ## Screenshots
