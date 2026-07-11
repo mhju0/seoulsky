@@ -168,7 +168,6 @@ export default function GroundStationSection() {
       <SectionHeading
         index="05"
         title="예보 신뢰도"
-        description="주요 기상 서비스의 예보를 한눈에 비교합니다."
       />
 
       <div ref={deckRef} className="mx-auto flex w-full max-w-[80rem] flex-col gap-4 sm:gap-5">

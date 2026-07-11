@@ -77,8 +77,6 @@ function useCountUp(target: number | null, entranceKey: number, duration = 820):
 // gradient stops below are the one place to tune the scale-bar palettes.
 
 const SCALE_GRADIENTS = {
-  // Hazy/low → clear/high (visibility reads "good" at the high end).
-  visibility: "linear-gradient(90deg, rgba(148,163,184,0.55) 0%, #7dd3fc 60%, #e0f2fe 100%)",
   // WHO UV ramp: green → yellow → orange → red → violet.
   uv: "linear-gradient(90deg, #34d399 0%, #fde047 27%, #fb923c 52%, #f87171 73%, #c084fc 100%)",
   // KMA air bands 1→4: good → moderate → poor → very poor.
@@ -258,12 +256,6 @@ const ICONS: Record<string, ReactNode> = {
       <path d="M12 3s6 6.5 6 10.5A6 6 0 0 1 6 13.5C6 9.5 12 3 12 3z" />
     </svg>
   ),
-  visibility: (
-    <svg {...ICON_PROPS}>
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-      <circle cx="12" cy="12" r="2.6" />
-    </svg>
-  ),
   uv: (
     <svg {...ICON_PROPS}>
       <circle cx="12" cy="12" r="4" />
@@ -359,15 +351,12 @@ const uvKo = (uv: number | null): string | null =>
   uv == null ? null : uv < 3 ? "낮음" : uv < 6 ? "보통" : uv < 8 ? "높음" : uv < 11 ? "매우 높음" : "위험";
 const AIR_KO: Record<1 | 2 | 3 | 4, string> = { 1: "좋음", 2: "보통", 3: "나쁨", 4: "매우 나쁨" };
 const AIR_POS: Record<1 | 2 | 3 | 4, number> = { 1: 14, 2: 40, 3: 66, 4: 90 };
-const visKo = (m: number | null): string | null =>
-  m == null ? null : m >= 10000 ? "맑은 시야" : m >= 6000 ? "양호" : m >= 2000 ? "연무" : "안개";
-
 // ---- section ----------------------------------------------------------------
 
 /**
- * Section 3 — Instruments. Six live readings composed as an open editorial field
+ * Section 3 — Instruments. Five live readings composed as an open editorial field
  * state: wind (speed + compass dial), humidity (+ fill ring & derived dew point),
- * visibility, UV index, air quality, and precipitation chance — the four scalars
+ * UV index, air quality, and precipitation chance — the three scalars
  * sharing one horizontal gradient scale-bar idiom. On entrance (D key) tiles
  * cascade in with a staggered fade+rise; numeric values count up from 0. Both
  * effects re-trigger on each entrance. Missing values render "—" (never zero) and
@@ -397,7 +386,6 @@ export default function InstrumentsSection() {
   // Raw numerics (null when unavailable) for count-up hooks.
   const windRaw = toMsNum(readout.windSpeed);
   const humidRaw = toInt(readout.humidity);
-  const visRaw = readout.visibility == null ? null : Math.round(readout.visibility / 1000);
   const uvRaw = toInt(readout.uvIndex);
   const airRaw = readout.airValue == null ? null : toInt(readout.airValue);
   const precipRaw = toInt(readout.precipitationProbability);
@@ -405,14 +393,12 @@ export default function InstrumentsSection() {
   // Animated display values (each re-runs on entranceKey or target change).
   const windAnim = useCountUp(windRaw, entranceKey);
   const humidAnim = useCountUp(humidRaw, entranceKey);
-  const visAnim = useCountUp(visRaw, entranceKey);
   const uvAnim = useCountUp(uvRaw, entranceKey);
   const airAnim = useCountUp(airRaw, entranceKey);
   const precipAnim = useCountUp(precipRaw, entranceKey);
 
   const windDisplay = windAnim == null ? "—" : windAnim.toFixed(1);
   const humidDisplay = humidAnim == null ? "—" : `${Math.round(humidAnim)}`;
-  const visDisplay = visAnim == null ? "—" : `${Math.round(visAnim)}`;
   const uvDisplay = uvAnim == null ? "—" : `${Math.round(uvAnim)}`;
   const precipDisplay = precipAnim == null ? "—" : `${Math.round(precipAnim)}`;
 
@@ -431,11 +417,9 @@ export default function InstrumentsSection() {
       : `${readout.windDirectionKo} ${Math.round(readout.windDirection)}°`.trim();
   const dew = dewPointC(readout.temperature, readout.humidity);
   const humidSub = dew == null ? null : `이슬점 ${Math.round(dew)}°`;
-  const visSub = visKo(readout.visibility);
   const uvSub = uvKo(readout.uvIndex);
   const airSub = airKo; // qualitative band word, always the sub when a band exists
   // Scale-bar marker positions (null → no dot, never a fabricated 0).
-  const visPct = readout.visibility == null ? null : clamp01(readout.visibility / 20000) * 100;
   const uvPct = readout.uvIndex == null ? null : clamp01(readout.uvIndex / 11) * 100;
   const airPct = readout.airBand == null ? null : AIR_POS[readout.airBand];
   const precipPct = precipRaw;
@@ -445,7 +429,6 @@ export default function InstrumentsSection() {
       <SectionHeading
         index="03"
         title="현재 날씨"
-        description="강수 확률, 바람, 습도, 가시거리, 대기질 정보입니다."
       />
       <div className="flex flex-1 flex-col justify-center">
         <motion.div
@@ -467,15 +450,6 @@ export default function InstrumentsSection() {
               <Value size="lg" unit={precipRaw == null ? undefined : "%"} unitFull>
                 {precipDisplay}
               </Value>
-              <p className="mt-5 max-w-[18ch] break-keep font-sans text-[clamp(1.25rem,2.2vw,1.75rem)] font-medium leading-snug tracking-[-0.025em] text-white">
-                {precipRaw == null
-                  ? "강수 정보가 없습니다."
-                  : precipRaw < 20
-                    ? "비 올 가능성이 낮습니다."
-                    : precipRaw < 50
-                      ? "비가 올 수 있습니다."
-                      : "우산을 챙기세요."}
-              </p>
             </div>
             <ScaleBar pct={precipPct} gradient={SCALE_GRADIENTS.precip} lo="맑음" hi="비" />
           </motion.article>
@@ -503,31 +477,20 @@ export default function InstrumentsSection() {
               reduce={reduce}
             />
             <Reading
-              icon={ICONS.visibility}
-              label="가시거리"
-              value={visDisplay}
-              unit={visRaw == null ? undefined : "km"}
-              sub={visSub}
-              viz={<ScaleBar pct={visPct} gradient={SCALE_GRADIENTS.visibility} lo="0" hi="20km" />}
+              icon={ICONS.air}
+              label="대기질"
+              value={airDisplay}
+              unit={airUnit}
+              sub={`미세먼지 ${airSub ?? "관측 없음"}`}
+              viz={<ScaleBar pct={airPct} gradient={SCALE_GRADIENTS.air} lo="좋음" hi="나쁨" />}
               reduce={reduce}
             />
             <Reading
-              icon={ICONS.air}
-              label="대기질과 자외선"
-              value={airDisplay}
-              unit={airUnit}
-              sub={
-                <span className="flex flex-wrap gap-x-3 gap-y-1">
-                  <span>미세먼지 {airSub ?? "—"}</span>
-                  <span>자외선 {uvDisplay} · {uvSub ?? "관측 없음"}</span>
-                </span>
-              }
-              viz={
-                <div className="flex w-full flex-col gap-4">
-                  <ScaleBar pct={airPct} gradient={SCALE_GRADIENTS.air} lo="좋음" hi="나쁨" />
-                  <ScaleBar pct={uvPct} gradient={SCALE_GRADIENTS.uv} lo="낮음" hi="높음" />
-                </div>
-              }
+              icon={ICONS.uv}
+              label="자외선"
+              value={uvDisplay}
+              sub={uvSub ?? "관측 없음"}
+              viz={<ScaleBar pct={uvPct} gradient={SCALE_GRADIENTS.uv} lo="낮음" hi="높음" />}
               reduce={reduce}
             />
           </motion.div>

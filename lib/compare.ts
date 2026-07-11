@@ -114,20 +114,9 @@ export function buildComparison(live: ProviderSnapshot[]): ProviderComparison | 
   };
 }
 
-/** Two clear umbrella states keyed to the consensus chance of rain. */
-function umbrellaAdvice(consensus: number): { verdict: string; action: string } {
-  if (consensus >= 50) return { verdict: "비 올 가능성 높음", action: "우산을 챙기세요." };
-  if (consensus >= 30) return { verdict: "비 올 가능성 있음", action: "우산을 챙기세요." };
-  if (consensus >= 15)
-    return { verdict: "비 올 가능성 낮음", action: "우산은 없어도 될 듯하지만, 외출이 길면 챙겨두세요." };
-  return { verdict: "비 올 가능성 낮음", action: "우산은 필요 없어 보입니다." };
-}
-
 /**
- * The rain-first answer to "지금 무엇을 믿어야 할까요?". Leads with the consensus
- * chance of rain for today + the next few hours, then a clear umbrella call.
- *  • Sources agree → state the chance + verdict + action (e.g. a unanimous ~5%
- *    reads "비 올 가능성 낮음 · 의견 일치. 우산은 필요 없어 보입니다.").
+ * A neutral rain summary for today + the next few hours.
+ *  • Sources agree → state the average chance without making a decision for the user.
  *  • Sources disagree → pivot to the most conservative reading.
  *  • Too few sources report precip → say so honestly; never invent a number.
  */
@@ -145,10 +134,9 @@ function rainRecommendation(
     const worst = rainCmp.values.reduce((a, b) => (b.value > a.value ? b : a));
     return `서비스마다 비 예보가 다릅니다. 가장 높은 예보는 ${nameOf(worst.providerId)} ${Math.round(
       worst.value,
-    )}%입니다. 우산을 챙기는 편이 안전합니다.`;
+    )}%입니다.`;
   }
-  const { action } = umbrellaAdvice(consensus);
-  return `향후 12시간 강수 확률은 평균 ${consensus}%입니다. ${action}`;
+  return `향후 12시간 강수 확률은 평균 ${consensus}%입니다.`;
 }
 
 export function buildConfidence(

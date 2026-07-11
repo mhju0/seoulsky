@@ -52,14 +52,6 @@ function glyphCondition(condition: WeatherCondition, pop: number | null): Weathe
 
 const TEMP_LABEL = { high: "최고", low: "최저" } as const;
 
-function rainStory(pop: number | null): string {
-  if (pop == null) return "강수 확률 정보가 없습니다.";
-  if (pop < 20) return "비 올 가능성이 낮습니다.";
-  if (pop < 50) return "비가 올 수 있습니다.";
-  if (pop < 80) return "우산을 챙기세요.";
-  return "비 올 가능성이 높습니다.";
-}
-
 export default function ForecastSection() {
   const { snapshot, readout } = useWeatherField();
 
@@ -78,7 +70,6 @@ export default function ForecastSection() {
       <SectionHeading
         index="02"
         title="시간별·7일 날씨"
-        description="시간대별 날씨와 7일 예보입니다."
         compact
       />
 
@@ -88,12 +79,7 @@ export default function ForecastSection() {
             {blocks.length > 0 ? (
               <div className="grid items-stretch gap-8 lg:grid-cols-[minmax(15rem,0.72fr)_minmax(0,1.8fr)] lg:gap-12">
                 <div className="flex flex-col justify-between border-l border-white/25 pl-5 sm:pl-7">
-                  <div>
-                    <MetricLabel tone="bright">시간별 날씨</MetricLabel>
-                    <p className="sky-display mt-5 break-keep text-[clamp(1.75rem,3.2vw,3rem)] text-white">
-                      {rainStory(peakRain)}
-                    </p>
-                  </div>
+                  <MetricLabel tone="bright">시간별 날씨</MetricLabel>
                   <div className="mt-8 flex items-end gap-3">
                     <span className="font-sans text-[clamp(4.25rem,8vw,7rem)] font-light tabular-nums leading-none text-white">
                       {peakRain == null ? "—" : Math.round(peakRain)}

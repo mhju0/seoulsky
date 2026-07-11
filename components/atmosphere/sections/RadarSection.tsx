@@ -474,7 +474,6 @@ export default function RadarSection() {
       <SectionHeading
         index="04"
         title="레이더"
-        description="최근 1시간 동안 서울 주변의 비구름을 보여줍니다."
         compact
       />
 

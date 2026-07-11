@@ -29,8 +29,8 @@ export function SkySection({
   const padding = center
     ? "justify-center py-[clamp(3rem,12vh,8rem)]"
     : compact
-      ? "justify-start py-[clamp(2.5rem,6vh,5rem)]"
-      : "justify-start py-[clamp(4rem,10vh,7rem)]";
+      ? "justify-start py-[clamp(3.5rem,8vh,6rem)]"
+      : "justify-start py-[clamp(5rem,11vh,8rem)]";
 
   return (
     <section
@@ -46,29 +46,20 @@ export function SkySection({
 export function SectionHeading({
   index,
   title,
-  description,
   compact = false,
 }: {
   index: string;
   title: string;
-  description?: string;
   compact?: boolean;
 }) {
   return (
-    <div className={`sky-data-heading ${compact ? "mb-8" : "mb-10"} flex max-w-3xl items-start gap-4 sm:gap-5`}>
-      <span className="mt-2 font-mono text-[11px] font-medium tabular-nums tracking-[0.12em] text-white/65">
+    <div className={`sky-data-heading ${compact ? "mb-11" : "mb-14"} flex max-w-3xl items-start gap-4 sm:gap-5`}>
+      <span className="mt-1.5 font-mono text-[11px] font-medium tabular-nums tracking-[0.12em] text-white/65">
         {index}
       </span>
-      <div>
-        <h2 className="m-0 break-keep font-sans text-[clamp(2rem,3.3vw,3.25rem)] font-semibold leading-tight tracking-[-0.045em] text-white">
-          {title}
-        </h2>
-        {description && (
-          <p className="sky-copy mt-2 break-keep text-sm font-normal text-white/78 sm:text-base">
-            {description}
-          </p>
-        )}
-      </div>
+      <h2 className="m-0 break-keep font-sans text-[clamp(1.75rem,2.5vw,2.5rem)] font-semibold leading-tight tracking-[-0.04em] text-white">
+        {title}
+      </h2>
     </div>
   );
 }
