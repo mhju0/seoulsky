@@ -75,7 +75,16 @@ export function Value({
     >
       {children}
       {unit != null && (
-        <span className={`ml-[0.12em] text-[0.34em] font-light tracking-[0.12em] ${unitFull ? "text-white" : "text-white/65"}`}>{unit}</span>
+        // The degree symbol reads as a temperature superscript, so it rides the
+        // cap height (align-self:start) instead of the baseline like scalar units
+        // (m/s, %, µg/m³), which stay baseline-aligned where they read correctly.
+        <span
+          className={`font-light tracking-[0.12em] ${
+            unit === "°" ? "ml-[0.04em] self-start text-[0.42em] leading-none" : "ml-[0.12em] text-[0.34em]"
+          } ${unitFull ? "text-white" : "text-white/65"}`}
+        >
+          {unit}
+        </span>
       )}
     </span>
   );
