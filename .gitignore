@@ -65,8 +65,9 @@ next-env.d.ts
 !/docs/confidence.png
 !/docs/source-comparison.png
 
-# claude
-CLAUDE.mdpnpm-lock.yaml
+# claude (local tool dir — settings.local.json, launch.json)
+.claude/
+pnpm-lock.yaml
 pnpm-workspace.yaml
 
 # serena (tool dir)
