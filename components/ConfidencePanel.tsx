@@ -4,12 +4,11 @@ import type { ConfidenceScore, ProviderComparison } from "@/lib/types";
 
 /**
  * Source-agreement confidence as an etched readout (no glass, no radar dial): a
- * large light overall score, the agreement bars — precipitation leading and
- * emphasized, temperature + wind demoted to quiet secondary signals — and the
- * rain-first recommendation behind a single hairline accent.
+ * comparison summary and agreement bars — precipitation leading and emphasized,
+ * temperature + wind demoted to quiet secondary signals.
  *
- * The headline score and the recommendation are computed upstream
- * ({@link buildConfidence}); this is presentation only. The score reflects source
+ * The comparison and scores are computed upstream; this is presentation only.
+ * The score reflects source
  * AGREEMENT, so a unanimous dry forecast reads HIGH, never low.
  */
 
@@ -17,13 +16,6 @@ interface Props {
   confidence: ConfidenceScore;
   comparison: ProviderComparison | null;
 }
-
-const LEVEL_LABELS: Record<ConfidenceScore["level"], { ko: string; note: string }> = {
-  high: { ko: "신뢰 높음", note: "여러 예보가 같은 방향을 가리킵니다" },
-  medium: { ko: "부분 일치", note: "일부 예보에서 차이가 보입니다" },
-  low: { ko: "서로 다름", note: "예보 사이의 차이가 큽니다" },
-  "single-source": { ko: "비교 제한", note: "하나의 예보만 확인했습니다" },
-};
 
 function scoreColor(score: number | null): string {
   if (score === null) return "text-white/55";
@@ -67,7 +59,7 @@ function RainAgreement({ score, consensus }: { score: number | null; consensus: 
         {lowCoverage
           ? "강수를 보고한 소스가 2곳 미만입니다"
           : consensus !== null
-            ? `합의 강수 확률 약 ${consensus}%`
+            ? `평균 강수 확률 ${consensus}%`
             : ""}
       </p>
     </div>
@@ -96,51 +88,19 @@ export default function ConfidencePanel({ confidence, comparison }: Props) {
   const consensusRain = rainMetric ? Math.round(rainMetric.average) : null;
 
   return (
-    <div className="flex flex-col gap-9 md:flex-row md:items-start md:gap-16">
-      <div className="flex shrink-0 flex-col gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/70">
-          예보 신뢰도
-        </span>
-        <div className="flex flex-col gap-0.5">
-          <span
-            className={`font-mono text-[clamp(0.75rem,2vw,1rem)] font-light uppercase tracking-[0.2em] ${
-              confidence.overall === null ? "text-white/70" : scoreColor(confidence.overall)
-            }`}
-          >
-            {LEVEL_LABELS[confidence.level].note}
-          </span>
-          <span
-            className={`font-sans text-[clamp(1.6rem,5vw,2.6rem)] font-light leading-[1.1] ${
-              confidence.overall === null ? "text-white" : scoreColor(confidence.overall)
-            } [text-shadow:0_2px_24px_rgba(0,0,0,0.45)]`}
-          >
-            {LEVEL_LABELS[confidence.level].ko}
-          </span>
-        </div>
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-14">
+      <div className="flex min-w-0 flex-col gap-4">
+        {comparison && <p className="font-sans text-xl font-light leading-snug text-white/95">{comparison.headline}</p>}
+        <p className="max-w-xl text-sm leading-relaxed text-white/75">{confidence.explanation}</p>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-7">
-        {comparison && (
-          <p className="font-sans text-lg font-light leading-snug text-white/95">{comparison.headline}</p>
-        )}
-
-        {/* Agreement — precipitation leads and is emphasized; 기온 + 바람 are
-            present but clearly subordinate (smaller, muted, hairline tracks). */}
-        <div className="flex max-w-md flex-col gap-5">
-          <RainAgreement score={confidence.rain} consensus={consensusRain} />
-          <div className="flex flex-col gap-2.5 border-t border-white/10 pt-4">
-            <SecondaryRow label="기온 일치도" score={confidence.temperature} />
-            <SecondaryRow label="바람 일치도" score={confidence.wind} />
-          </div>
-        </div>
-
-        <p className="max-w-xl text-sm leading-relaxed text-white/75">{confidence.explanation}</p>
-
-        <div className="max-w-xl border-l border-white/20 pl-4">
-          <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-white/75">
-            권장 사항
-          </p>
-          <p className="text-sm leading-relaxed text-white/95">{confidence.recommendation}</p>
+      {/* Agreement — precipitation leads and is emphasized; 기온 + 바람 are
+          present but clearly subordinate (smaller, muted, hairline tracks). */}
+      <div className="flex max-w-xl flex-col gap-5">
+        <RainAgreement score={confidence.rain} consensus={consensusRain} />
+        <div className="flex flex-col gap-2.5 border-t border-white/10 pt-4">
+          <SecondaryRow label="기온 일치도" score={confidence.temperature} />
+          <SecondaryRow label="바람 일치도" score={confidence.wind} />
         </div>
       </div>
     </div>

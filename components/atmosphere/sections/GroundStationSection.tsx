@@ -65,6 +65,12 @@ function comparedProviderNames(data: WeatherIntelligence): string {
   return live.length > 0 ? live.join(" · ") : "비교 가능한 실시간 소스 없음";
 }
 
+function comparedProviderCount(data: WeatherIntelligence): number {
+  const compared = data.comparison?.providersCompared.length ?? 0;
+  if (compared > 0) return compared;
+  return data.providers.filter((p) => p.status.availability === "ok" && p.current).length;
+}
+
 function formatUpdatedAt(iso: string | null | undefined): string {
   if (!iso) return "업데이트 시간 없음";
   const date = new Date(iso);
@@ -162,7 +168,7 @@ export default function GroundStationSection() {
       <SectionHeading
         index="05"
         title="예보 신뢰도"
-        description="여러 기상 서비스의 예보를 비교한 결과입니다."
+        description="주요 기상 서비스의 예보를 한눈에 비교합니다."
       />
 
       <div ref={deckRef} className="mx-auto flex w-full max-w-[80rem] flex-col gap-4 sm:gap-5">
@@ -171,11 +177,8 @@ export default function GroundStationSection() {
           <div className="sky-film-surface px-5 py-7 sm:px-8 sm:py-9 lg:px-10">
             <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
               <div>
-                <MetricLabel tone="bright">예보 비교</MetricLabel>
-                <p className="mt-3 font-sans text-[clamp(1.6rem,3vw,2.5rem)] font-semibold tracking-[-0.035em] text-white">
-                  종합 신뢰도
-                </p>
-                <p className="mt-1 font-mono text-xs tracking-[0.12em] text-white">
+                <MetricLabel tone="bright">현재 평가</MetricLabel>
+                <p className="mt-3 font-mono text-xs tracking-[0.12em] text-white">
                   {clock ? formatHeaderDate(clock) : " "} · 대한민국 서울
                 </p>
               </div>
@@ -201,27 +204,51 @@ export default function GroundStationSection() {
             {data && (
               <div className="mt-8 grid gap-7 border-t border-white/16 pt-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
                 <div className="border-l border-white/25 pl-5 sm:pl-7">
-                  <MetricLabel className="text-white/60">종합 판단</MetricLabel>
                   <p className="sky-display mt-3 text-[clamp(2rem,4.5vw,4rem)] text-white">
                     {CONFIDENCE_LABELS[data.confidence.level]}
                   </p>
                   <p className="mt-2 text-sm text-white/65">
-                    {data.confidence.overall !== null ? `전체 신뢰도 ${data.confidence.overall}%` : "단일 소스 기준"}
+                    {data.confidence.overall !== null ? `예보 일치도 ${data.confidence.overall}%` : "비교 가능한 예보가 부족합니다"}
                   </p>
+                  <div className="mt-6 max-w-xl border-t border-white/10 pt-5">
+                    <MetricLabel className="text-white/60">오늘 참고할 점</MetricLabel>
+                    <p className="mt-2 text-sm leading-relaxed text-white/90">
+                      {data.confidence.recommendation}
+                    </p>
+                  </div>
                 </div>
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
                   <SummaryTile
-                    label="소스 일치"
-                    value={data.comparison?.headline ?? "소스 비교 대기"}
+                    label="확인한 서비스"
+                    value={`${comparedProviderCount(data)}곳`}
                     caption={comparedProviderNames(data)}
                   />
                   <SummaryTile
-                    label="마지막 확인"
+                    label="업데이트"
                     value={timeAgoKo(data.generatedAt)}
                     caption={formatUpdatedAt(data.generatedAt)}
                   />
                 </div>
               </div>
+            )}
+
+            {data && data.warnings.length > 0 && (
+              <aside className="mt-6 border-t border-amber-200/25 pt-5" aria-label="서울 날씨 특보">
+                <MetricLabel className="text-amber-300/90">현재 특보</MetricLabel>
+                <div className="mt-3 flex flex-col gap-2">
+                  {data.warnings.map((warning) => (
+                    <p
+                      key={`${warning.type}-${warning.area}-${warning.issuedAt ?? ""}`}
+                      className="text-sm leading-relaxed text-amber-100/90"
+                    >
+                      {warning.headline}
+                      {!warning.headline.includes(warning.area) && (
+                        <span className="ml-2 font-mono text-[11px] text-amber-200/55">{warning.area}</span>
+                      )}
+                    </p>
+                  ))}
+                </div>
+              </aside>
             )}
 
             {data && (
@@ -277,24 +304,7 @@ export default function GroundStationSection() {
 
         {data && (
           <>
-            {/* Real KMA warnings, if any — never fabricated. */}
-            {data.warnings.length > 0 && (
-              <ScrollReveal amount={0.2}>
-                <GlassPanel className="px-5 py-5 sm:px-7 sm:py-6">
-                  <MetricLabel className="text-amber-300/80">기상 특보</MetricLabel>
-                  <div className="mt-3 flex flex-col gap-2">
-                    {data.warnings.map((w) => (
-                      <p key={`${w.type}-${w.area}-${w.issuedAt ?? ""}`} className="text-sm text-amber-100/90">
-                        {w.headline}
-                        <span className="ml-2 font-mono text-[11px] text-amber-200/50">{w.area}</span>
-                      </p>
-                    ))}
-                  </div>
-                </GlassPanel>
-              </ScrollReveal>
-            )}
-
-            <DeckPanel label="신뢰도 분석" sub="소스 간 교차 검증">
+            <DeckPanel label="예보별 차이" sub="강수 · 기온 · 바람">
               <ConfidencePanel confidence={data.confidence} comparison={data.comparison} />
             </DeckPanel>
 

@@ -457,7 +457,7 @@ export default function InstrumentsSection() {
         >
           <motion.article
             variants={reduce ? {} : CARD_VARIANTS}
-            className="sky-film-surface flex min-h-[24rem] flex-col justify-between px-6 py-7 sm:col-span-2 sm:px-8 sm:py-9 lg:col-span-1 lg:row-span-2"
+            className="sky-film-surface flex min-h-[24rem] flex-col justify-between px-6 py-7 sm:col-span-2 sm:px-8 sm:py-9 lg:col-span-1"
           >
             <div className="flex items-center gap-2 text-white/85">
               {ICONS.precip}

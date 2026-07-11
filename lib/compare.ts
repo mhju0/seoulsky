@@ -95,11 +95,11 @@ export function buildComparison(live: ProviderSnapshot[]): ProviderComparison | 
   const temp = byMetric.get("temperature");
   const wind = byMetric.get("windSpeed");
 
-  let headline = "예보 모델 대체로 일치";
-  if (rain && rain.agreement < 65) headline = "강수 예보 불일치 감지";
-  else if (wind && wind.agreement < 65) headline = "바람 예보 불확실성 감지";
-  else if (temp && temp.agreement < 65) headline = "기온 모델 간 편차 발생";
-  else if (metrics.every((m) => m.agreement >= 80)) headline = "모든 예보 모델 정렬됨";
+  let headline = "예보가 대체로 비슷합니다";
+  if (rain && rain.agreement < 65) headline = "비 예보가 서비스마다 다릅니다";
+  else if (wind && wind.agreement < 65) headline = "바람 예보가 서비스마다 다릅니다";
+  else if (temp && temp.agreement < 65) headline = "기온 예보가 서비스마다 다릅니다";
+  else if (metrics.every((m) => m.agreement >= 80)) headline = "예보가 거의 같습니다";
 
   const notes = metrics.map(
     (m) =>
@@ -137,18 +137,18 @@ function rainRecommendation(
   nameOf: (id: ProviderId) => string,
 ): string {
   if (rainAgreement === null || !rainCmp) {
-    return "강수 데이터가 부족해 교차 검증이 어렵습니다. 우산 여부는 기상청 등 공식 채널에서 직접 확인하세요.";
+    return "비 예보를 비교하기에 데이터가 부족합니다. 기상청 예보를 함께 확인해 주세요.";
   }
   const consensus = Math.round(rainCmp.average);
   if (rainAgreement < 65) {
     // Sources disagree → lead with the most conservative (highest) reading.
     const worst = rainCmp.values.reduce((a, b) => (b.value > a.value ? b : a));
-    return `소스 간 강수 예보가 ${rainCmp.spread}%p 엇갈립니다 (합의 약 ${consensus}%). 가장 보수적인 ${nameOf(
-      worst.providerId,
-    )}의 ${Math.round(worst.value)}%를 기준으로, 우산을 챙기는 편이 안전합니다.`;
+    return `서비스마다 비 예보가 다릅니다. 가장 높은 예보는 ${nameOf(worst.providerId)} ${Math.round(
+      worst.value,
+    )}%입니다. 우산을 챙기는 편이 안전합니다.`;
   }
-  const { verdict, action } = umbrellaAdvice(consensus);
-  return `오늘·향후 몇 시간 합의 강수 확률 약 ${consensus}% — ${verdict} · 의견 일치. ${action}`;
+  const { action } = umbrellaAdvice(consensus);
+  return `향후 12시간 강수 확률은 평균 ${consensus}%입니다. ${action}`;
 }
 
 export function buildConfidence(
@@ -163,7 +163,7 @@ export function buildConfidence(
       wind: null,
       level: "single-source",
       explanation: "활성화된 기상 소스가 없습니다. 네트워크 연결을 확인하세요.",
-      recommendation: "데이터 수신이 복구될 때까지 기상청 등 공식 채널을 직접 확인하세요.",
+      recommendation: "날씨 정보를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.",
     };
   }
 
@@ -175,8 +175,8 @@ export function buildConfidence(
       rain: null,
       wind: null,
       level: "single-source",
-      explanation: `현재 ${name} 단일 소스로 운영 중입니다. 소스가 하나뿐이라 교차 검증은 불가능합니다.`,
-      recommendation: `${name} 예보를 그대로 사용하되, .env에 기상청(KMA) API 키를 추가하면 공식 관측이 더해져 신뢰도 분석이 활성화됩니다.`,
+      explanation: `현재 ${name} 예보만 확인했습니다. 다른 서비스와 비교할 수 없습니다.`,
+      recommendation: `중요한 일정이 있다면 ${name}와 기상청 예보를 함께 확인해 주세요.`,
     };
   }
 
@@ -210,10 +210,10 @@ export function buildConfidence(
 
   const explanation =
     level === "high"
-      ? `${live.length}개 독립 소스의 예보가 잘 정렬되어 있습니다. 현재 예보의 신뢰도가 높습니다.`
+      ? `확인한 ${live.length}개 서비스의 강수, 기온, 바람 예보가 대체로 비슷합니다.`
       : level === "medium"
-        ? "소스 간 일부 지표에서 편차가 관측됩니다. 핵심 수치는 평균값 기준으로 보는 것을 권장합니다."
-        : "소스 간 예보가 크게 엇갈리고 있습니다. 변동성이 큰 기상 상황일 가능성이 높으니 보수적으로 판단하세요.";
+        ? "일부 항목은 서비스마다 차이가 있습니다. 평균값과 세부 비교를 함께 확인해 주세요."
+        : "서비스마다 예보 차이가 큽니다. 외출 전 최신 예보를 다시 확인해 주세요.";
 
   return { overall, temperature: temp, rain, wind, level, explanation, recommendation };
 }
