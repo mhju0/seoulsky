@@ -130,7 +130,10 @@ export default function ForecastSection() {
             <div className="scroll-thin overflow-x-auto border-y border-white/18">
               <ol className="grid min-w-[48rem] grid-cols-7">
                 {daily.map((d) => (
-                  <li key={d.date} className="flex flex-col gap-4 border-l border-white/12 px-4 py-5 first:border-l-0">
+                  <li
+                    key={d.date}
+                    className="relative flex flex-col gap-4 border-l border-white/12 px-4 py-5 pb-6 first:border-l-0"
+                  >
                     <span className="sky-display text-lg text-white">{dayLabel(d.date)}</span>
                     <WeatherGlyph
                       condition={glyphCondition(d.condition, d.precipitationProbability)}
@@ -147,10 +150,16 @@ export default function ForecastSection() {
                         {Math.round(d.temperatureMin)}°
                       </span>
                     </span>
-                    <span className="flex items-center gap-2 font-mono text-[11px] tabular-nums text-white/75">
-                      <span className={`h-1 w-4 ${popTint(d.precipitationProbability)}`} aria-hidden />
+                    <span className="font-mono text-[11px] tabular-nums text-white/75">
                       비 {d.precipitationProbability == null ? "—" : `${Math.round(d.precipitationProbability)}%`}
                     </span>
+                    {/* POP bar over the row's bottom border — same construction as
+                        the hourly strip above, so both rows read as one system. */}
+                    <span
+                      aria-hidden
+                      className={`absolute inset-x-0 bottom-0 h-1 origin-left ${popTint(d.precipitationProbability)}`}
+                      style={{ transform: `scaleX(${clampPct(d.precipitationProbability) / 100})` }}
+                    />
                   </li>
                 ))}
               </ol>

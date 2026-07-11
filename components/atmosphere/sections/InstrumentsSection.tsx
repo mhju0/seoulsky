@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { dewPointC } from "@/lib/atmosphere/derive";
+import { formatKstTime } from "@/lib/format";
+import type { DailyForecast } from "@/lib/types";
 import { MetricLabel, Value } from "../EtchedType";
 import { useWeatherField, useWeatherView } from "../WeatherFieldContext";
 import { SectionHeading, SkySection } from "./SectionParts";
@@ -110,6 +112,20 @@ const ICONS: Record<string, ReactNode> = {
       <path d="M9 18l-1 2M13 18l-1 2M16 18l-1 2" />
     </svg>
   ),
+  // Sun over horizon with an up-arrow — sunrise (the next event before dawn).
+  sunrise: (
+    <svg {...ICON_PROPS}>
+      <path d="M3 18h18M12 3v5M9 6l3-3 3 3" />
+      <path d="M6 18a6 6 0 0 1 12 0" />
+    </svg>
+  ),
+  // Sun over horizon with a down-arrow — sunset (the next event during the day).
+  sunset: (
+    <svg {...ICON_PROPS}>
+      <path d="M3 18h18M12 8V3M9 5l3 3 3-3" />
+      <path d="M6 18a6 6 0 0 1 12 0" />
+    </svg>
+  ),
 };
 
 // ---- entrance variants --------------------------------------------------------
@@ -138,35 +154,99 @@ const uvKo = (uv: number | null): string | null =>
   uv == null ? null : uv < 3 ? "낮음" : uv < 6 ? "보통" : uv < 8 ? "높음" : uv < 11 ? "매우 높음" : "위험";
 const AIR_KO: Record<1 | 2 | 3 | 4, string> = { 1: "좋음", 2: "보통", 3: "나쁨", 4: "매우 나쁨" };
 
+// ---- sunrise / sunset -------------------------------------------------------
+
+type SunEvent = { kind: "sunrise" | "sunset"; iso: string };
+
+/**
+ * The sunrise/sunset strip cell resolves to the ONE upcoming event (headline)
+ * plus the day's complementary event (sub) so it matches the other cells' "one
+ * big value + sub" idiom — e.g. daytime → 일몰 19:48 with 일출 05:12 beneath.
+ *
+ * The sub is the opposite kind of the headline, preferring the most recent past
+ * one but falling back to the nearest upcoming — because `daily[]` starts today,
+ * so pre-dawn there is no past event and the sub must reach forward to today's
+ * sunset instead of showing blank.
+ *
+ * `now` (epoch ms) is sampled post-mount for accuracy; before mount it's null
+ * and we fall back to the hydration-safe `isDay` signal on today's row so SSR
+ * and the first client render agree. Either input missing → nulls (cell → "—").
+ */
+function resolveSunEvents(
+  daily: DailyForecast[],
+  now: number | null,
+  isDay: boolean,
+): { next: SunEvent | null; prev: SunEvent | null } {
+  const events: SunEvent[] = [];
+  for (const d of daily) {
+    if (d.sunrise) events.push({ kind: "sunrise", iso: d.sunrise });
+    if (d.sunset) events.push({ kind: "sunset", iso: d.sunset });
+  }
+  if (events.length === 0) return { next: null, prev: null };
+
+  if (now == null) {
+    // Pre-mount fallback: today's pair, ordered by the day/night signal.
+    const today = daily[0];
+    const sunrise: SunEvent | null = today?.sunrise ? { kind: "sunrise", iso: today.sunrise } : null;
+    const sunset: SunEvent | null = today?.sunset ? { kind: "sunset", iso: today.sunset } : null;
+    return isDay ? { next: sunset, prev: sunrise } : { next: sunrise, prev: sunset };
+  }
+
+  events.sort((a, b) => Date.parse(a.iso) - Date.parse(b.iso));
+  const next = events.find((e) => Date.parse(e.iso) > now) ?? null;
+  let prev: SunEvent | null = null;
+  if (next) {
+    const opposite = next.kind === "sunrise" ? "sunset" : "sunrise";
+    const opps = events.filter((e) => e.kind === opposite);
+    prev =
+      [...opps].reverse().find((e) => Date.parse(e.iso) <= now) ??
+      opps.find((e) => Date.parse(e.iso) > now) ??
+      null;
+  }
+  return { next, prev };
+}
+
+const SUN_KO = { sunrise: "일출", sunset: "일몰" } as const;
+
 // ---- section ----------------------------------------------------------------
 
 /**
- * Section 2 — 현재 날씨. Five live readings — precipitation chance, wind,
- * humidity, air quality, UV — laid out as ONE full-width bordered strip of
- * equal columns, the same grid treatment the forecast section below uses, so
- * both sections read as a single aligned system. Each column is just
- * label → large numeral → quiet sub-line: no dials, rings, or gradient bars,
- * so the state of the sky reads in one pass.
+ * Section 2 — 현재 날씨. A large current temperature + condition anchor (with
+ * 체감온도 as its sub) gives the section a focal point and surfaces the headline
+ * number the hero shows but this section used to omit. Beneath it, six live
+ * readings — precipitation chance, wind, humidity, air quality, UV, and the next
+ * sun event — laid out as ONE full-width bordered strip of equal columns, the
+ * same grid treatment the forecast section below uses so both read as a single
+ * aligned system. Each column is just label → large value → quiet sub-line: no
+ * dials, rings, or gradient bars, so the state of the sky reads in one pass.
  *
- * On entrance (D key) the columns cascade in with a staggered fade+rise and the
- * numerals count up from 0; both re-trigger on each entrance. Missing values
- * render "—" (never zero) — nothing is fabricated. All animation respects
+ * On entrance (D key) the anchor + columns cascade in with a staggered fade+rise
+ * and the numerals count up from 0; both re-trigger on each entrance. Missing
+ * values render "—" (never zero) — nothing is fabricated. All animation respects
  * prefers-reduced-motion.
  */
 export default function InstrumentsSection() {
-  const { readout } = useWeatherField();
+  const { readout, snapshot, isDay } = useWeatherField();
   const isActive = useWeatherView() === "data";
   const reduce = !!useReducedMotion();
 
   // Increment on each hero→data transition to re-trigger stagger + count-up.
   const [entranceKey, setEntranceKey] = useState(0);
   const prevActiveRef = useRef(false);
+  // Wall-clock sampled post-mount (null on server + first render for hydration
+  // safety) and re-sampled each entrance, so the next sun event is accurate
+  // whenever the user is actually looking.
+  const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
-    if (isActive && !prevActiveRef.current) setEntranceKey((k) => k + 1);
+    if (isActive && !prevActiveRef.current) {
+      setEntranceKey((k) => k + 1);
+      setNow(Date.now());
+    }
     prevActiveRef.current = isActive;
   }, [isActive]);
 
   // Raw numerics (null when unavailable) for count-up hooks.
+  const tempRaw = toInt(readout.temperature);
   const windRaw = toMsNum(readout.windSpeed);
   const humidRaw = toInt(readout.humidity);
   const uvRaw = toInt(readout.uvIndex);
@@ -174,11 +254,15 @@ export default function InstrumentsSection() {
   const precipRaw = toInt(readout.precipitationProbability);
 
   // Animated display values (each re-runs on entranceKey or target change).
+  const tempAnim = useCountUp(tempRaw, entranceKey);
   const windAnim = useCountUp(windRaw, entranceKey);
   const humidAnim = useCountUp(humidRaw, entranceKey);
   const uvAnim = useCountUp(uvRaw, entranceKey);
   const airAnim = useCountUp(airRaw, entranceKey);
   const precipAnim = useCountUp(precipRaw, entranceKey);
+
+  const tempDisplay = tempAnim == null ? "—" : `${Math.round(tempAnim)}`;
+  const feelsLike = toInt(readout.apparentTemperature);
 
   // Supporting lines — all honest: derived (dew point) or standard band cut points.
   const windSub =
@@ -187,6 +271,9 @@ export default function InstrumentsSection() {
       : `${readout.windDirectionKo} ${Math.round(readout.windDirection)}°`.trim();
   const dew = dewPointC(readout.temperature, readout.humidity);
   const airKo = readout.airBand == null ? null : AIR_KO[readout.airBand];
+
+  // Next sun event as the headline, the previous one as its sub (see resolveSunEvents).
+  const { next: sunNext, prev: sunPrev } = resolveSunEvents(snapshot?.daily ?? [], now, isDay);
 
   const readings: {
     key: string;
@@ -238,17 +325,49 @@ export default function InstrumentsSection() {
       value: uvAnim == null ? "—" : `${Math.round(uvAnim)}`,
       sub: uvKo(readout.uvIndex) ?? "관측 없음",
     },
+    {
+      // Dynamic label/icon name the upcoming event; the past one rides the sub —
+      // times don't count up, so this cell shows immediately.
+      key: "sun",
+      icon: sunNext ? ICONS[sunNext.kind] : ICONS.sunrise,
+      label: sunNext ? SUN_KO[sunNext.kind] : "일출·일몰",
+      value: sunNext ? formatKstTime(sunNext.iso) : "—",
+      sub: sunPrev ? `${SUN_KO[sunPrev.kind]} ${formatKstTime(sunPrev.iso)}` : null,
+    },
   ];
 
   return (
     <SkySection id="air" compact>
       <SectionHeading index="02" title="현재 날씨" compact />
-      <div className="mx-auto flex w-full max-w-[80rem] flex-1 flex-col justify-center">
+      <div className="mx-auto flex w-full max-w-[80rem] flex-1 flex-col justify-center gap-10 sm:gap-14">
+        {/* Focal anchor — the current temperature + condition, count-up on entrance. */}
+        <motion.div
+          key={`anchor-${entranceKey}`}
+          className="flex items-end gap-6"
+          initial={reduce ? false : "hidden"}
+          animate={isActive ? "visible" : "hidden"}
+          variants={reduce ? {} : CARD_VARIANTS}
+        >
+          <Value size="xl" unit={tempRaw == null ? undefined : "°"} unitFull>
+            {tempDisplay}
+          </Value>
+          <div className="mb-2 min-w-0">
+            <span className="block break-keep font-sans text-[clamp(1.5rem,2.4vw,2.1rem)] font-light leading-tight text-white">
+              {readout.conditionKo}
+            </span>
+            {feelsLike != null && (
+              <span className="mt-1.5 block font-sans text-sm tracking-[0.08em] text-white/70">
+                체감 {feelsLike}°
+              </span>
+            )}
+          </div>
+        </motion.div>
+
         <div className="scroll-thin overflow-x-auto border-y border-white/18">
           <motion.ol
             key={entranceKey}
-            className="grid min-w-[42rem] grid-cols-5"
-            aria-label="현재 관측 — 강수확률·바람·습도·대기질·자외선"
+            className="grid min-w-[48rem] grid-cols-6"
+            aria-label="현재 관측 — 강수확률·바람·습도·대기질·자외선·일출일몰"
             initial={reduce ? false : "hidden"}
             animate={isActive ? "visible" : "hidden"}
             variants={reduce ? {} : GRID_VARIANTS}
@@ -267,8 +386,8 @@ export default function InstrumentsSection() {
                   <Value size="md" unit={r.unit} unitFull>
                     {r.value}
                   </Value>
-                  {/* Non-breaking space keeps the sub-line slot so all five
-                      numerals sit on one shared baseline across the strip. */}
+                  {/* Non-breaking space keeps the sub-line slot so all six
+                      values sit on one shared baseline across the strip. */}
                   <span className="mt-3 block break-keep font-sans text-xs tracking-[0.08em] text-white/72">
                     {r.sub ?? " "}
                   </span>
