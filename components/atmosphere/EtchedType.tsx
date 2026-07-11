@@ -16,7 +16,7 @@ const TONE: Record<Tone, string> = {
   faint: "text-white/70",
 };
 
-/** A small-caps mono label — the etched instrument caption above a reading. */
+/** A quiet Korean instrument caption above a reading. */
 export function MetricLabel({
   children,
   tone = "faint",
@@ -28,7 +28,7 @@ export function MetricLabel({
 }) {
   return (
     <span
-      className={`block font-mono text-[12px] uppercase tracking-[0.34em] [font-variant:small-caps] ${TONE[tone]} ${className}`}
+      className={`block font-sans text-[12px] font-medium tracking-[0.12em] ${TONE[tone]} ${className}`}
     >
       {children}
     </span>
@@ -113,7 +113,7 @@ export function PoeticLine({
 }) {
   return (
     <p
-      className={`etched-shadow max-w-[36ch] break-keep font-sans text-xl font-light leading-relaxed tracking-wide text-white ${className}`}
+      className={`etched-shadow sky-display max-w-[27ch] break-keep text-[clamp(1.2rem,2.2vw,1.65rem)] leading-[1.75] text-white ${className}`}
     >
       {children}
     </p>

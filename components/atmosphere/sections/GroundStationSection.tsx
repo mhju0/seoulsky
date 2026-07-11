@@ -69,7 +69,7 @@ function formatUpdatedAt(iso: string | null | undefined): string {
   if (!iso) return "업데이트 시간 없음";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "업데이트 시간 없음";
-  return `${formatHeaderDate(date)} · ${formatClock(date)} KST`;
+  return `${formatHeaderDate(date)} · ${formatClock(date)} · 한국 표준시`;
 }
 
 /** A deck panel: a small-caps heading (+ sub) over its data block. */
@@ -159,17 +159,21 @@ export default function GroundStationSection() {
 
   return (
     <SkySection id="ground">
-      <SectionHeading index="05" en="Confidence" ko="예보 신뢰도" />
+      <SectionHeading
+        index="05"
+        title="예보의 근거"
+        description="서로 다른 기상 소스가 같은 이야기를 하는지 확인합니다. 화면 뒤에서 작동하는 판단의 기록입니다."
+      />
 
       <div ref={deckRef} className="mx-auto flex w-full max-w-[80rem] flex-col gap-4 sm:gap-5">
         {/* Confidence-first summary for normal users. */}
         <ScrollReveal amount={0.1}>
-          <GlassPanel className="px-5 py-6 sm:px-7 sm:py-7">
+          <div className="sky-film-surface px-5 py-7 sm:px-8 sm:py-9 lg:px-10">
             <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
               <div>
                 <MetricLabel tone="bright">신뢰도 요약</MetricLabel>
-                <p className="mt-2 font-sans text-[clamp(1.4rem,3.4vw,2rem)] font-light text-white">
-                  서울 예보를 신뢰해도 될까요?
+                <p className="sky-display mt-3 text-[clamp(1.8rem,4vw,3.5rem)] text-white">
+                  이 예보를 얼마나 믿어도 될까요?
                 </p>
                 <p className="mt-1 font-mono text-xs tracking-[0.12em] text-white">
                   {clock ? formatHeaderDate(clock) : " "} · 대한민국 서울
@@ -180,7 +184,7 @@ export default function GroundStationSection() {
                   <p className="font-sans text-2xl font-light tabular-nums text-white">
                     {clock ? formatClock(clock) : "--:--:--"}
                   </p>
-                  <p className="mt-0.5 font-mono text-[10px] tracking-[0.3em] text-white">SEOUL · KST</p>
+                  <p className="mt-0.5 font-sans text-[10px] tracking-[0.14em] text-white/65">서울 · 한국 표준시</p>
                 </div>
                 <button
                   type="button"
@@ -195,22 +199,28 @@ export default function GroundStationSection() {
             </div>
 
             {data && (
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                <SummaryTile
-                  label="종합 판단"
-                  value={CONFIDENCE_LABELS[data.confidence.level]}
-                  caption={data.confidence.overall !== null ? `신뢰도 ${data.confidence.overall}%` : "단일 소스 기준"}
-                />
-                <SummaryTile
-                  label="소스 일치"
-                  value={data.comparison?.headline ?? "소스 비교 대기"}
-                  caption={comparedProviderNames(data)}
-                />
-                <SummaryTile
-                  label="업데이트"
-                  value={timeAgoKo(data.generatedAt)}
-                  caption={formatUpdatedAt(data.generatedAt)}
-                />
+              <div className="mt-8 grid gap-7 border-t border-white/16 pt-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
+                <div className="border-l border-white/25 pl-5 sm:pl-7">
+                  <MetricLabel className="text-white/60">종합 판단</MetricLabel>
+                  <p className="sky-display mt-3 text-[clamp(2rem,4.5vw,4rem)] text-white">
+                    {CONFIDENCE_LABELS[data.confidence.level]}
+                  </p>
+                  <p className="mt-2 text-sm text-white/65">
+                    {data.confidence.overall !== null ? `전체 신뢰도 ${data.confidence.overall}%` : "단일 소스 기준"}
+                  </p>
+                </div>
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
+                  <SummaryTile
+                    label="소스 일치"
+                    value={data.comparison?.headline ?? "소스 비교 대기"}
+                    caption={comparedProviderNames(data)}
+                  />
+                  <SummaryTile
+                    label="마지막 확인"
+                    value={timeAgoKo(data.generatedAt)}
+                    caption={formatUpdatedAt(data.generatedAt)}
+                  />
+                </div>
               </div>
             )}
 
@@ -219,7 +229,7 @@ export default function GroundStationSection() {
                 {anyLive && (
                   <span className="flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-300">LIVE</span>
+                    <span className="font-sans text-[10px] font-medium tracking-[0.12em] text-emerald-300">실시간</span>
                   </span>
                 )}
                 {data.providers.map((p) => (
@@ -230,7 +240,7 @@ export default function GroundStationSection() {
                 ))}
               </div>
             )}
-          </GlassPanel>
+          </div>
         </ScrollReveal>
 
         {!near && (
@@ -322,7 +332,7 @@ export default function GroundStationSection() {
                       </div>
                     )}
                     <div className="flex flex-col gap-2">
-                      <MetricLabel tone="bright">Radar Approach · 레이더 접근</MetricLabel>
+                      <MetricLabel tone="bright">레이더 접근 관측</MetricLabel>
                       <p className="font-sans text-lg font-light tracking-wide text-white">
                         {radarSummary(snapshot?.radar)}
                       </p>
@@ -341,7 +351,7 @@ export default function GroundStationSection() {
 
             {/* Quiet data-source attribution — a line inside the deck, not a footer. */}
             <p className="px-1 pt-2 text-center font-mono text-[11px] leading-relaxed tracking-[0.1em] text-white">
-              SeoulSky — 서울 전용 기상 커맨드 센터 · 데이터: Open-Meteo · MET Norway
+              서울의 하늘 — 서울을 위한 개인 기상 프로젝트 · 데이터: Open-Meteo · MET Norway
               {" / "}선택: 기상청(KMA) · Pirate Weather · WeatherAPI · 대기질: AirKorea · 레이더: 기상청(KMA) · 레이더 접근: RainViewer — 비공식 개인 프로젝트
             </p>
           </>

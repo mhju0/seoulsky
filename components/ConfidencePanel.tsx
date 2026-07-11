@@ -18,11 +18,11 @@ interface Props {
   comparison: ProviderComparison | null;
 }
 
-const LEVEL_LABELS: Record<ConfidenceScore["level"], { ko: string; en: string }> = {
-  high: { ko: "신뢰 높음", en: "Trustworthy" },
-  medium: { ko: "부분 일치", en: "Mixed" },
-  low: { ko: "상충", en: "Conflicting" },
-  "single-source": { ko: "단일 소스", en: "Single Source" },
+const LEVEL_LABELS: Record<ConfidenceScore["level"], { ko: string; note: string }> = {
+  high: { ko: "신뢰 높음", note: "여러 예보가 같은 방향을 가리킵니다" },
+  medium: { ko: "부분 일치", note: "일부 예보에서 차이가 보입니다" },
+  low: { ko: "서로 다름", note: "예보 사이의 차이가 큽니다" },
+  "single-source": { ko: "비교 제한", note: "하나의 예보만 확인했습니다" },
 };
 
 function scoreColor(score: number | null): string {
@@ -99,7 +99,7 @@ export default function ConfidencePanel({ confidence, comparison }: Props) {
     <div className="flex flex-col gap-9 md:flex-row md:items-start md:gap-16">
       <div className="flex shrink-0 flex-col gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/70">
-          신뢰도 · Confidence
+          예보 신뢰도
         </span>
         <div className="flex flex-col gap-0.5">
           <span
@@ -107,7 +107,7 @@ export default function ConfidencePanel({ confidence, comparison }: Props) {
               confidence.overall === null ? "text-white/70" : scoreColor(confidence.overall)
             }`}
           >
-            {LEVEL_LABELS[confidence.level].en}
+            {LEVEL_LABELS[confidence.level].note}
           </span>
           <span
             className={`font-sans text-[clamp(1.6rem,5vw,2.6rem)] font-light leading-[1.1] ${

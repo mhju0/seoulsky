@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 import type { WeatherStatus } from "@/hooks/useLiveSeoulWeather";
-import { MetricLabel } from "../EtchedType";
 
 /**
  * Shared chrome for the four /sky scroll sections — the section shell, the quiet
@@ -43,27 +42,34 @@ export function SkySection({
   );
 }
 
-/** The etched caption that opens a section: an index, a hairline tick, KO · EN. */
+/** A Korean film-chapter title that opens each scene in the data narrative. */
 export function SectionHeading({
   index,
-  en,
-  ko,
+  title,
+  description,
   compact = false,
 }: {
   index: string;
-  en: string;
-  ko: string;
+  title: string;
+  description?: string;
   compact?: boolean;
 }) {
   return (
-    <div className={`${compact ? "mb-6 sm:mb-7" : "mb-9"} flex items-center gap-4`}>
-      <span className="font-mono text-[12px] tabular-nums tracking-[0.3em] text-white">{index}</span>
-      <span aria-hidden className="h-px w-12 bg-white/20" />
-      <h2 className="m-0">
-        <MetricLabel tone="bright">
-          {ko} · {en}
-        </MetricLabel>
-      </h2>
+    <div className={`${compact ? "mb-8 sm:mb-10" : "mb-12"} flex max-w-3xl items-start gap-5 sm:gap-7`}>
+      <span className="sky-film-index mt-1 font-mono text-[10px] tabular-nums tracking-[0.28em] text-white/60">
+        장면 {index}
+      </span>
+      <span aria-hidden className="mt-3 h-px w-10 shrink-0 bg-white/25 sm:w-16" />
+      <div>
+        <h2 className="sky-display m-0 break-keep text-[clamp(2rem,4.2vw,4rem)] text-white">
+          {title}
+        </h2>
+        {description && (
+          <p className="sky-copy mt-3 break-keep text-sm font-light text-white/72 sm:text-base">
+            {description}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -78,7 +84,7 @@ export function LiveBadge({
   status: WeatherStatus;
   labelClassName?: string;
 }) {
-  const label = status === "live" ? "LIVE" : status === "error" ? "CACHED" : "SYNCING";
+  const label = status === "live" ? "실시간" : status === "error" ? "저장된 관측" : "관측 갱신 중";
   const dot = status === "live" ? "bg-emerald-300" : status === "error" ? "bg-amber-300" : "bg-white/60";
   return (
     <span className="flex items-center gap-2">
@@ -87,7 +93,7 @@ export function LiveBadge({
           status !== "error" ? "animate-pulse" : ""
         }`}
       />
-      <span className={`font-mono uppercase tracking-[0.3em] text-white/65 ${labelClassName}`}>{label}</span>
+      <span className={`font-sans font-medium tracking-[0.12em] text-white/70 ${labelClassName}`}>{label}</span>
     </span>
   );
 }

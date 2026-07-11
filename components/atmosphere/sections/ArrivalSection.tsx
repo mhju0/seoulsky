@@ -16,13 +16,13 @@ import { LiveBadge, SkySection } from "./SectionParts";
  */
 
 const KST = "Asia/Seoul";
-const dateFmt = new Intl.DateTimeFormat("en-US", {
+const dateFmt = new Intl.DateTimeFormat("ko-KR", {
   timeZone: KST,
   weekday: "short",
   month: "short",
   day: "numeric",
 });
-const timeFmt = new Intl.DateTimeFormat("en-US", {
+const timeFmt = new Intl.DateTimeFormat("ko-KR", {
   timeZone: KST,
   hour: "numeric",
   minute: "2-digit",
@@ -62,8 +62,8 @@ export default function ArrivalSection() {
             className="inline-block h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: accentCss, boxShadow: `0 0 16px ${accentCss}` }}
           />
-          <span className="font-mono text-sm font-medium uppercase tracking-[0.46em] text-white/85">
-            Seoul · 서울
+          <span className="font-sans text-sm font-medium tracking-[0.18em] text-white/85">
+            지금, 서울
           </span>
           <span className="text-white/30">·</span>
           <LiveBadge status={status} labelClassName="text-sm" />
@@ -80,7 +80,7 @@ export default function ArrivalSection() {
             </Value>
           </div>
           <div className="mt-4 flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-            <span className="text-2xl font-light leading-snug tracking-[0.01em] text-white/90">
+            <span className="sky-display text-[clamp(1.6rem,3vw,2.25rem)] leading-snug text-white/95">
               {readout.conditionKo}
             </span>
           </div>
@@ -91,10 +91,10 @@ export default function ArrivalSection() {
         <PoeticLine className="mt-10 sm:mt-14">{line}</PoeticLine>
 
         {/* Seoul time — closer to the poetic line, brightened to read clearly. */}
-        <div className="mt-8 flex flex-wrap items-center gap-x-5 font-mono text-sm tracking-[0.1em] text-white/90 sm:mt-11">
+        <div className="mt-8 flex flex-wrap items-center gap-x-5 font-sans text-sm tracking-[0.06em] text-white/90 sm:mt-11">
           <span>{clock ? dateFmt.format(clock) : "—"}</span>
           <span className="tabular-nums text-white/75">{clock ? timeFmt.format(clock) : "--:--"}</span>
-          <span className="text-white/50">KST</span>
+          <span className="text-white/50">한국 표준시</span>
         </div>
       </ScrollReveal>
     </SkySection>

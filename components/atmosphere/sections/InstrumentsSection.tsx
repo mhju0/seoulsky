@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { dewPointC } from "@/lib/atmosphere/derive";
-import GlassPanel from "../glass/GlassPanel";
 import { MetricLabel, Value } from "../EtchedType";
 import { useWeatherField, useWeatherView } from "../WeatherFieldContext";
 import { SectionHeading, SkySection } from "./SectionParts";
@@ -297,13 +296,8 @@ const CARD_VARIANTS = {
   },
 };
 
-/**
- * One instrument tile. Apple Weather card anatomy: a small icon + uppercase label
- * top-left, the large primary value filling the left column (vertically centred,
- * not tucked in a corner), an optional honest supporting line beneath it, and a
- * right-side visualization that fills the wide card's otherwise-dead right half.
- */
-function Tile({
+/** One open, editorial reading. Shared rules connect the values without boxing them. */
+function Reading({
   icon,
   label,
   value,
@@ -311,6 +305,7 @@ function Tile({
   sub,
   viz,
   reduce,
+  className = "",
 }: {
   icon: ReactNode;
   label: string;
@@ -319,32 +314,31 @@ function Tile({
   sub?: ReactNode;
   viz: ReactNode;
   reduce: boolean;
+  className?: string;
 }) {
   return (
-    <motion.div variants={reduce ? {} : CARD_VARIANTS} className="h-full">
-      <GlassPanel elevated className="h-full px-5 py-5 sm:px-6 sm:py-6">
-        <div className="flex min-h-[8.5rem] items-stretch gap-3 sm:min-h-[10rem] sm:gap-4">
-          {/* Left — label, large value, supporting line. Centred as a group so the
-              value sits at the card's vertical middle rather than its lower edge. */}
-          <div className="flex min-w-0 flex-1 flex-col justify-center gap-2.5">
-            <div className="flex items-center gap-2 text-white">
-              {icon}
-              <MetricLabel tone="bright" className="!text-[13px]">
-                {label}
-              </MetricLabel>
-            </div>
-            <Value size="tile" unit={unit} unitFull>
-              {value}
-            </Value>
-            {sub != null && (
-              <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-white">{sub}</span>
-            )}
-          </div>
-          {/* Right — the metric's visualization, vertically centred, balancing the card. */}
-          <div className="flex w-[42%] max-w-[10.5rem] shrink-0 items-center justify-center">{viz}</div>
+    <motion.article
+      variants={reduce ? {} : CARD_VARIANTS}
+      className={`sky-reading flex min-h-[15rem] flex-col justify-between gap-6 ${className}`}
+    >
+      <div className="flex items-center gap-2 text-white/85">
+        {icon}
+        <MetricLabel tone="bright">{label}</MetricLabel>
+      </div>
+      <div className="flex items-end justify-between gap-5">
+        <div className="min-w-0">
+          <Value size="md" unit={unit} unitFull>
+            {value}
+          </Value>
+          {sub != null && (
+            <span className="mt-3 block break-keep font-sans text-xs tracking-[0.08em] text-white/72">
+              {sub}
+            </span>
+          )}
         </div>
-      </GlassPanel>
-    </motion.div>
+        <div className="flex w-[42%] max-w-[8.5rem] shrink-0 items-center justify-center">{viz}</div>
+      </div>
+    </motion.article>
   );
 }
 
@@ -371,7 +365,7 @@ const visKo = (m: number | null): string | null =>
 // ---- section ----------------------------------------------------------------
 
 /**
- * Section 2 — Instruments. Six premium liquid-glass tiles reading the live surface
+ * Section 3 — Instruments. Six live readings composed as an open editorial field
  * state: wind (speed + compass dial), humidity (+ fill ring & derived dew point),
  * visibility, UV index, air quality, and precipitation chance — the four scalars
  * sharing one horizontal gradient scale-bar idiom. On entrance (D key) tiles
@@ -440,8 +434,6 @@ export default function InstrumentsSection() {
   const visSub = visKo(readout.visibility);
   const uvSub = uvKo(readout.uvIndex);
   const airSub = airKo; // qualitative band word, always the sub when a band exists
-  const precipSub = precipRaw === 0 ? "강수 없음" : precipRaw != null ? "현재 시각" : null;
-
   // Scale-bar marker positions (null → no dot, never a fabricated 0).
   const visPct = readout.visibility == null ? null : clamp01(readout.visibility / 20000) * 100;
   const uvPct = readout.uvIndex == null ? null : clamp01(readout.uvIndex / 11) * 100;
@@ -449,71 +441,89 @@ export default function InstrumentsSection() {
   const precipPct = precipRaw;
 
   return (
-    <SkySection>
-      <SectionHeading index="02" en="Current Conditions" ko="지금 상태" />
-      {/* Heading stays pinned at the section top; the grid centres in the space
-          below it (equal top/bottom) so the deck never sits top-weighted. */}
+    <SkySection id="air">
+      <SectionHeading
+        index="03"
+        title="공기의 결"
+        description="숫자보다 먼저 몸으로 느끼는 것들. 바람과 습도, 시야와 공기의 상태를 한 장면에 담았습니다."
+      />
       <div className="flex flex-1 flex-col justify-center">
-        {/* key={entranceKey} remounts the motion tree on each D-key entrance,
-            resetting Framer Motion animation state so the stagger replays cleanly. */}
         <motion.div
           key={entranceKey}
-          className="mx-auto grid w-full max-w-[80rem] grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+          className="mx-auto grid w-full max-w-[80rem] grid-cols-1 gap-x-7 gap-y-9 sm:grid-cols-2 lg:grid-cols-[0.95fr_1fr_1fr] lg:gap-x-10"
           initial={reduce ? false : "hidden"}
           animate={isActive ? "visible" : "hidden"}
           variants={reduce ? {} : GRID_VARIANTS}
         >
-          <Tile
+          <motion.article
+            variants={reduce ? {} : CARD_VARIANTS}
+            className="sky-film-surface flex min-h-[24rem] flex-col justify-between px-6 py-7 sm:col-span-2 sm:px-8 sm:py-9 lg:col-span-1 lg:row-span-2"
+          >
+            <div className="flex items-center gap-2 text-white/85">
+              {ICONS.precip}
+              <MetricLabel tone="bright">지금 비가 올 가능성</MetricLabel>
+            </div>
+            <div className="my-10">
+              <Value size="lg" unit={precipRaw == null ? undefined : "%"} unitFull>
+                {precipDisplay}
+              </Value>
+              <p className="sky-display mt-5 max-w-[16ch] break-keep text-[clamp(1.35rem,2.5vw,2rem)] text-white">
+                {precipRaw == null
+                  ? "강수 관측을 기다리고 있습니다."
+                  : precipRaw < 20
+                    ? "지금은 비 걱정 없이 걸어도 좋겠습니다."
+                    : precipRaw < 50
+                      ? "하늘이 바뀔 수 있으니 가벼운 우산을 생각해 보세요."
+                      : "외출 전에 우산을 챙기는 편이 좋겠습니다."}
+              </p>
+            </div>
+            <ScaleBar pct={precipPct} gradient={SCALE_GRADIENTS.precip} lo="맑음" hi="비" />
+          </motion.article>
+
+          <Reading
             icon={ICONS.wind}
-            label="Wind"
+            label="바람"
             value={windDisplay}
             unit={windRaw == null ? undefined : "m/s"}
             sub={windSub}
             viz={<WindDial fromDeg={readout.windDirection} />}
             reduce={reduce}
           />
-          <Tile
+          <Reading
             icon={ICONS.humidity}
-            label="Humidity"
+            label="습도"
             value={humidDisplay}
             unit={humidRaw == null ? undefined : "%"}
             sub={humidSub}
             viz={<HumidityRing value={humidRaw} />}
             reduce={reduce}
           />
-          <Tile
+          <Reading
             icon={ICONS.visibility}
-            label="Visibility"
+            label="가시거리"
             value={visDisplay}
             unit={visRaw == null ? undefined : "km"}
             sub={visSub}
             viz={<ScaleBar pct={visPct} gradient={SCALE_GRADIENTS.visibility} lo="0" hi="20km" />}
             reduce={reduce}
           />
-          <Tile
-            icon={ICONS.uv}
-            label="UV Index"
-            value={uvDisplay}
-            sub={uvSub}
-            viz={<ScaleBar pct={uvPct} gradient={SCALE_GRADIENTS.uv} lo="0" hi="11+" />}
-            reduce={reduce}
-          />
-          <Tile
+          <Reading
             icon={ICONS.air}
-            label="Air Quality"
+            label="대기질과 자외선"
             value={airDisplay}
             unit={airUnit}
-            sub={airSub}
-            viz={<ScaleBar pct={airPct} gradient={SCALE_GRADIENTS.air} lo="좋음" hi="매우나쁨" />}
-            reduce={reduce}
-          />
-          <Tile
-            icon={ICONS.precip}
-            label="Precipitation"
-            value={precipDisplay}
-            unit={precipRaw == null ? undefined : "%"}
-            sub={precipSub}
-            viz={<ScaleBar pct={precipPct} gradient={SCALE_GRADIENTS.precip} lo="0" hi="100%" />}
+            sub={
+              <span className="flex flex-wrap gap-x-3 gap-y-1">
+                <span>미세먼지 {airSub ?? "—"}</span>
+                <span>자외선 {uvDisplay} · {uvSub ?? "관측 없음"}</span>
+              </span>
+            }
+            viz={
+              <div className="flex w-full flex-col gap-4">
+                <ScaleBar pct={airPct} gradient={SCALE_GRADIENTS.air} lo="좋음" hi="나쁨" />
+                <ScaleBar pct={uvPct} gradient={SCALE_GRADIENTS.uv} lo="낮음" hi="높음" />
+              </div>
+            }
             reduce={reduce}
           />
         </motion.div>

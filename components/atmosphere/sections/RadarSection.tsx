@@ -6,7 +6,6 @@ import type { CSSProperties } from "react";
 import { BASEMAP, CITY_LABELS, RADAR_CONFIG, RADAR_LEGEND } from "@/lib/radar/config";
 import { latToWorldY, lonToWorldX } from "@/lib/radar/mercator";
 import type { KmaRadarFrame, KmaRadarFrames, RadarBounds, SkyRadar } from "@/lib/types";
-import GlassPanel from "../glass/GlassPanel";
 import { MetricLabel } from "../EtchedType";
 import { ScrollReveal } from "../descentMotion";
 import { useWeatherField } from "../WeatherFieldContext";
@@ -28,7 +27,7 @@ import { SectionHeading, SkySection } from "./SectionParts";
  */
 
 const KST = "Asia/Seoul";
-const kstTime = new Intl.DateTimeFormat("en-GB", {
+const kstTime = new Intl.DateTimeFormat("ko-KR", {
   timeZone: KST,
   hour: "2-digit",
   minute: "2-digit",
@@ -134,7 +133,7 @@ function RadarScope({
   return (
     <div
       style={scopeInk}
-      className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#070a14] ring-1 ring-white/10"
+      className="relative aspect-square w-full overflow-hidden rounded-[0.4rem] bg-[#070a14] ring-1 ring-white/10"
     >
       {/* Cover-fit map viewport: the bbox is laid out at its Mercator aspect and scaled
           uniformly to fill the square scope (conformal — basemap + echo stay registered). */}
@@ -223,7 +222,7 @@ function RadarScope({
 
       {/* Frame time overlay (on the imagery, radar-style). */}
       <span className="pointer-events-none absolute bottom-2.5 left-3 font-mono text-[11px] tabular-nums tracking-[0.1em] text-white/80">
-        {kstTime.format(new Date(frame.time))} KST · {frameTag(frame, nowMs)}
+        {kstTime.format(new Date(frame.time))} · {frameTag(frame, nowMs)}
       </span>
       {/* Required attribution, on the radar imagery itself. */}
       <span className="pointer-events-none absolute bottom-2.5 right-3 font-mono text-[10px] tracking-[0.12em] text-white/55">
@@ -235,7 +234,7 @@ function RadarScope({
 
 function RadarMapPlaceholder({ active }: { active: boolean }) {
   return (
-    <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#070a14] ring-1 ring-white/10" aria-hidden>
+    <div className="relative aspect-square w-full overflow-hidden rounded-[0.4rem] bg-[#070a14] ring-1 ring-white/10" aria-hidden>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_48%,rgba(255,255,255,0.08),transparent_28%),linear-gradient(135deg,rgba(148,163,184,0.12),rgba(15,23,42,0.08)_42%,rgba(56,189,248,0.10))]" />
       <div className="absolute inset-x-[12%] top-[31%] h-px rotate-[-8deg] bg-white/12" />
       <div className="absolute inset-x-[18%] top-[58%] h-px rotate-[10deg] bg-white/10" />
@@ -271,8 +270,8 @@ function RadarStatePanel({
         <RadarMapPlaceholder active={loading} />
       </div>
       <div className="flex flex-1 flex-col justify-center gap-3">
-        <MetricLabel tone="bright">Radar · 비구름 레이더</MetricLabel>
-        <p className="font-sans text-[clamp(1.35rem,2.5vw,1.9rem)] font-light leading-tight text-white">
+        <MetricLabel tone="bright">서울의 비구름</MetricLabel>
+        <p className="sky-display text-[clamp(1.5rem,2.8vw,2.2rem)] leading-tight text-white">
           {title}
         </p>
         <p className="max-w-md text-sm leading-relaxed text-white/75">{description}</p>
@@ -471,37 +470,42 @@ export default function RadarSection() {
   }, []);
 
   return (
-    <SkySection compact>
-      <SectionHeading index="03" en="Radar" ko="비구름 레이더" compact />
+    <SkySection id="rain" compact>
+      <SectionHeading
+        index="04"
+        title="다가오는 비"
+        description="지난 한 시간의 구름이 서울 위를 어떻게 지나왔는지, 천천히 시간을 돌려 확인합니다."
+        compact
+      />
 
       <div ref={sectionRef} className="flex flex-1 flex-col justify-center">
         <ScrollReveal amount={0.12}>
-          <GlassPanel className="mx-auto w-full max-w-[80rem] px-5 py-5 sm:px-6 sm:py-6">
+          <div className="sky-film-surface mx-auto w-full max-w-[80rem] px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
             {!available || !bounds ? (
               <RadarEmpty near={near} failed={failed} loaded={summary !== null} />
             ) : (
               <>
-                <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+                <div className="grid gap-8 lg:grid-cols-[minmax(22rem,0.9fr)_minmax(0,1fr)] lg:items-center lg:gap-12">
                   {/* Scope */}
-                  <div className="mx-auto w-full max-w-[32rem] lg:mx-0 lg:flex-[0_0_auto] lg:max-w-[clamp(21rem,52vh,32rem)]">
+                  <div className="mx-auto w-full max-w-[34rem] lg:mx-0">
                     <RadarScope frame={frames[activeIndex]} nowMs={nowMs} bounds={bounds} />
                   </div>
 
                   {/* Readout + legend */}
                   <div className="flex flex-1 flex-col justify-center gap-5">
                     <div className="flex flex-col gap-2">
-                      <MetricLabel tone="bright">Now over Seoul · 서울 상공</MetricLabel>
-                      <p className="font-sans text-[clamp(1.4rem,3vw,2rem)] font-light leading-tight text-white">
+                      <MetricLabel tone="bright">지금, 서울 상공</MetricLabel>
+                      <p className="sky-display max-w-[18ch] break-keep text-[clamp(1.75rem,3.6vw,3.2rem)] leading-[1.25] text-white">
                         {approachLine(snapshot?.radar)}
                       </p>
                       <p className="font-mono text-[12px] tracking-[0.12em] text-white">
-                        {kstTime.format(new Date(frames[activeIndex].time))} KST · {frameTag(frames[activeIndex], nowMs)}
+                        {kstTime.format(new Date(frames[activeIndex].time))} · {frameTag(frames[activeIndex], nowMs)}
                       </p>
                     </div>
 
                     {/* Intensity legend (light → heavy). */}
                     <div className="flex flex-col gap-2">
-                      <MetricLabel tone="bright">Intensity · 강수 강도</MetricLabel>
+                      <MetricLabel tone="bright">강수 강도</MetricLabel>
                       <div
                         className="h-2.5 w-full max-w-[18rem] rounded-full ring-1 ring-inset ring-white/15"
                         style={{ background: `linear-gradient(90deg, ${RADAR_LEGEND.map((s) => s.color).join(", ")})` }}
@@ -545,7 +549,7 @@ export default function RadarSection() {
                 </p>
               </>
             )}
-          </GlassPanel>
+          </div>
         </ScrollReveal>
       </div>
     </SkySection>

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import SkyView from "@/components/atmosphere/SkyView";
 
 export const metadata: Metadata = {
-  title: "SeoulSky — 서울 하늘",
+  title: "서울의 하늘 — 지금 서울의 날씨",
   description:
-    "실시간 서울 날씨를, 그 날씨 속 서울 명소의 시네마틱 영상 위에 떠 있는 HUD로 — 도착부터 지상 관측소까지 하나의 스크롤로",
+    "실시간 서울 날씨를 도시의 빛과 비, 공기의 흐름으로 천천히 펼쳐 보는 시네마틱 경험",
 };
 
 /**

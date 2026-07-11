@@ -58,14 +58,13 @@ export default function SkyView() {
             type="button"
             onClick={toggleView}
             aria-label="상세 날씨 보기"
-            className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded-full px-4 py-2.5 transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+            className="group pointer-events-auto flex min-h-11 items-center gap-2.5 rounded-full px-4 py-2.5 transition-colors hover:bg-white/5 active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
           >
-            <kbd className="rounded border border-white/30 px-1.5 py-0.5 font-mono text-[11px] tracking-wider text-white/75">
-              D
-            </kbd>
-            <span className="font-mono text-[11px] uppercase tracking-[0.34em] text-white/55">
-              상세 날씨 보기
+            <span className="h-px w-8 bg-white/45 transition-all duration-300 group-hover:w-12" />
+            <span className="font-sans text-[12px] font-medium tracking-[0.16em] text-white/72">
+              오늘의 하늘을 더 깊이 보기
             </span>
+            <span aria-hidden className="text-sm text-white/55">↓</span>
           </button>
         </div>
       </div>
@@ -104,9 +103,9 @@ export default function SkyView() {
 
         <div className="sky-data-scroll scroll-thin">
           <div className="relative z-10 text-white">
+            <ForecastSection />
             <InstrumentsSection />
             <RadarSection />
-            <ForecastSection />
             <GroundStationSection />
           </div>
         </div>
@@ -121,7 +120,7 @@ export default function SkyView() {
           type="button"
           onClick={toggleView}
           aria-label="처음 화면으로"
-          className="absolute left-[clamp(1.25rem,4vw,3.25rem)] top-[clamp(1rem,3.2vh,1.9rem)] z-20 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 backdrop-blur-md transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
+          className="absolute right-[clamp(1.25rem,4vw,3.25rem)] top-[clamp(1rem,3.2vh,1.9rem)] z-20 inline-flex h-11 w-11 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-md transition-all duration-200 hover:bg-white/20 active:translate-y-px sm:h-auto sm:w-auto sm:px-4 sm:py-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
         >
           <svg
             aria-hidden
@@ -135,10 +134,7 @@ export default function SkyView() {
           >
             <path d="M15 18l-6-6 6-6" />
           </svg>
-          <span className="font-mono text-[11px] tracking-[0.28em] text-white">처음으로</span>
-          <kbd className="hidden rounded border border-white/30 px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-white/70 sm:inline-block">
-            ESC
-          </kbd>
+          <span className="hidden font-sans text-[11px] font-medium tracking-[0.14em] text-white sm:inline">처음으로</span>
         </button>
       </div>
     </div>

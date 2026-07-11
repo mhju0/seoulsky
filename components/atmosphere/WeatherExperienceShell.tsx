@@ -87,7 +87,15 @@ function applyReviewCond(snapshot: SkySnapshot | null, cond?: WeatherCondition):
 function Loader() {
   return (
     <div className="sky-fixed-viewport z-50 flex items-center justify-center bg-[#04060d]">
-      <div className="h-2 w-2 animate-ping rounded-full bg-white/70" />
+      <div role="status" className="flex flex-col items-center text-center text-[#f6f0e4]">
+        <span className="sky-display text-2xl">서울의 하늘</span>
+        <span className="mt-4 h-px w-24 overflow-hidden bg-white/15">
+          <span className="block h-full w-1/2 animate-pulse bg-white/70" />
+        </span>
+        <span className="mt-3 font-sans text-[11px] tracking-[0.16em] text-white/55">
+          오늘의 빛을 불러오는 중
+        </span>
+      </div>
     </div>
   );
 }
