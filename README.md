@@ -1,110 +1,69 @@
 # SeoulSky
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
-![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwindcss&logoColor=white)
-![WebGL](https://img.shields.io/badge/rendering-raw%20WebGL-990000)
-![Tests](https://img.shields.io/badge/tests-node%20--test-brightgreen)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-> **A real-time cinematic weather experience for Seoul, built to show the sky like a film rather than a dashboard.** SeoulSky runs without required API keys, degrades gracefully when providers fail, and keeps the scene alive even when individual data sources go down.
+SeoulSky is a Seoul-only weather experience that pairs a cinematic live scene with the practical details needed to plan the day: current conditions, KMA radar, hourly and seven-day forecasts, and transparent forecast confidence. It is designed around one place rather than a generic city-picker dashboard, and it stays useful when optional data providers are unavailable.
 
-**Live demo: [seoulsky.vercel.app/sky](https://seoulsky.vercel.app/sky)**
+**Live demo:** [seoulsky.vercel.app/sky](https://seoulsky.vercel.app/sky)
 
-**Status:** complete and in maintenance mode. Future changes are limited to compatibility, security, data-source reliability, and defect fixes.
+## What it solves
 
-Primary route: `/sky`<br>
-Timezone and weather context: `Asia/Seoul`<br>
-Controls: press `D` on desktop, or use **상세 날씨 보기** on mobile, to switch between the cinematic hero and the data deck. Press `Esc` to return to the hero.
+Weather apps often make a user choose between an atmospheric overview and a dense data dashboard. SeoulSky keeps both in one focused flow:
 
-![SeoulSky hero view — clear night over Seoul](public/screenshots/hero.webp)
+- A persistent Seoul scene provides the immediate sense of current conditions.
+- The data deck answers whether rain is approaching, what the forecast shows, and how much providers agree.
+- Open-Meteo provides a keyless baseline; optional KMA, AirKorea, MET Norway, Pirate Weather, and WeatherAPI sources enrich the result without becoming a single point of failure.
 
-## What It Is
-
-SeoulSky is a Seoul-only live weather web app. It is not a generic weather dashboard with a city picker; it is a focused product experience for one city, designed around a persistent hero scene and a compact weather data deck.
-
-The app is built to answer five practical questions:
-
-- What is Seoul like now?
-- Is rain coming?
-- What is the forecast?
-- How trustworthy is the forecast?
-- Are sources agreeing?
-
-The default impression is atmospheric: Seoul, current temperature, condition, date, time, and a quiet call to action. More detail is available, but the technical layer does not dominate the first view.
-
-## Product Direction
-
-SeoulSky is desktop-first, optimized mainly for MacBook Pro 14-inch and laptop browser viewports. The main desktop targets are `1512x982`, `1512x900`, `1440x900`, with `1280x720` used as a stress case.
-
-Mobile is functional-only. It should avoid obvious breakage such as overlap, bad crops, unusable tap targets, typos, and horizontal overflow, but mobile is not intended to match the desktop composition.
-
-The data deck is organized around Korean product labels with English-readable intent:
-
-- `현재 날씨` / Current conditions: current temperature and condition, plus precipitation chance, wind, humidity, air quality, UV, and the next sunrise/sunset.
-- `레이더` / Rain radar: Seoul-centered radar imagery, timeline, and play/scrub controls.
-- `시간별·7일 날씨` / Forecast: time-of-day blocks and 7-day forecast.
-- `예보 신뢰도` / Forecast confidence: confidence, source agreement, update time, and advanced diagnostics behind disclosure.
+The primary route is `/sky`. Press `D` on desktop, or use the detail control on mobile, to open the data deck; press `Esc` to return to the scene.
 
 ## Screenshots
 
 | Current conditions | Rain radar |
-|---|---|
-| ![Current conditions data deck](public/screenshots/data-current.webp) | ![Rain radar view](public/screenshots/radar.webp) |
+| --- | --- |
+| <img src="public/screenshots/data-current.webp" alt="Current conditions data deck" width="460"> | <img src="public/screenshots/radar.webp" alt="Rain radar view" width="460"> |
+| **Forecast** | **Forecast confidence** |
+| <img src="public/screenshots/forecast.webp" alt="Forecast view" width="460"> | <img src="public/screenshots/confidence.webp" alt="Forecast confidence summary" width="460"> |
 
-| Forecast | Forecast confidence |
-|---|---|
-| ![Forecast view](public/screenshots/forecast.webp) | ![Forecast confidence summary](public/screenshots/confidence.webp) |
+## Engineering choices
 
-## Why It Was Built This Way
-
-- **Raw WebGL rendering**: the full-screen background is a custom shader rendered without three.js. A single quad is enough for this scene, so a scene graph and reconciler would mostly add overhead.
-- **React stays out of the animation loop**: per-frame work does not touch React state. The app splits context into `Field`, `Clock`, and `View` so the second-by-second Seoul clock does not repaint the scene.
-- **Multi-source fusion with graceful degradation**: Open-Meteo provides the keyless baseline, with optional KMA, MET Norway, Pirate Weather, WeatherAPI, AirKorea, and radar sources adding signal when configured. If a provider fails, SeoulSky keeps the last good data where appropriate and does not invent certainty.
-- **Scene API and analysis API are separate**: `/api/sky` is the fast fused snapshot used by the live scene. `/api/weather` is the heavier confidence and provider-comparison endpoint used by diagnostics. Analysis work should not block rendering.
-- **The scene should never go blank**: a still plate and live FX sit over a raw-WebGL field with a pure-CSS fallback, so a missing image or failed rendering layer does not break the experience.
-- **AI assets are offline-only**: landmark still plates are generated through an offline Higgsfield asset pipeline and indexed by `landmark x condition x anchor` manifests. Runtime only reads assets, avoiding generation latency, cost, and key exposure.
+- **Raw WebGL with a CSS fallback:** the background uses a small custom shader rather than a scene graph, while a fallback preserves the experience when WebGL is unavailable.
+- **React stays outside the animation loop:** scene updates use refs and browser APIs, avoiding per-frame React renders.
+- **Fast and detailed APIs are separate:** `/api/sky` serves the live scene; `/api/weather` supplies deferred provider comparison and confidence details.
+- **Graceful data degradation:** cached last-good data and provider-specific fallbacks avoid blank states or invented certainty.
+- **Server-side integrations:** provider keys, raw radar grids, and upstream requests remain off the client.
 
 ## Architecture
 
-- `app/sky/layout.tsx` mounts `WeatherExperienceShell`, which owns the persistent scene and live `/api/sky` fetch.
-- `app/sky/page.tsx` renders `SkyView`, the foreground hero and data deck.
-- `components/atmosphere/WeatherExperienceShell.tsx` handles live weather state, Seoul clock, WebGL capability detection, quality settings, reduced-motion gates, view state, keyboard shortcuts, and first-load failure UI.
-- `components/atmosphere/scene/SceneStage.tsx` composes the procedural WebGL/CSS fallback, still Seoul plate, and weather FX overlay as one persistent background scene.
-- `components/atmosphere/SkyView.tsx` owns the fixed hero/data layers, palette wrapper, CTA, and return button.
-- `components/atmosphere/sections/*` contains `ArrivalSection`, `InstrumentsSection`, `RadarSection`, `ForecastSection`, and `GroundStationSection`.
-- `app/globals.css` contains the `.sky-*` visual system, fixed viewport utilities, hero/data layer behavior, scene plate framing, and glass panel tokens.
+```mermaid
+flowchart TB
+  Browser[Browser: /sky] --> Shell[WeatherExperienceShell]
+  Shell --> SkyAPI[/api/sky]
+  Shell --> Scene[WebGL scene and CSS fallback]
+  Browser --> Deck[Data deck]
+  Deck --> Radar[/api/radar/frames and /api/radar/frame]
+  Deck --> Intelligence[/api/weather on demand]
+  SkyAPI --> Providers[Weather and air-quality providers]
+  Intelligence --> Providers
+  Radar --> KMA[KMA API Hub]
+  Providers --> Cache[TTL cache with stale-on-error fallback]
+```
 
-## Data And Reliability
+## Stack
 
-`/api/sky` is the lightweight public scene snapshot and the hot path for `/sky`. `hooks/useLiveSeoulWeather.ts` refreshes it periodically, refreshes on resume/focus when stale, de-dupes concurrent requests, and preserves last-good data.
+| Area | Technology |
+| --- | --- |
+| App | Next.js 16, React 19, TypeScript |
+| Styling | Tailwind CSS 4 and custom CSS |
+| Rendering | Raw WebGL and CSS fallback |
+| Motion | Framer Motion |
+| Weather | Open-Meteo baseline with optional Korean and international providers |
+| Radar | KMA API Hub frames rendered server-side |
 
-`/api/weather` powers deeper confidence and provider comparison in Ground Station. Confidence is presented as product information first and technical diagnostics second, with advanced details collapsed by default.
+## Run locally
 
-Displayed radar imagery is separate from the RainViewer-style approach signal:
-
-- KMA apihub radar pipeline: `lib/radar/*` and `app/api/radar/*`.
-- Frame metadata: `/api/radar/frames`.
-- Rendered frames: `/api/radar/frame?t=...`.
-- `RadarSection` owns playback, scrubber state, loading/empty UI, and map presentation.
-
-Reliability has two jobs: runtime precipitation weighting for `/api/sky`, and user-facing confidence diagnostics in Ground Station. The runtime import graph is intentionally narrow so `/api/sky` reaches concrete weights through `runtimeWeightsSource -> weightsStore` instead of tracing the broader batch persistence module.
-
-## Tech Stack
-
-| Area | Details |
-|---|---|
-| Framework | **Next.js 16** App Router, **React 19**, **TypeScript 5** strict |
-| Styling | **Tailwind v4** config-less setup, with the `.sky-*` visual system in `globals.css` |
-| Background | **Raw WebGL** single-quad custom shader, no three.js |
-| Motion | **framer-motion** for UI transitions and progressive reveals |
-| Weather data | Open-Meteo keyless baseline, plus optional official/provider sources for added signal |
-| Radar | KMA radar pipeline with frame metadata and rendered frame endpoints |
-| AI assets | **Higgsfield** offline asset pipeline only; no runtime generation |
-
-## Local Development
-
-Requirements: Node.js 22 or newer and npm.
+Requires Node.js 22 or later.
 
 ```bash
 npm ci
@@ -112,38 +71,11 @@ cp .env.example .env.local # optional provider configuration
 npm run dev
 ```
 
-Open:
+Open [http://localhost:3000/sky](http://localhost:3000/sky).
 
-```text
-http://localhost:3000/sky
-```
+No API key is required for the basic experience. Optional provider configuration is documented in [`.env.example`](.env.example), and source contracts and attribution live in [docs/weather-sources.md](docs/weather-sources.md).
 
-No API keys are required for basic operation. Optional official/provider sources can be configured with `.env.local`.
-
-Useful checks:
-
-```bash
-npm run lint
-npm run test
-npm run build
-npm start
-```
-
-Type-check separately when iterating:
-
-```bash
-npx tsc --noEmit
-```
-
-The production build downloads Geist and Noto Sans KR through `next/font`; a clean build therefore needs network access to Google Fonts.
-
-## Environment And Deployment
-
-Every environment variable is optional and server-only. See [`.env.example`](.env.example) for provider-specific descriptions and safe placeholders. Do not prefix keys with `NEXT_PUBLIC_`.
-
-The public deployment runs on Vercel. `/sky` is the primary route; `/`, `/atmosphere`, and `/diagnostics` redirect to it. KMA radar can exceed low serverless execution limits on a cold start, so the route declares a 60-second maximum and degrades to an explicit empty state when unavailable.
-
-Before deployment:
+## Verification
 
 ```bash
 npm run lint
@@ -152,45 +84,15 @@ npm test
 npm run build
 ```
 
-Development visual override:
+For a manual check, verify `/sky` at desktop and mobile widths, open the data deck, and confirm the radar, forecast, and confidence sections remain usable.
 
-```text
-/sky?cond=rain&hour=19
-```
+## Limits
 
-## Verification
+- Seoul-only and desktop-first by design.
+- Optional providers may be unavailable without interrupting the baseline experience.
+- Radar availability depends on the configured KMA service and server execution time.
+- Weather information is not suitable for safety-critical decisions.
 
-Before deployment, run:
+## License
 
-- `npm run lint`
-- `npx tsc --noEmit`
-- `git diff --check`
-- `npm run build`
-
-Manual QA:
-
-- Check `/sky` at laptop viewport sizes such as `1512x982`, `1512x900`, `1440x900`, and `1280x720`.
-- Run one mobile smoke check around `390x844`.
-- Confirm the hero loads, weather data appears, and the CTA opens the data view.
-- Confirm `D` opens the data view and `Esc` returns to the hero.
-- Confirm radar, forecast, and confidence sections remain readable and usable.
-- Confirm `/api/sky` returns valid JSON with `current`, `hourly`, `daily`, and `sources`.
-
-If `npm run build` fails because Google Fonts cannot be fetched in a restricted sandbox, rerun with network access. Review all other build warnings.
-
-## Known Limitations
-
-- Seoul-only by design.
-- Desktop-first by design.
-- Mobile is functional-only and should mainly avoid obvious breakage.
-- Optional provider keys can degrade or disappear without breaking the basic app.
-- Radar can take several seconds depending on cache and server state.
-- Browsers cannot draw behind mobile Safari or in-app browser chrome; the app can only fill the visible viewport.
-- Advanced diagnostics exist for transparency, but should not dominate the default UX.
-- Weather data is informational and should not be used for aviation, emergency, or other safety-critical decisions.
-
-## Case Study
-
-See [CASE_STUDY.md](CASE_STUDY.md) for a more focused product and architecture write-up.
-
-<sub>Unofficial personal project.</sub>
+[MIT](LICENSE)
