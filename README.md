@@ -38,16 +38,16 @@ The primary route is `/sky`. Press `D` on desktop, or use the detail control on 
 
 ```mermaid
 flowchart TB
-  Browser[Browser: /sky] --> Shell[WeatherExperienceShell]
-  Shell --> SkyAPI[/api/sky]
-  Shell --> Scene[WebGL scene and CSS fallback]
-  Browser --> Deck[Data deck]
-  Deck --> Radar[/api/radar/frames and /api/radar/frame]
-  Deck --> Intelligence[/api/weather on demand]
-  SkyAPI --> Providers[Weather and air-quality providers]
+  Browser["Browser: /sky"] --> Shell["WeatherExperienceShell"]
+  Shell --> SkyAPI["/api/sky"]
+  Shell --> Scene["WebGL scene and CSS fallback"]
+  Browser --> Deck["Data deck"]
+  Deck --> Radar["/api/radar/frames and /api/radar/frame"]
+  Deck --> Intelligence["/api/weather on demand"]
+  SkyAPI --> Providers["Weather and air-quality providers"]
   Intelligence --> Providers
-  Radar --> KMA[KMA API Hub]
-  Providers --> Cache[TTL cache with stale-on-error fallback]
+  Radar --> KMA["KMA API Hub"]
+  Providers --> Cache["TTL cache with stale-on-error fallback"]
 ```
 
 ## Stack
