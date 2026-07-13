@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { SkySnapshot } from "@/lib/types";
 
 /**
- * Keeps the cinematic scene's weather current from /api/sky (Open-Meteo only):
+ * Keeps the cinematic scene's fused weather snapshot current from /api/sky:
  *   • fetches once on mount
  *   • refreshes every ~12 minutes
  *   • refreshes when the tab becomes visible / regains focus *and* the data is

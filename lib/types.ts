@@ -282,10 +282,6 @@ export interface WeatherIntelligence {
   };
   /** Active official warnings (KMA, when configured); [] otherwise. */
   warnings: NormalizedWarning[];
-  cache: {
-    entries: { key: string; ageSeconds: number }[];
-    ttlSeconds: number;
-  };
 }
 
 /**

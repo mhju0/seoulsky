@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { cacheEntries } from "@/lib/cache";
 import { buildComparison, buildConfidence } from "@/lib/compare";
 import { airQualityStatuses, getFusedAirQuality } from "@/lib/providers/air-quality";
 import { getKmaWarningStatus, kmaProvider } from "@/lib/providers/kma";
 import { getRadarSummary, radarStatus } from "@/lib/providers/radar";
 import { providers, snapshotProvider } from "@/lib/providers/registry";
-import { CACHE_TTL_MS } from "@/lib/seoul";
 import type { NormalizedWarning, WeatherIntelligence } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -46,10 +44,6 @@ export async function GET() {
       radar,
     },
     warnings,
-    cache: {
-      entries: cacheEntries(),
-      ttlSeconds: CACHE_TTL_MS / 1000,
-    },
   };
 
   return NextResponse.json(payload);

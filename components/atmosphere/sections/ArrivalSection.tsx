@@ -37,6 +37,7 @@ export default function ArrivalSection() {
 
   return (
     <SkySection center>
+      <h1 className="sr-only">서울의 하늘 — 실시간 서울 날씨</h1>
       {/* Soft vignette (not glass) behind the hero text — keeps the temperature
           and condition legible over any clip. It scrolls away with the hero, so it
           never dims the gradient content below. */}
