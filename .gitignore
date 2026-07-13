@@ -13,12 +13,6 @@
 # testing
 /coverage
 
-# legacy cinematic source assets retained in Git LFS; do not add local variants
-/public/cinematic/generated/*.webm
-/public/cinematic/generated/*.mov
-/public/cinematic/generated/*.png
-/public/cinematic/locations/
-
 # next.js
 /.next/
 /out/
@@ -65,10 +59,23 @@ next-env.d.ts
 /docs/shot-prompts.md
 /docs/design/
 
-# claude (local tool dir — settings.local.json, launch.json)
+# Local assistant and editor configuration. These files support individual
+# workflows but are not part of the application or its public documentation.
 .claude/
+.serena/
+.agents/
+.cursor/
+.codex/
+.aider*
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+skills-lock.json
+.github/copilot-instructions.md
+
+# Local source-media archives are not used by the runtime.
+/public/cinematic/generated/
+/public/cinematic/locations/
+
 pnpm-lock.yaml
 pnpm-workspace.yaml
-
-# serena (tool dir)
-.serena/
