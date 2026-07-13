@@ -1,7 +1,7 @@
 /**
  * ATMOSPHERIC COLOR FIELD — live-data → visual-parameter normalization.
  *
- * The analogue of `weatherSceneConfig` for this page: it takes a {@link SunPhase}
+ * This module takes a {@link SunPhase}
  * + a {@link SkySnapshot} and produces a flat bag of CLAMPED visual parameters
  * for the fullscreen atmospheric shader. Raw API numbers never reach the shader —
  * they are all bounded to visually-safe ranges here first.
