@@ -20,7 +20,7 @@ const eslintConfig = defineConfig([
   {
     // Client-only capability detection and data fetching must run post-mount
     // (hydration safety / external-system sync); the rule over-flags this.
-    files: ["hooks/**/*.{ts,tsx}", "components/cinematic/CinematicWeatherPage.tsx"],
+    files: ["hooks/**/*.{ts,tsx}"],
     rules: {
       "react-hooks/set-state-in-effect": "off",
     },

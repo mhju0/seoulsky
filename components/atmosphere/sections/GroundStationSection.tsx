@@ -4,7 +4,6 @@ import { useInView } from "framer-motion";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { formatClock, formatHeaderDate, timeAgoKo } from "@/lib/format";
 import type { ProviderAvailability, SkyRadar, WeatherIntelligence } from "@/lib/types";
-import CinematicDiagnostics from "@/components/CinematicDiagnostics";
 import ConfidencePanel from "@/components/ConfidencePanel";
 import ProviderComparison from "@/components/ProviderComparison";
 import GlassPanel from "../glass/GlassPanel";
@@ -15,8 +14,8 @@ import { SectionHeading, SkySection } from "./SectionParts";
 
 /**
  * Section 5 — Ground Station. The data deck where the scroll lands: cross-provider
- * confidence, the source comparison, the environment sources (air + radar, with
- * the required RainViewer attribution) and the cinematic-engine diagnostics — all
+ * confidence, the source comparison, and the environment sources (air + radar,
+ * with the required RainViewer attribution) — all
  * re-skinned into the matte reading panels, all the original data/logic preserved.
  *
  * PERF: the heavier /api/weather intelligence fetch is deferred until this final
@@ -350,10 +349,6 @@ export default function GroundStationSection() {
                       </span>
                     </div>
                   </div>
-                </DeckPanel>
-
-                <DeckPanel label="고급 · 시네마틱 엔진" sub="영상 선택 · 라이브러리 · 폴백" delay={0.1}>
-                  <CinematicDiagnostics sky={snapshot} />
                 </DeckPanel>
               </div>
             )}

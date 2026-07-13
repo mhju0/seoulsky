@@ -1,16 +1,14 @@
 /**
  * Seoul-landmark STILL-IMAGE field — manifest schema + pure selection helpers.
  *
- * This is the image-era successor to the video gallery (locationGallery.ts). The
- * scene at /sky no longer plays clips; it composites ONE still "atmospheric color
+ * The scene at /sky composites one still "atmospheric color
  * field" plate per landmark × condition × time-anchor, continuously colour-graded
  * by the live sun phase (see buildImageGrade in skyPalette.ts). This module holds
  * only the plain-data shapes and the deterministic, side-effect-free selection
  * logic — no React, no DOM, no I/O — so it is trivially testable and shared by the
  * runtime provider.
  *
- * It deliberately REUSES the video selection contract from {@link locationGallery}
- * (condition mapping, the weather-adjacent broadening family, and the hard
+ * It uses shared condition buckets (weather-adjacent broadening and the hard
  * dry-sky invariant) so a clear sky never grades into snow/rain — the only thing
  * that changes is the time axis: instead of a binary day|night it has three
  * anchors {@link ImageAnchor} `day | golden | night`, chosen by sun phase. The
@@ -25,12 +23,12 @@
  */
 
 import {
-  mapToGalleryCondition,
-  RELATED_CONDITIONS,
-  DRY_TARGETS,
-  PRECIP_CONDITIONS,
-  type GalleryCondition,
-} from "./locationGallery.ts";
+  DRY_IMAGE_CONDITIONS,
+  PRECIP_IMAGE_CONDITIONS,
+  RELATED_IMAGE_CONDITIONS,
+  toImageCondition,
+  type ImageCondition,
+} from "./conditionBuckets.ts";
 import type { WeatherCondition } from "../types.ts";
 
 /**
@@ -45,7 +43,7 @@ export type ImageAnchor = "day" | "golden" | "night";
 /** One still plate, mirroring an entry in the image manifest's `images[]`. */
 export interface SkyImage {
   landmark: string;
-  condition: GalleryCondition;
+  condition: ImageCondition;
   anchor: ImageAnchor;
   /**
    * One or more public paths for this slot (base first, then __v2/__v3 variants).
@@ -59,7 +57,7 @@ export interface SkyImage {
 /** The image manifest document (only the fields the runtime consumes). */
 export interface SkyImageManifest {
   version: number;
-  conditions: GalleryCondition[];
+  conditions: ImageCondition[];
   anchors: ImageAnchor[];
   images: SkyImage[];
 }
@@ -125,16 +123,18 @@ export function selectSkyImage(
   condition: WeatherCondition,
   anchor: ImageAnchor,
 ): SkyImage | null {
-  const target = mapToGalleryCondition(condition);
+  const target = toImageCondition(condition);
 
   // Hard dry-sky invariant up front: strip every precip plate from a dry sky's
   // candidate universe at ALL tiers.
-  const dry = target != null && DRY_TARGETS.includes(target);
-  const universe = dry ? images.filter((i) => !PRECIP_CONDITIONS.includes(i.condition)) : images.slice();
+  const dry = target != null && DRY_IMAGE_CONDITIONS.includes(target);
+  const universe = dry
+    ? images.filter((i) => !PRECIP_IMAGE_CONDITIONS.includes(i.condition))
+    : images.slice();
 
   // Weather tiers, narrow → wide. The family list leads with the target itself,
   // so `adjacent` ⊇ `exact`, and `universe` is the widest tier.
-  const family = target ? RELATED_CONDITIONS[target] : null;
+  const family = target ? RELATED_IMAGE_CONDITIONS[target] : null;
   const exact = target ? universe.filter((i) => i.condition === target) : [];
   const adjacent = family ? universe.filter((i) => family.includes(i.condition)) : universe.slice();
   const tiers = [exact, adjacent, universe] as const;
