@@ -48,12 +48,12 @@ SeoulSky uses Open-Meteo as the keyless baseline and can incorporate optional pr
 
 ## Screenshots
 
-- [Hero](public/screenshots/hero.png)
-- [Current data](public/screenshots/data-current.png)
-- [Radar](public/screenshots/radar.png)
-- [Forecast](public/screenshots/forecast.png)
-- [Confidence](public/screenshots/confidence.png)
-- [Advanced confidence diagnostics](public/screenshots/confidence-advanced.png)
+- [Hero](public/screenshots/hero.webp)
+- [Current data](public/screenshots/data-current.webp)
+- [Radar](public/screenshots/radar.webp)
+- [Forecast](public/screenshots/forecast.webp)
+- [Confidence](public/screenshots/confidence.webp)
+- [Advanced confidence diagnostics](public/screenshots/confidence-advanced.webp)
 
 ## Constraints And Trade-offs
 
@@ -64,10 +64,6 @@ SeoulSky uses Open-Meteo as the keyless baseline and can incorporate optional pr
 - Radar data can be slower than the scene snapshot, so radar loading and empty states need to be explicit.
 - Advanced diagnostics are useful for transparency, but surfacing them too early makes the product feel less focused.
 
-## What I Would Improve Next
+## Maintenance Boundaries
 
-- Add route and API smoke tests for `/api/sky` response shape and last-good behavior.
-- Add visual regression checks for the primary desktop viewports.
-- Improve radar cache observability without exposing internal mechanics to normal users.
-- Continue tightening confidence copy so provider disagreement is easy to understand.
-- Consider a local-font strategy if builds need to run reliably in fully offline environments.
+The project is complete and maintained rather than actively expanded. The most valuable future work is defensive: route-level API smoke coverage, visual regression checks at the documented viewports, monitoring of the scheduled reliability job, and a self-hosted font strategy if fully offline builds become a requirement.

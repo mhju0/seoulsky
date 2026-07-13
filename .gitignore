@@ -13,14 +13,11 @@
 # testing
 /coverage
 
-# generated cinematic video assets — large binaries. Host via Git LFS, object
-# storage (Vercel Blob / S3) or a CDN; keep the README + manifest tracked.
+# legacy cinematic source assets retained in Git LFS; do not add local variants
 /public/cinematic/generated/*.webm
 /public/cinematic/generated/*.mov
 /public/cinematic/generated/*.png
-/public/cinematic/locations/*.webm
-/public/cinematic/locations/*.mov
-/public/cinematic/locations/*.png
+/public/cinematic/locations/
 
 # next.js
 /.next/
@@ -60,10 +57,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/docs/
-!/docs/hero.png
-!/docs/confidence.png
-!/docs/source-comparison.png
+# local design/research artifacts; canonical public docs remain trackable
+/docs/*PLAN*.md
+/docs/*RUNBOOK*.md
+/docs/descent-recon.md
+/docs/cinematic-plates.md
+/docs/shot-prompts.md
+/docs/design/
 
 # claude (local tool dir — settings.local.json, launch.json)
 .claude/
@@ -72,4 +72,3 @@ pnpm-workspace.yaml
 
 # serena (tool dir)
 .serena/
-/public/cinematic/locations/
