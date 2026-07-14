@@ -44,9 +44,9 @@ html {
   text-shadow: 0 1px 18px color-mix(in srgb, var(--sky-bg-base, #0c1226) 82%, transparent);
 }
 
-/* One adaptive liquid-glass material for every data surface. Shape and sheen
-   vary by surface role below; tint, ink, rim, blur and depth stay identical so
-   radar/confidence never become opaque slabs in bright or wintry palettes. */
+/* One transparent instrument material for every framed data surface. The rim
+   and ink preserve structure while the atmospheric scene stays continuous
+   through radar, confidence, comparison, error and loading states. */
 .sky-panel,
 .sky-film-surface {
   position: relative;
@@ -56,8 +56,8 @@ html {
     var(--sky-panel-ink, rgb(248, 250, 255)) 75%,
     transparent
   );
-  background-color: var(--sky-panel-bg, rgba(12, 16, 30, 0.26));
-  background-image: var(--sky-surface-sheen);
+  background-color: transparent;
+  background-image: none;
   color: var(--color-white);
   border: 1px solid var(--sky-panel-border, rgba(255, 255, 255, 0.22));
   box-shadow: var(
@@ -66,20 +66,11 @@ html {
     inset 0 -1px 0 rgba(255, 255, 255, 0.06),
     0 22px 52px -24px rgba(0, 0, 0, 0.62)
   );
-  backdrop-filter: blur(22px) saturate(175%) brightness(1.05);
-  -webkit-backdrop-filter: blur(22px) saturate(175%) brightness(1.05);
-}
-
-.sky-panel {
-  --sky-surface-sheen: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.10) 0%,
-    transparent 40%
-  );
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .sky-film-surface {
-  --sky-surface-sheen: linear-gradient(115deg, rgba(255, 255, 255, 0.08), transparent 42%);
   overflow: hidden;
 }
 
@@ -123,17 +114,14 @@ html {
   }
 }
 
-/* ---------- readable glass surfaces (day/night-aware) ----------
+/* ---------- readable transparent surfaces (day/night-aware) ----------
 
-   The surface behind every HUD reading — an iOS-26 "Liquid Glass" material. It
-   is barely tinted so the cinematic Han River shows clearly through; legibility
-   comes from a luminous specular EDGE (a bright rim + a crisp top inner highlight
-   + a faint bottom inner light + a soft drop shadow) and an INK that FLIPS with
-   the backdrop brightness, not from opacity. Its tint, rim, shadow, radius and
-   ink all come from the `--sky-panel-*` variables that buildSkyPalette() writes
-   on `.sky-foreground`: a light tint + dark ink over a bright sky (snow/daylight),
-   a dark smoky tint + near-white ink over a dark sky (rain/night). (Vars carry
-   safe dark-state fallbacks for the brief moment before the palette mounts.)
+   Every HUD frame is fill-free so the cinematic Han River remains continuous.
+   Legibility comes from a luminous specular EDGE (bright rim + crisp top/bottom
+   inner highlights + soft drop shadow) and an INK that FLIPS with backdrop
+   brightness, never from an opaque or frosted rectangle. Rim, shadow, radius and
+   ink come from the `--sky-panel-*` variables that buildSkyPalette() writes on
+   `.sky-foreground`. (Vars carry safe dark-state fallbacks before the palette mounts.)
 
    `--color-white` is re-scoped to `--sky-panel-ink` here, so every `text-white/*`,
    `bg-white/*` and `currentColor` element inside a panel (the WIND arrow, weather
@@ -235,11 +223,8 @@ html {
   isolation: isolate; /* keep the grain's blend-mode local to this layer */
 
   /* The SINGLE blur knob for the data-view cityscape backdrop (.sky-data-plate).
-     iOS-26 "Liquid Glass" keeps the background photo crisp — the frost lives in
-     the cards' own backdrop-filter, not the wallpaper — so this is kept LOW
-     (the Han River landmark stays clearly recognizable behind the deck). Raise it
-     only if a busy plate ever fights the bare section labels for legibility; the
-     .sky-panel cards already blur their own backdrop regardless of this value. */
+     Transparent data frames do not add their own frost, so keep this low enough
+     that the Han River landmark remains recognizable while labels stay legible. */
   --sky-data-blur: 12px;
 }
 
@@ -552,21 +537,14 @@ html {
 
 /* ---------- instrument tile depth ----------
 
-   Adds a top-lit inner gradient (the "lit material" feel) and a desktop hover
-   lift to panels that opt in via the `elevated` prop on GlassPanel. The gradient
-   uses background-image layered above the background-color from .sky-panel, so
-   no pseudo-element stacking is needed.
+   Adds a desktop hover lift to panels that opt in via GlassPanel's `elevated`
+   prop without reintroducing a fill.
 
    Tunables:
-     Gradient stop: rgba(..., 0.05) controls the top-highlight brightness.
      Lift distance: translateY(-2px) on hover — keep ≤3px for restraint.
      Shadow depth:  the second box-shadow term on hover. */
 .sky-panel-elevated {
-  background-image: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.052) 0%,
-    transparent 38%
-  );
+  background-image: none;
   transition: transform 180ms ease, box-shadow 200ms ease;
 }
 

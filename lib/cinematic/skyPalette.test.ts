@@ -27,7 +27,7 @@ const SUN_STATES = [
   { name: "dusk", isDay: false, dayFactor: 0.4, goldenFactor: 0.85 },
 ] as const;
 
-test("all weather and sun states use one translucent adaptive surface token", () => {
+test("all weather and sun states keep adaptive frame contrast tokens bounded", () => {
   for (const condition of CONDITIONS) {
     for (const sun of SUN_STATES) {
       const palette = buildSkyPalette(

@@ -19,9 +19,8 @@ import type { WeatherCondition } from "@/lib/types";
  *     the priority we snap between two always-high-contrast pairs at the horizon,
  *     where the gradient is already a quiet dusty mid so the change reads as calm.
  *
- *   • The PANEL surface + its ink are an iOS-26 "Liquid Glass" treatment: the
- *     card is nearly invisible, so its ink must flip to stay legible against
- *     whatever the cinematic plate is showing. That flip keys off a single
+ *   • The transparent PANEL frames adapt their ink and rim to stay legible
+ *     against whatever the cinematic plate is showing. That flip keys off a single
  *     `backdropIsLight` signal — the perceptual luminance of the backdrop base
  *     nudged by weather (snow/fog read bright, storms read dark) — NOT `isDay`,
  *     so a snowy noon gets dark ink while a clear night gets light ink.
@@ -37,7 +36,7 @@ const POWDER: RGB = [175, 210, 250]; // #AFD2FA — powder blue (day air bloom)
 const CREAM: RGB = [254, 250, 239];  // #FEFAEF — floral white (night ink, day surface)
 const CAMEL: RGB = [185, 145, 94];   // #B9915E — warm camel (golden-hour cast)
 
-// Liquid-glass PANEL ink — flips on the backdrop-brightness signal (not isDay).
+// Transparent-frame ink — flips on the backdrop-brightness signal (not isDay).
 // Tunables: nudge for stronger/softer in-panel contrast.
 const PANEL_INK_DARK: RGB = [22, 28, 46];     // dark ink, used over a LIGHT backdrop
 const PANEL_INK_LIGHT: RGB = [248, 250, 255]; // near-white ink, used over a DARK backdrop
@@ -172,21 +171,18 @@ export function buildSkyPalette(
   // below follows the backdrop-brightness signal.
   const ink = isDay ? NAVY : CREAM;
 
-  // --- Backdrop-brightness signal → panel tint + ink flip ------------------
+  // --- Backdrop-brightness signal → frame contrast + ink flip --------------
   // Perceptual luminance of the computed backdrop base (which tracks the sun via
   // dayFactor), nudged by the weather so snow/fog read bright and storms read
-  // dark. This single boolean decides the liquid-glass panel's tint + ink so
+  // dark. This single boolean decides the frame's contrast + ink so
   // nothing inside ever disappears against the plate.
   const baseLum = (base[0] * 0.299 + base[1] * 0.587 + base[2] * 0.114) / 255;
   const backdropIsLight = baseLum + COND_BRIGHTNESS[condition] > 0.5;
 
-  // --- Liquid-glass panel surface ------------------------------------------
-  // iOS-26 "Liquid Glass": a barely-there tint (the Han River shows through), an
-  // ink that flips with the backdrop, and a luminous specular edge (rim + crisp
-  // top inner highlight + faint bottom inner light + soft drop shadow). The edge
-  // is emitted per-mode so it always defines the card, even over a same-toned sky.
-  // Tunables: panelBg alpha = transparency; the rgba(255,255,255,…) insets =
-  // specular intensity; the last shadow term = float depth.
+  // --- Transparent panel frame ---------------------------------------------
+  // The container fill is fixed to transparent in globals.css. This palette
+  // supplies adaptive ink, rim, depth, and a small contrast halo token used by
+  // internal controls such as the radar playhead.
   const panelInk = backdropIsLight ? PANEL_INK_DARK : PANEL_INK_LIGHT;
   const panelBg = backdropIsLight
     ? "rgba(248, 250, 255, 0.20)"  // light smoky tint over a bright backdrop
@@ -247,10 +243,11 @@ export function buildSkyPalette(
 
   return {
     ["--color-white" as string]: rgb(ink),
-    // Liquid-glass panel ink — re-scoped onto --color-white inside .sky-panel so
+    // Transparent-frame ink — re-scoped onto --color-white inside .sky-panel so
     // every text-white/*, bg-white/* and currentColor descendant flips with the
     // backdrop. Kept separate from the over-scene --color-white above.
     ["--sky-panel-ink" as string]: rgb(panelInk),
+    // A small internal-control halo only; top-level surfaces never consume it.
     ["--sky-panel-bg" as string]: panelBg,
     ["--sky-panel-border" as string]: panelBorder,
     ["--sky-panel-shadow" as string]: panelShadow,

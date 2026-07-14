@@ -3,13 +3,10 @@
 import type { ReactNode } from "react";
 
 /**
- * The single readable surface used across the /sky HUD. An iOS-26 "Liquid Glass"
- * panel: a barely-there tint over a luminous backdrop blur, with a bright specular
- * edge (rim + crisp top/bottom inner highlights + soft drop shadow) — the cinematic
- * scene shows clearly through it. Its tint and ink flip with the backdrop brightness
- * (a light tint + dark ink over a bright sky, a dark tint + near-white ink over a
- * dark one) via the `--sky-panel-*` variables set on the `.sky-foreground` wrapper,
- * which re-scope `--color-white` inside the panel so all text/glyphs follow.
+ * The single framed surface used across the /sky HUD. It stays fully transparent
+ * and uses a bright rim plus adaptive ink to remain readable over the cinematic
+ * scene. The `--sky-panel-*` variables on `.sky-foreground` flip the ink and edge
+ * contrast with the backdrop and re-scope `--color-white` so descendants follow.
  *
  * The name and prop API are unchanged so every call site keeps working as-is; the
  * day/night response is entirely in the `.sky-panel` material (see globals.css).
@@ -27,7 +24,7 @@ export default function GlassPanel({
   className?: string;
   /** Tailwind radius class to override the capsule token for one card. */
   radius?: string;
-  /** Adds top-lit inner gradient + desktop hover lift (instrument tiles). */
+  /** Adds a desktop hover lift without adding a background fill. */
   elevated?: boolean;
 }) {
   return (
