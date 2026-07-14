@@ -3,6 +3,7 @@
 import { useInView, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { useDeferredJson } from "@/hooks/useDeferredJson";
 import { BASEMAP, CITY_LABELS, RADAR_CONFIG, RADAR_LEGEND } from "@/lib/radar/config";
 import { latToWorldY, lonToWorldX } from "@/lib/radar/mercator";
 import type { KmaRadarFrame, KmaRadarFrames, RadarBounds, SkyRadar } from "@/lib/types";
@@ -395,21 +396,17 @@ const REFRESH_INTERVAL_MS = 10 * 60 * 1000; // re-pull the frame list periodical
 export default function RadarSection() {
   const { snapshot } = useWeatherField();
   const reduce = !!useReducedMotion();
-  const [summary, setSummary] = useState<KmaRadarFrames | null>(null);
-  const [failed, setFailed] = useState(false);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
 
   const sectionRef = useRef<HTMLDivElement>(null);
   const near = useInView(sectionRef, { once: true, margin: "0px 0px 400px 0px" });
 
-  const aliveRef = useRef(true);
-  useEffect(() => {
-    aliveRef.current = true;
-    return () => {
-      aliveRef.current = false;
-    };
-  }, []);
+  const { data: summary, failed } = useDeferredJson<KmaRadarFrames>({
+    enabled: near,
+    url: "/api/radar/frames",
+    refreshIntervalMs: REFRESH_INTERVAL_MS,
+  });
 
   const frames = useMemo(() => summary?.frames ?? [], [summary]);
   const bounds = summary?.bounds ?? null;
@@ -420,28 +417,12 @@ export default function RadarSection() {
   // out of bounds between the summary/index state updates.
   const activeIndex = available ? Math.min(index, frames.length - 1) : 0;
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/radar/frames", { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as KmaRadarFrames;
-      if (!aliveRef.current) return;
-      setSummary(json);
-      setFailed(false);
-      // Park the playhead at the latest observed frame and auto-play (unless reduced).
-      setIndex(Math.max(0, json.frames.length - 1));
-      setPlaying(!reduce && json.available && json.frames.length > 1);
-    } catch {
-      if (aliveRef.current) setFailed(true);
-    }
-  }, [reduce]);
-
   useEffect(() => {
-    if (!near) return;
-    queueMicrotask(load);
-    const id = setInterval(load, REFRESH_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [near, load]);
+    if (!summary) return;
+    // Park the playhead at the latest observed frame and auto-play (unless reduced).
+    setIndex(Math.max(0, summary.frames.length - 1));
+    setPlaying(!reduce && summary.available && summary.frames.length > 1);
+  }, [summary, reduce]);
 
   // Preload every frame so scrubbing/playback is flash-free. Kept in a ref so the
   // in-flight Image() objects aren't GC'd before they warm the browser cache.

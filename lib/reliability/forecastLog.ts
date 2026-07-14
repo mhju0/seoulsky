@@ -1,4 +1,5 @@
 import { providers } from "../providers/registry.ts";
+import { readAvailableProviderDaily } from "../providers/read.ts";
 import { REGION } from "./constants.ts";
 import type { ForecastRecord } from "./types.ts";
 
@@ -23,25 +24,18 @@ export async function collectForecasts(
   const records: ForecastRecord[] = [];
 
   for (const provider of providers) {
-    try {
-      const status = await provider.getProviderStatus();
-      if (status.availability !== "ok") continue; // not configured / failing → skip
+    const available = await readAvailableProviderDaily(provider);
+    const entry = available?.daily.find((d) => d.date === targetDate);
+    if (!available || !entry) continue; // unavailable / failing / missing target day → skip
 
-      const daily = await provider.getDailyForecast();
-      const entry = daily.find((d) => d.date === targetDate);
-      if (!entry) continue; // target day not in this source's horizon → skip
-
-      records.push({
-        date: targetDate,
-        source: provider.id,
-        region: REGION,
-        pop: entry.precipitationProbability,
-        predicted_mm: entry.precipitationAmount ?? null,
-        loggedAt,
-      });
-    } catch {
-      continue; // one source failing never blocks the others
-    }
+    records.push({
+      date: targetDate,
+      source: available.source,
+      region: REGION,
+      pop: entry.precipitationProbability,
+      predicted_mm: entry.precipitationAmount ?? null,
+      loggedAt,
+    });
   }
 
   return records;

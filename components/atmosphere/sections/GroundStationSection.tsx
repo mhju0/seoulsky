@@ -1,7 +1,8 @@
 "use client";
 
 import { useInView } from "framer-motion";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
+import { useDeferredJson } from "@/hooks/useDeferredJson";
 import { formatClock, formatHeaderDate, timeAgoKo } from "@/lib/format";
 import type { ProviderAvailability, SkyRadar, WeatherIntelligence } from "@/lib/types";
 import ConfidencePanel from "@/components/ConfidencePanel";
@@ -115,9 +116,6 @@ function SummaryTile({ label, value, caption }: { label: string; value: string; 
 export default function GroundStationSection() {
   const { snapshot } = useWeatherField();
   const clock = useWeatherClock();
-  const [data, setData] = useState<WeatherIntelligence | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const advancedId = useId();
 
@@ -126,39 +124,11 @@ export default function GroundStationSection() {
   const deckRef = useRef<HTMLDivElement>(null);
   const near = useInView(deckRef, { once: true, margin: "0px 0px 400px 0px" });
 
-  // Guard against a fetch (manual or interval) resolving after unmount — setting
-  // state on an unmounted component. Flipped false on teardown (same idea as the
-  // `alive` flag in SceneStage's manifest fetch).
-  const aliveRef = useRef(true);
-  useEffect(() => {
-    aliveRef.current = true;
-    return () => {
-      aliveRef.current = false;
-    };
-  }, []);
-
-  const load = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      const res = await fetch("/api/weather", { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as WeatherIntelligence;
-      if (!aliveRef.current) return;
-      setData(json);
-      setFailed(false);
-    } catch {
-      if (aliveRef.current) setFailed(true);
-    } finally {
-      if (aliveRef.current) setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!near) return;
-    queueMicrotask(load);
-    const id = setInterval(load, REFRESH_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [near, load]);
+  const { data, failed, refreshing, refresh: load } = useDeferredJson<WeatherIntelligence>({
+    enabled: near,
+    url: "/api/weather",
+    refreshIntervalMs: REFRESH_INTERVAL_MS,
+  });
 
   const anyLive = data?.providers.some((p) => p.status.availability === "ok") ?? false;
 

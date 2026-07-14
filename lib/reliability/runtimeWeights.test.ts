@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { readWeights } from "./store.ts";
+import { readWeights } from "./persistence.ts";
 import type { WeightsState } from "./types.ts";
 import {
   effectiveWeights,

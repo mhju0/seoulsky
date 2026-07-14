@@ -1,4 +1,5 @@
 import { cachedFetch } from "../cache.ts";
+import { readAvailableProviderDaily } from "../providers/read.ts";
 import { providers } from "../providers/registry.ts";
 import type { WeatherProvider } from "../providers/base";
 import type { SourceDailyForecast } from "../skyFusion";
@@ -67,10 +68,7 @@ async function fetchSourceDaily(
   try {
     return await withTimeout(
       (async () => {
-        const status = await provider.getProviderStatus();
-        if (status.availability !== "ok") return null; // not configured / failing → drop
-        const daily = await provider.getDailyForecast();
-        return { source: provider.id, daily } satisfies SourceDailyForecast;
+        return await readAvailableProviderDaily(provider);
       })(),
       timeoutMs,
     );

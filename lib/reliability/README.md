@@ -26,7 +26,7 @@ All thresholds and loss constants are named and unit-tested in `score.ts` and `w
 
 ## Runtime gate
 
-The web runtime reads `source-weights.json` through the narrow `runtimeWeightsSource.ts -> weightsStore.ts` path. The gate behaves as follows:
+The web runtime reads `source-weights.json` through the narrow `runtimeWeightsSource.ts -> persistence.ts` path. The gate behaves as follows:
 
 - Missing, corrupt, stale, or insufficiently trained state uses equal fallback.
 - Intermediate training linearly blends equal and learned weights.
@@ -60,6 +60,5 @@ Before relying on learned production weights, personally verify the latest sched
 | `weights.ts` | Pure bounded multiplicative-weight update |
 | `runtimeWeights.ts` | Pure warm-up, staleness, and effective-weight gate |
 | `forecastSources.ts` | Single-flight, TTL-cached provider fan-out with timeouts |
-| `store.ts` | Idempotent JSONL and JSON batch persistence |
-| `weightsStore.ts` | Narrow, never-throwing runtime state read |
+| `persistence.ts` | Idempotent JSONL persistence and never-throwing runtime weight reads |
 | `scripts/precip-reliability.ts` | Daily orchestration |

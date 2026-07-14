@@ -3,7 +3,8 @@ import { buildComparison, buildConfidence } from "@/lib/compare";
 import { airQualityStatuses, getFusedAirQuality } from "@/lib/providers/air-quality";
 import { getKmaWarningStatus, kmaProvider } from "@/lib/providers/kma";
 import { getRadarSummary, radarStatus } from "@/lib/providers/radar";
-import { providers, snapshotProvider } from "@/lib/providers/registry";
+import { readProviderSnapshot } from "@/lib/providers/read";
+import { providers } from "@/lib/providers/registry";
 import type { NormalizedWarning, WeatherIntelligence } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ async function warningsOrEmpty(): Promise<NormalizedWarning[]> {
 
 export async function GET() {
   const [snapshots, air, radar, envStatuses, warningStatus, warnings] = await Promise.all([
-    Promise.all(providers.map(snapshotProvider)),
+    Promise.all(providers.map(readProviderSnapshot)),
     getFusedAirQuality(),
     getRadarSummary(),
     airQualityStatuses(),

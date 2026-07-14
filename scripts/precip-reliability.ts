@@ -34,7 +34,7 @@ import {
   readWeights,
   reliabilityDataDir,
   writeWeights,
-} from "../lib/reliability/store.ts";
+} from "../lib/reliability/persistence.ts";
 import type { DailySkillRecord } from "../lib/reliability/types.ts";
 import { applyUnprocessed, initialWeightsState, resolveEta } from "../lib/reliability/weights.ts";
 
