@@ -4,9 +4,17 @@ import { useInView, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { useDeferredJson } from "@/hooks/useDeferredJson";
-import { BASEMAP, CITY_LABELS, RADAR_CONFIG, RADAR_LEGEND } from "@/lib/radar/config";
-import { latToWorldY, lonToWorldX } from "@/lib/radar/mercator";
-import type { KmaRadarFrame, KmaRadarFrames, RadarBounds, SkyRadar } from "@/lib/types";
+import { RADAR_CONFIG, RADAR_LEGEND } from "@/lib/radar/config";
+import {
+  advanceRadarFrame,
+  buildRadarMosaic,
+  formatRadarFrameTime,
+  radarApproachSummary,
+  RADAR_BASEMAP_ATTRIBUTION,
+  radarFrameTag,
+  resolveRadarTimeline,
+} from "@/lib/radar/presentation";
+import type { KmaRadarFrame, KmaRadarFrames, RadarBounds } from "@/lib/types";
 import { MetricLabel } from "../EtchedType";
 import { ScrollReveal } from "../descentMotion";
 import { useWeatherField } from "../WeatherFieldContext";
@@ -27,94 +35,6 @@ import { SectionHeading, SkySection } from "./SectionParts";
  * snapshot.radar from the field context — an independent (RainViewer) approach signal.
  */
 
-const KST = "Asia/Seoul";
-const kstTime = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: KST,
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
-/** Honest one-line approach summary — mirrors Ground Station; never invents a direction. */
-function approachLine(radar: SkyRadar | null | undefined): string {
-  if (!radar) return "레이더 관측 없음";
-  if (radar.approaching && radar.fromDirection) return `${radar.fromDirection}쪽에서 비구름 접근 중`;
-  if (radar.precipNearby) return "서울 부근에 강수 관측";
-  return "접근하는 비구름 없음";
-}
-
-/** Minutes of `frame` relative to the latest observed frame (negative = past). */
-function offsetMinutes(frame: KmaRadarFrame, nowMs: number): number {
-  return Math.round((new Date(frame.time).getTime() - nowMs) / 60000);
-}
-
-function frameTag(frame: KmaRadarFrame, nowMs: number): string {
-  const off = offsetMinutes(frame, nowMs);
-  if (off === 0) return "실시간 · 관측";
-  return `${off}분 · 관측`;
-}
-
-// ---- basemap geometry (Web Mercator; echo registers to the same projection) --
-
-const Z = BASEMAP.zoom;
-
-function tileUrl(x: number, y: number): string {
-  const sub = BASEMAP.subdomains[Math.abs(x + y) % BASEMAP.subdomains.length];
-  return BASEMAP.urlTemplate
-    .replace("{s}", sub)
-    .replace("{z}", String(Z))
-    .replace("{x}", String(x))
-    .replace("{y}", String(y))
-    .replace("{r}", "@2x");
-}
-
-interface Mosaic {
-  /** Bbox size in world pixels (drives the cover-fit aspect ratio). */
-  wpW: number;
-  wpH: number;
-  wider: boolean;
-  /** Tiles + their position as a % of the bbox. */
-  tiles: { x: number; y: number; url: string; left: number; top: number; w: number; h: number }[];
-  /** Korean place labels positioned as a % of the bbox. */
-  labels: { ko: string; left: number; top: number }[];
-}
-
-/** Lay out the CARTO tiles, the Korean labels, and the Seoul pin — all in bbox %. */
-function buildMosaic(b: RadarBounds): Mosaic {
-  const x0 = lonToWorldX(b.west, Z);
-  const x1 = lonToWorldX(b.east, Z);
-  const y0 = latToWorldY(b.north, Z); // top (north)
-  const y1 = latToWorldY(b.south, Z); // bottom (south)
-  const wpW = x1 - x0;
-  const wpH = y1 - y0;
-  const place = (lat: number, lon: number) => ({
-    left: ((lonToWorldX(lon, Z) - x0) / wpW) * 100,
-    top: ((latToWorldY(lat, Z) - y0) / wpH) * 100,
-  });
-
-  const tiles: Mosaic["tiles"] = [];
-  for (let tx = Math.floor(x0 / 256); tx <= Math.floor((x1 - 1e-6) / 256); tx++) {
-    for (let ty = Math.floor(y0 / 256); ty <= Math.floor((y1 - 1e-6) / 256); ty++) {
-      tiles.push({
-        x: tx,
-        y: ty,
-        url: tileUrl(tx, ty),
-        left: ((tx * 256 - x0) / wpW) * 100,
-        top: ((ty * 256 - y0) / wpH) * 100,
-        w: (256 / wpW) * 100,
-        h: (256 / wpH) * 100,
-      });
-    }
-  }
-  return {
-    wpW,
-    wpH,
-    wider: wpW >= wpH,
-    tiles,
-    labels: CITY_LABELS.map((c) => ({ ko: c.ko, ...place(c.lat, c.lon) })),
-  };
-}
-
 // ---- the radar scope (CARTO basemap + georeferenced KMA echo) ----------------
 
 function RadarScope({
@@ -127,9 +47,9 @@ function RadarScope({
   bounds: RadarBounds;
 }) {
   // The scope is a self-contained DARK panel in BOTH adaptive modes, so re-establish
-  // real white for its descendants (the surrounding .sky-panel re-scoped --color-white).
+  // real white for its descendants (the surrounding glass re-scopes --color-white).
   const scopeInk = { ["--color-white" as string]: "rgb(255,255,255)" } as CSSProperties;
-  const m = useMemo(() => buildMosaic(bounds), [bounds]);
+  const m = useMemo(() => buildRadarMosaic(bounds), [bounds]);
 
   return (
     <div
@@ -223,11 +143,11 @@ function RadarScope({
 
       {/* Frame time overlay (on the imagery, radar-style). */}
       <span className="pointer-events-none absolute bottom-2.5 left-3 font-mono text-[11px] tabular-nums tracking-[0.1em] text-white/80">
-        {kstTime.format(new Date(frame.time))} · {frameTag(frame, nowMs)}
+        {formatRadarFrameTime(frame.time)} · {radarFrameTag(frame, nowMs)}
       </span>
       {/* Required attribution, on the radar imagery itself. */}
       <span className="pointer-events-none absolute bottom-2.5 right-3 font-mono text-[10px] tracking-[0.12em] text-white/55">
-        © 기상청 · {BASEMAP.attribution}
+        © 기상청 · {RADAR_BASEMAP_ATTRIBUTION}
       </span>
     </div>
   );
@@ -324,7 +244,7 @@ function Scrubber({
       aria-valuemin={0}
       aria-valuemax={n - 1}
       aria-valuenow={index}
-      aria-valuetext={frameTag(frames[index], new Date(frames[nowIndex].time).getTime())}
+      aria-valuetext={radarFrameTag(frames[index], new Date(frames[nowIndex].time).getTime())}
       onPointerDown={(e) => {
         draggingRef.current = true;
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -410,12 +330,12 @@ export default function RadarSection() {
 
   const frames = useMemo(() => summary?.frames ?? [], [summary]);
   const bounds = summary?.bounds ?? null;
-  const available = !!summary?.available && frames.length > 0 && !!bounds;
-  const nowIndex = Math.max(0, frames.length - 1); // newest observed frame = "now"
-  const nowMs = available ? new Date(frames[nowIndex].time).getTime() : 0;
-  // Clamp the playhead so a refresh that returns fewer frames can never index
-  // out of bounds between the summary/index state updates.
-  const activeIndex = available ? Math.min(index, frames.length - 1) : 0;
+  const timeline = useMemo(() => resolveRadarTimeline(frames, index), [frames, index]);
+  const available =
+    !!summary?.available && frames.length > 0 && !!bounds && timeline.latestObservedMs !== null;
+  const nowIndex = timeline.latestIndex;
+  const nowMs = timeline.latestObservedMs ?? 0;
+  const activeIndex = available ? timeline.activeIndex : 0;
 
   useEffect(() => {
     if (!summary) return;
@@ -440,7 +360,7 @@ export default function RadarSection() {
   useEffect(() => {
     if (!playing || frames.length <= 1) return;
     const id = setInterval(() => {
-      setIndex((i) => (i + 1) % frames.length);
+      setIndex((i) => advanceRadarFrame(i, frames.length));
     }, RADAR_CONFIG.playIntervalMs);
     return () => clearInterval(id);
   }, [playing, frames.length]);
@@ -476,10 +396,10 @@ export default function RadarSection() {
                     <div className="flex flex-col gap-2">
                       <MetricLabel tone="bright">지금, 서울 상공</MetricLabel>
                       <p className="sky-display max-w-[18ch] break-keep text-[clamp(1.75rem,3.6vw,3.2rem)] leading-[1.25] text-white">
-                        {approachLine(snapshot?.radar)}
+                        {radarApproachSummary(snapshot?.radar)}
                       </p>
                       <p className="font-mono text-[12px] tracking-[0.12em] text-white">
-                        {kstTime.format(new Date(frames[activeIndex].time))} · {frameTag(frames[activeIndex], nowMs)}
+                        {formatRadarFrameTime(frames[activeIndex].time)} · {radarFrameTag(frames[activeIndex], nowMs)}
                       </p>
                     </div>
 
@@ -525,7 +445,7 @@ export default function RadarSection() {
                 </div>
 
                 <p className="mt-3 font-mono text-[11px] leading-relaxed tracking-[0.1em] text-white">
-                  최근 약 1시간 관측 · 고해상도 강수 레이더 · 서울 중심 · 출처 © 기상청(KMA) · {BASEMAP.attribution}
+                  최근 약 1시간 관측 · 고해상도 강수 레이더 · 서울 중심 · 출처 © 기상청(KMA) · {RADAR_BASEMAP_ATTRIBUTION}
                 </p>
               </>
             )}

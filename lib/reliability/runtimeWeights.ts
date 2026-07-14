@@ -5,7 +5,7 @@ import type { WeightsMap, WeightsState } from "./types.ts";
  *
  * This module is PURE (no I/O): it decides, from a WeightsState (or null), how
  * much to trust the learned weights and produces the effective per-source weights
- * the fusion layer should use. The actual file read + memoization lives in
+ * the fusion layer should use. The durable-state read + memoization lives in
  * runtimeWeightsSource.ts; the application to precip fields lives in skyFusion.ts.
  *
  * The #1 contract: when the gate is NOT met (the normal state until the KMA
@@ -15,7 +15,7 @@ import type { WeightsMap, WeightsState } from "./types.ts";
  *
  * ──────────────────────── config block — all thresholds ─────────────────────
  */
-/** updatedAt older than this many days ⇒ cron presumed dead ⇒ degrade to equal. */
+/** No successful observation cycle for this many days ⇒ degrade to equal. */
 export const STALE_DAYS = 7;
 /** Below this many scored events ⇒ pre-warm-up ⇒ pure equal (no learned influence). */
 export const WARMUP_EVENTS = 5;
@@ -24,6 +24,7 @@ export const FULL_CONFIDENCE_EVENTS = 20;
 // ──────────────────────────────────────────────────────────────────────────────
 
 const DAY_MS = 86_400_000;
+const MAX_FUTURE_SKEW_MS = 5 * 60_000;
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 export type PrecipWeightMode = "equal-fallback" | "ramping" | "learned";
@@ -83,8 +84,8 @@ export function effectiveWeights(
 
 /**
  * Resolve how the precip fusion should weight `sources` given the persisted state.
- * Degrades to EQUAL (byte-for-byte pre-Phase-3 behavior) when the file is
- * missing/unparseable (state null), stale, or pre-warm-up.
+ * Degrades to EQUAL (byte-for-byte pre-Phase-3 behavior) when durable state is
+ * missing/unparseable, implausibly future-dated, stale, or pre-warm-up.
  */
 export function gatePrecipWeighting(
   state: WeightsState | null,
@@ -94,10 +95,14 @@ export function gatePrecipWeighting(
   const equal = equalWeights(sources);
 
   if (!state) {
-    return { mode: "equal-fallback", reason: "no-weights-file", confidence: 0, weights: equal };
+    return { mode: "equal-fallback", reason: "no-weights-state", confidence: 0, weights: equal };
   }
 
-  const ageDays = (now.getTime() - Date.parse(state.updatedAt)) / DAY_MS;
+  const ageMs = now.getTime() - Date.parse(state.updatedAt);
+  if (Number.isFinite(ageMs) && ageMs < -MAX_FUTURE_SKEW_MS) {
+    return { mode: "equal-fallback", reason: "future-checkpoint", confidence: 0, weights: equal };
+  }
+  const ageDays = ageMs / DAY_MS;
   if (!Number.isFinite(ageDays) || ageDays > STALE_DAYS) {
     return { mode: "equal-fallback", reason: "stale", confidence: 0, weights: equal };
   }

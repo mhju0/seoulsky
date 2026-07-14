@@ -18,9 +18,3 @@ export const providers: WeatherProvider[] = [
   pirateWeatherProvider,
   weatherApiProvider,
 ];
-
-/**
- * Collect one provider's full state without ever throwing.
- * Data fetch happens once inside getProviderStatus() (shared TTL cache),
- * so the three getters afterwards are cache hits.
- */

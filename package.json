@@ -13,7 +13,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test \"lib/**/*.test.ts\"",
-    "reliability:daily": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/precip-reliability.ts"
+    "reliability:daily": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/precip-reliability.ts",
+    "reliability:state": "node scripts/reliability-state.ts"
   },
   "dependencies": {
     "framer-motion": "^12.40.0",

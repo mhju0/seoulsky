@@ -4,6 +4,7 @@ import { clearCache } from "../cache.ts";
 import {
   classifyKmaResponse,
   getKmaWarningStatus,
+  getKmaWarnings,
   kmaProvider,
 } from "./kma.ts";
 
@@ -145,7 +146,7 @@ test("short-term forecast reads KMA_SHORT_TERM_API_KEY and hits VilageFcstInfoSe
     return new Response("not mocked", { status: 500 });
   }) as typeof fetch;
 
-  const current = await kmaProvider.getCurrentWeather();
+  const { current } = await kmaProvider.readForecast();
   assert.equal(current.temperature, 21);
   assert.ok(calls.length >= 1);
   assert.ok(calls.every((c) => c.service === "short-term"));
@@ -154,7 +155,7 @@ test("short-term forecast reads KMA_SHORT_TERM_API_KEY and hits VilageFcstInfoSe
 test("warnings read KMA_WARNING_API_KEY and hit WthrWrnInfoService", async () => {
   process.env.KMA_WARNING_API_KEY = WARNING_KEY;
   installFetch({ warning: { body: okJson([]) } });
-  const warnings = await kmaProvider.getWarnings?.();
+  const warnings = await getKmaWarnings();
   assert.deepEqual(warnings, []);
   assert.ok(calls.length >= 1);
   assert.ok(calls.every((c) => c.service === "warning"));
@@ -205,8 +206,8 @@ test("missing keys produce safe needs-config statuses (no throw, no crash)", asy
   const warning = await getKmaWarningStatus();
   assert.equal(shortTerm.availability, "needs-config");
   assert.equal(warning.availability, "needs-config");
-  // getWarnings must resolve to [] (never throw) when unconfigured.
-  assert.deepEqual(await kmaProvider.getWarnings?.(), []);
+  // Warning reads must resolve to [] (never throw) when unconfigured.
+  assert.deepEqual(await getKmaWarnings(), []);
 });
 
 test("empty-success warning status differs from authorization-failure status", async () => {
@@ -239,7 +240,7 @@ test("no status or response contains either key value", async () => {
   const shortTerm = await kmaProvider.getProviderStatus();
   clearCache();
   const warning = await getKmaWarningStatus();
-  const warnings = (await kmaProvider.getWarnings?.()) ?? [];
+  const warnings = await getKmaWarnings();
 
   const haystack = JSON.stringify({ shortTerm, warning, warnings });
   assert.ok(!haystack.includes(SHORT_TERM_KEY), "short-term key leaked");

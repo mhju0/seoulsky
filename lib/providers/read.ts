@@ -36,11 +36,7 @@ export async function readProviderSnapshot(provider: WeatherProvider): Promise<P
   if (status.availability !== "ok") return { id: provider.id, status, ...empty };
 
   try {
-    const [current, hourly, daily] = await Promise.all([
-      provider.getCurrentWeather(),
-      provider.getHourlyForecast(),
-      provider.getDailyForecast(),
-    ]);
+    const { current, hourly, daily } = await provider.readForecast();
     return { id: provider.id, status, current, hourly, daily };
   } catch {
     return {
@@ -56,11 +52,8 @@ export async function readProviderSnapshot(provider: WeatherProvider): Promise<P
  * unavailable or failing optional source from a consensus or batch run.
  */
 export async function readAvailableProviderDaily(provider: WeatherProvider): Promise<AvailableProviderDaily | null> {
-  try {
-    const status = await provider.getProviderStatus();
-    if (status.availability !== "ok") return null;
-    return { source: provider.id, daily: await provider.getDailyForecast() };
-  } catch {
-    return null;
-  }
+  const snapshot = await readProviderSnapshot(provider);
+  return snapshot.status.availability === "ok"
+    ? { source: snapshot.id, daily: snapshot.daily }
+    : null;
 }

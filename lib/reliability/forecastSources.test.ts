@@ -30,24 +30,35 @@ interface SpyOpts {
   /** "ok" → returns daily; "fail" → throws; "slow" → resolves daily after `delayMs`. */
   mode?: "ok" | "fail" | "slow";
   delayMs?: number;
-  /** Mutated to count how many times THIS provider's getDailyForecast ran. */
+  /** Mutated to count how many times this provider's normalized forecast read ran. */
   calls?: { n: number };
 }
 
 function spy(id: ProviderId, opts: SpyOpts = {}): WeatherProvider {
   const { mode = "ok", delayMs = 0, calls } = opts;
-  const unused = () => Promise.reject(new Error("unused in these tests"));
   return {
     id: id as WeatherProviderStatus["id"],
     name: id,
     getProviderStatus: async () => okStatus(id),
-    getCurrentWeather: unused as never,
-    getHourlyForecast: unused as never,
-    getDailyForecast: async () => {
+    readForecast: async () => {
       if (calls) calls.n += 1;
       if (mode === "fail") throw new Error("upstream down");
       if (mode === "slow") await new Promise((r) => setTimeout(r, delayMs));
-      return [day("2026-06-19", 40)];
+      return {
+        current: {
+          time: "2026-06-19T12:00:00+09:00",
+          temperature: 27,
+          apparentTemperature: null,
+          humidity: null,
+          windSpeed: null,
+          windDirection: null,
+          precipitation: null,
+          cloudCover: null,
+          condition: "rain",
+        },
+        hourly: [],
+        daily: [day("2026-06-19", 40)],
+      };
     },
   };
 }

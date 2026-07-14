@@ -59,7 +59,7 @@ export async function readLiveSkySnapshot(
     dependencies.getRadar(),
     dependencies.getKmaCurrent(),
     dependencies.getWarnings(),
-    dependencies.getWeightsState(),
+    options.multiSourcePrecip ? dependencies.getWeightsState() : Promise.resolve<WeightsState | null>(null),
     options.multiSourcePrecip ? dependencies.getForecastSources() : Promise.resolve<SourceDailyForecast[]>([]),
   ]);
   const { current, hourly, daily, status } = openMeteo;

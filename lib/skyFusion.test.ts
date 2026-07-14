@@ -149,7 +149,7 @@ test("reweightForecastPrecip touches PRECIP fields ONLY — non-precip is identi
   assert.equal(out.date, base.date);
 });
 
-test("behavior preservation: NO weights file (state null) → fused forecast identical", () => {
+test("behavior preservation: NO weights state → fused forecast identical", () => {
   const input = {
     daily: [daily({}), daily({ date: "2026-06-20" })],
     hourly: [hourly({}), hourly({ time: "2026-06-19T14:00:00+09:00" })],

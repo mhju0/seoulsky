@@ -285,6 +285,8 @@ export interface AtmosphericFieldBackgroundProps {
   reducedMotion: boolean;
   paused: boolean;
   pointerEnabled: boolean;
+  /** Select the CSS adapter after any asynchronous GL pipeline/context failure. */
+  onFailure: () => void;
 }
 
 export default function AtmosphericFieldBackground({
@@ -293,12 +295,14 @@ export default function AtmosphericFieldBackground({
   reducedMotion,
   paused,
   pointerEnabled,
+  onFailure,
 }: AtmosphericFieldBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const targetRef = useRef<VisualConfig>(target);
   const reducedRef = useRef(reducedMotion);
   const pausedRef = useRef(paused);
   const pointerEnabledRef = useRef(pointerEnabled);
+  const failureRef = useRef(onFailure);
   const loopRef = useRef<LoopControl | null>(null);
   // Normalized page scroll (0..1), written by a passive listener, read by the
   // rAF loop. The loop lerps toward it so the descent is damped, never raw.
@@ -313,6 +317,7 @@ export default function AtmosphericFieldBackground({
   reducedRef.current = reducedMotion;
   pausedRef.current = paused;
   pointerEnabledRef.current = pointerEnabled;
+  failureRef.current = onFailure;
 
   // Flip the discrete (non-lerped) fields instantly when the target changes.
   useEffect(() => {
@@ -324,179 +329,246 @@ export default function AtmosphericFieldBackground({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const gl = (canvas.getContext("webgl2", { antialias: false, alpha: false }) ||
-      canvas.getContext("webgl", { antialias: false, alpha: false })) as WebGLRenderingContext | null;
-    if (!gl) throw new Error("WebGL unavailable");
-
-    const { octaves, snow } = tierDefines(quality.tier);
-    const frag = FRAG.replace("__OCTAVES__", String(octaves)).replace("__SNOW__", String(snow));
-    const program = gl.createProgram();
-    if (!program) throw new Error("program alloc failed");
-    const vs = compile(gl, gl.VERTEX_SHADER, VERT);
-    const fs = compile(gl, gl.FRAGMENT_SHADER, frag);
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      throw new Error(`program link failed: ${gl.getProgramInfoLog(program)}`);
-    }
-    gl.useProgram(program);
-
-    // fullscreen triangle
-    const buf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    const aPos = gl.getAttribLocation(program, "a_pos");
-    gl.enableVertexAttribArray(aPos);
-    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
-
-    const u: UniformMap = {};
-    for (const name of UNIFORMS) u[name] = gl.getUniformLocation(program, name);
-
-    const live = liveRef.current!;
-    const dprCap = Math.min(window.devicePixelRatio || 1, reducedRef.current ? 1.25 : quality.dpr[1], 2);
-    let width = 0;
-    let height = 0;
-    const resize = () => {
-      const w = Math.max(1, Math.round(canvas.clientWidth * dprCap));
-      const h = Math.max(1, Math.round(canvas.clientHeight * dprCap));
-      if (w === width && h === height) return false;
-      width = w;
-      height = h;
-      canvas.width = w;
-      canvas.height = h;
-      gl.viewport(0, 0, w, h);
-      return true;
-    };
-    resize();
-
-    // pointer (desktop only), smoothed in the loop
-    const pointerTarget = { x: 0, y: 0 };
-    const pointerSmooth = { x: 0, y: 0 };
-    const onPointer = (e: PointerEvent) => {
-      if (!pointerEnabledRef.current) return;
-      pointerTarget.x = (e.clientX / window.innerWidth) * 2 - 1;
-      pointerTarget.y = -((e.clientY / window.innerHeight) * 2 - 1);
-    };
-    window.addEventListener("pointermove", onPointer, { passive: true });
-
-    // scroll → altitude (task 1.1): a passive listener writes the normalized
-    // page scroll into a ref; the loop lerps `scrollSmooth` toward it so the
-    // descent is damped, never a raw 1:1 scrollTop. Held steady under reduced
-    // motion (renderStatic leaves scrollSmooth untouched).
-    const readScroll = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      scrollTargetRef.current = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
-    };
-    readScroll();
-    window.addEventListener("scroll", readScroll, { passive: true });
-    let scrollSmooth = scrollTargetRef.current;
-
-    const setUniforms = (time: number) => {
-      gl.uniform2f(u.u_res!, width, height);
-      gl.uniform1f(u.u_time!, time);
-      gl.uniform2f(u.u_pointer!, pointerSmooth.x, pointerSmooth.y);
-      gl.uniform3f(u.u_skyTop!, live.skyTop[0], live.skyTop[1], live.skyTop[2]);
-      gl.uniform3f(u.u_skyHorizon!, live.skyHorizon[0], live.skyHorizon[1], live.skyHorizon[2]);
-      gl.uniform3f(u.u_skyBottom!, live.skyBottom[0], live.skyBottom[1], live.skyBottom[2]);
-      gl.uniform3f(u.u_sunColor!, live.sunColor[0], live.sunColor[1], live.sunColor[2]);
-      gl.uniform3f(u.u_accent!, live.accent[0], live.accent[1], live.accent[2]);
-      gl.uniform2f(u.u_sunPos!, live.sunPos[0], live.sunPos[1]);
-      gl.uniform2f(u.u_windDir!, live.windDir[0], live.windDir[1]);
-      gl.uniform1f(u.u_horizonY!, live.horizonY);
-      gl.uniform1f(u.u_sunIntensity!, live.sunIntensity);
-      gl.uniform1f(u.u_warmth!, live.skyWarmth);
-      gl.uniform1f(u.u_haze!, live.hazeDensity);
-      gl.uniform1f(u.u_cloudShadow!, live.cloudShadowStrength);
-      gl.uniform1f(u.u_windSpeed!, live.windDriftSpeed);
-      gl.uniform1f(u.u_rain!, live.rainDistortion);
-      gl.uniform1f(u.u_snow!, live.snowDensity);
-      gl.uniform1f(u.u_lightDiffusion!, live.lightDiffusion);
-      gl.uniform1f(u.u_contrast!, live.backgroundContrast);
-      gl.uniform1f(u.u_grain!, live.grain);
-      gl.uniform1f(u.u_scroll!, scrollSmooth);
-    };
-
+    let gl: WebGLRenderingContext | null = null;
+    let program: WebGLProgram | null = null;
+    let vertexShader: WebGLShader | null = null;
+    let fragmentShader: WebGLShader | null = null;
+    let buffer: WebGLBuffer | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+    let onPointer: ((event: PointerEvent) => void) | null = null;
+    let readScroll: (() => void) | null = null;
+    let control: LoopControl | null = null;
     let raf = 0;
-    let last = performance.now() / 1000;
-    const start = last;
-
-    const frame = () => {
-      const now = performance.now() / 1000;
-      const dt = Math.min(now - last, 0.05);
-      last = now;
-      resize();
-      lerpVisualConfig(live, targetRef.current, 1 - Math.exp(-dt * 2.2));
-      if (pointerEnabledRef.current) {
-        const k = 1 - Math.exp(-dt * 4);
-        pointerSmooth.x += (pointerTarget.x - pointerSmooth.x) * k;
-        pointerSmooth.y += (pointerTarget.y - pointerSmooth.y) * k;
-      }
-      // Damped descent: ease toward the scroll ref each frame (never raw).
-      scrollSmooth += (scrollTargetRef.current - scrollSmooth) * (1 - Math.exp(-dt * 6));
-      setUniforms(now - start);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-      raf = requestAnimationFrame(frame);
-    };
-
-    // Reduced motion: snap to the data target and draw one frozen, gorgeous frame.
-    // `scrollSmooth` is intentionally left untouched here so uScroll holds steady
-    // (no scroll-driven descent) under prefers-reduced-motion.
-    const renderStatic = () => {
-      lerpVisualConfig(live, targetRef.current, 1);
-      copyDiscrete(live, targetRef.current);
-      pointerSmooth.x = 0;
-      pointerSmooth.y = 0;
-      setUniforms(8.0);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-    };
-
     let staticTimer = 0;
+    let disposed = false;
+    let failureReported = false;
+
     const stop = () => {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
     };
-    const clearStatic = () => window.clearTimeout(staticTimer);
-    const startLoop = () => {
-      if (raf || pausedRef.current) return;
-      if (reducedRef.current) {
-        // Re-snap a few times so a freshly-mounted target settles, then idle.
-        let n = 0;
-        const tick = () => {
-          renderStatic();
-          if (++n < 24) staticTimer = window.setTimeout(tick, 90);
-        };
-        tick();
-        return;
-      }
-      last = performance.now() / 1000;
-      raf = requestAnimationFrame(frame);
+    const clearStatic = () => {
+      if (staticTimer) window.clearTimeout(staticTimer);
+      staticTimer = 0;
     };
-
-    const ro = new ResizeObserver(() => {
-      if (resize() && (reducedRef.current || pausedRef.current)) renderStatic();
-    });
-    ro.observe(canvas);
-
-    loopRef.current = { startLoop, stop, clearStatic };
-    startLoop();
-
-    return () => {
+    const onContextLost = (event: Event) => {
+      // We do not attempt an in-place restore: the CSS adapter is the stable,
+      // never-blank tail of the scene fallback chain.
+      event.preventDefault();
+      reportFailure();
+    };
+    const dispose = () => {
+      if (disposed) return;
+      disposed = true;
       stop();
       clearStatic();
-      window.removeEventListener("pointermove", onPointer);
-      window.removeEventListener("scroll", readScroll);
-      ro.disconnect();
-      gl.deleteBuffer(buf);
-      gl.deleteProgram(program);
-      gl.deleteShader(vs);
-      gl.deleteShader(fs);
-      // NB: do NOT call WEBGL_lose_context.loseContext() here. React (StrictMode
-      // in dev, and any quality-tier remount) re-runs this effect on the SAME
-      // canvas, and getContext() hands back the same context — losing it would
-      // poison every later compile. The context is freed on unmount GC.
-      loopRef.current = null;
+      if (onPointer) window.removeEventListener("pointermove", onPointer);
+      if (readScroll) window.removeEventListener("scroll", readScroll);
+      canvas.removeEventListener("webglcontextlost", onContextLost);
+      resizeObserver?.disconnect();
+      if (gl) {
+        // Context loss can make cleanup itself unreliable on some drivers. It is
+        // best-effort and must never prevent the CSS failure notification.
+        try {
+          if (buffer) gl.deleteBuffer(buffer);
+          if (program) gl.deleteProgram(program);
+          if (vertexShader) gl.deleteShader(vertexShader);
+          if (fragmentShader) gl.deleteShader(fragmentShader);
+        } catch {
+          // The canvas is being abandoned; the browser releases its context.
+        }
+      }
+      // Do not call WEBGL_lose_context here. StrictMode and quality changes can
+      // rebuild on this same canvas; explicitly losing it poisons the next run.
+      if (loopRef.current === control) loopRef.current = null;
     };
+    const reportFailure = () => {
+      if (failureReported || disposed) return;
+      failureReported = true;
+      dispose();
+      failureRef.current();
+    };
+
+    try {
+      gl = (canvas.getContext("webgl2", { antialias: false, alpha: false }) ||
+        canvas.getContext("webgl", { antialias: false, alpha: false })) as WebGLRenderingContext | null;
+      if (!gl) throw new Error("WebGL unavailable");
+      canvas.addEventListener("webglcontextlost", onContextLost);
+
+      const { octaves, snow } = tierDefines(quality.tier);
+      const fragmentSource = FRAG.replace("__OCTAVES__", String(octaves)).replace(
+        "__SNOW__",
+        String(snow),
+      );
+      program = gl.createProgram();
+      if (!program) throw new Error("program alloc failed");
+      vertexShader = compile(gl, gl.VERTEX_SHADER, VERT);
+      fragmentShader = compile(gl, gl.FRAGMENT_SHADER, fragmentSource);
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error(`program link failed: ${gl.getProgramInfoLog(program)}`);
+      }
+      gl.useProgram(program);
+
+      buffer = gl.createBuffer();
+      if (!buffer) throw new Error("buffer alloc failed");
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      const aPos = gl.getAttribLocation(program, "a_pos");
+      if (aPos < 0) throw new Error("position attribute unavailable");
+      gl.enableVertexAttribArray(aPos);
+      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+      const uniforms: UniformMap = {};
+      for (const name of UNIFORMS) {
+        const location = gl.getUniformLocation(program, name);
+        if (location === null) throw new Error(`uniform unavailable: ${name}`);
+        uniforms[name] = location;
+      }
+
+      const live = liveRef.current!;
+      const dprCap = Math.min(
+        window.devicePixelRatio || 1,
+        reducedRef.current ? 1.25 : quality.dpr[1],
+        2,
+      );
+      let width = 0;
+      let height = 0;
+      const resize = () => {
+        const w = Math.max(1, Math.round(canvas.clientWidth * dprCap));
+        const h = Math.max(1, Math.round(canvas.clientHeight * dprCap));
+        if (w === width && h === height) return false;
+        width = w;
+        height = h;
+        canvas.width = w;
+        canvas.height = h;
+        gl!.viewport(0, 0, w, h);
+        return true;
+      };
+      resize();
+
+      const pointerTarget = { x: 0, y: 0 };
+      const pointerSmooth = { x: 0, y: 0 };
+      onPointer = (event: PointerEvent) => {
+        if (!pointerEnabledRef.current) return;
+        pointerTarget.x = (event.clientX / window.innerWidth) * 2 - 1;
+        pointerTarget.y = -((event.clientY / window.innerHeight) * 2 - 1);
+      };
+      window.addEventListener("pointermove", onPointer, { passive: true });
+
+      // Passive scroll input is damped in the render loop; reduced motion holds
+      // the current altitude instead of following the page.
+      readScroll = () => {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        scrollTargetRef.current = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+      };
+      readScroll();
+      window.addEventListener("scroll", readScroll, { passive: true });
+      let scrollSmooth = scrollTargetRef.current;
+
+      const setUniforms = (time: number) => {
+        gl!.uniform2f(uniforms.u_res!, width, height);
+        gl!.uniform1f(uniforms.u_time!, time);
+        gl!.uniform2f(uniforms.u_pointer!, pointerSmooth.x, pointerSmooth.y);
+        gl!.uniform3f(uniforms.u_skyTop!, live.skyTop[0], live.skyTop[1], live.skyTop[2]);
+        gl!.uniform3f(
+          uniforms.u_skyHorizon!,
+          live.skyHorizon[0],
+          live.skyHorizon[1],
+          live.skyHorizon[2],
+        );
+        gl!.uniform3f(uniforms.u_skyBottom!, live.skyBottom[0], live.skyBottom[1], live.skyBottom[2]);
+        gl!.uniform3f(uniforms.u_sunColor!, live.sunColor[0], live.sunColor[1], live.sunColor[2]);
+        gl!.uniform3f(uniforms.u_accent!, live.accent[0], live.accent[1], live.accent[2]);
+        gl!.uniform2f(uniforms.u_sunPos!, live.sunPos[0], live.sunPos[1]);
+        gl!.uniform2f(uniforms.u_windDir!, live.windDir[0], live.windDir[1]);
+        gl!.uniform1f(uniforms.u_horizonY!, live.horizonY);
+        gl!.uniform1f(uniforms.u_sunIntensity!, live.sunIntensity);
+        gl!.uniform1f(uniforms.u_warmth!, live.skyWarmth);
+        gl!.uniform1f(uniforms.u_haze!, live.hazeDensity);
+        gl!.uniform1f(uniforms.u_cloudShadow!, live.cloudShadowStrength);
+        gl!.uniform1f(uniforms.u_windSpeed!, live.windDriftSpeed);
+        gl!.uniform1f(uniforms.u_rain!, live.rainDistortion);
+        gl!.uniform1f(uniforms.u_snow!, live.snowDensity);
+        gl!.uniform1f(uniforms.u_lightDiffusion!, live.lightDiffusion);
+        gl!.uniform1f(uniforms.u_contrast!, live.backgroundContrast);
+        gl!.uniform1f(uniforms.u_grain!, live.grain);
+        gl!.uniform1f(uniforms.u_scroll!, scrollSmooth);
+      };
+
+      let last = performance.now() / 1000;
+      const start = last;
+      const frame = () => {
+        if (disposed) return;
+        try {
+          const now = performance.now() / 1000;
+          const dt = Math.min(now - last, 0.05);
+          last = now;
+          resize();
+          lerpVisualConfig(live, targetRef.current, 1 - Math.exp(-dt * 2.2));
+          if (pointerEnabledRef.current) {
+            const k = 1 - Math.exp(-dt * 4);
+            pointerSmooth.x += (pointerTarget.x - pointerSmooth.x) * k;
+            pointerSmooth.y += (pointerTarget.y - pointerSmooth.y) * k;
+          }
+          scrollSmooth += (scrollTargetRef.current - scrollSmooth) * (1 - Math.exp(-dt * 6));
+          setUniforms(now - start);
+          gl!.drawArrays(gl!.TRIANGLES, 0, 3);
+          raf = requestAnimationFrame(frame);
+        } catch {
+          reportFailure();
+        }
+      };
+
+      const renderStatic = () => {
+        if (disposed) return;
+        try {
+          lerpVisualConfig(live, targetRef.current, 1);
+          copyDiscrete(live, targetRef.current);
+          pointerSmooth.x = 0;
+          pointerSmooth.y = 0;
+          setUniforms(8.0);
+          gl!.drawArrays(gl!.TRIANGLES, 0, 3);
+        } catch {
+          reportFailure();
+        }
+      };
+
+      const startLoop = () => {
+        if (disposed || raf || pausedRef.current) return;
+        if (reducedRef.current) {
+          let count = 0;
+          const tick = () => {
+            renderStatic();
+            if (!disposed && ++count < 24) staticTimer = window.setTimeout(tick, 90);
+          };
+          tick();
+          return;
+        }
+        last = performance.now() / 1000;
+        raf = requestAnimationFrame(frame);
+      };
+
+      resizeObserver = new ResizeObserver(() => {
+        if (disposed) return;
+        try {
+          if (resize() && (reducedRef.current || pausedRef.current)) renderStatic();
+        } catch {
+          reportFailure();
+        }
+      });
+      resizeObserver.observe(canvas);
+
+      control = { startLoop, stop, clearStatic };
+      loopRef.current = control;
+      startLoop();
+    } catch {
+      reportFailure();
+    }
+
+    return dispose;
   }, [quality.tier, quality.dpr]);
 
   // Start/stop without rebuilding GL when paused or reduced-motion toggles.

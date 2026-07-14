@@ -44,16 +44,23 @@ function provider(overrides: Partial<WeatherProvider> = {}): WeatherProvider {
     id: "open-meteo",
     name: "Open-Meteo",
     getProviderStatus: async () => status(),
-    getCurrentWeather: async () => current,
-    getHourlyForecast: async () => hourly,
-    getDailyForecast: async () => daily,
+    readForecast: async () => ({ current, hourly, daily }),
     ...overrides,
   };
 }
 
 test("readProviderSnapshot returns a complete normalized snapshot from a live provider", async () => {
-  const result = await readProviderSnapshot(provider());
+  let forecastReads = 0;
+  const result = await readProviderSnapshot(
+    provider({
+      readForecast: async () => {
+        forecastReads += 1;
+        return { current, hourly, daily };
+      },
+    }),
+  );
 
+  assert.equal(forecastReads, 1);
   assert.deepEqual(result, { id: "open-meteo", status: status(), current, hourly, daily });
 });
 
@@ -62,9 +69,9 @@ test("readProviderSnapshot exposes unavailable status with empty data and does n
   const result = await readProviderSnapshot(
     provider({
       getProviderStatus: async () => status("needs-config"),
-      getCurrentWeather: async () => {
+      readForecast: async () => {
         readViews = true;
-        return current;
+        return { current, hourly, daily };
       },
     }),
   );
@@ -76,7 +83,7 @@ test("readProviderSnapshot exposes unavailable status with empty data and does n
 test("readAvailableProviderDaily drops unavailable and failing providers without throwing", async () => {
   assert.equal(await readAvailableProviderDaily(provider({ getProviderStatus: async () => status("error") })), null);
   assert.equal(
-    await readAvailableProviderDaily(provider({ getDailyForecast: async () => Promise.reject(new Error("upstream")) })),
+    await readAvailableProviderDaily(provider({ readForecast: async () => Promise.reject(new Error("upstream")) })),
     null,
   );
 });

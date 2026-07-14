@@ -46,6 +46,10 @@ test("extractWarnings: pulls hazard+level tokens from messy bulletin text", () =
   assert.equal(w.length, 1);
   assert.equal(w[0].type, "호우");
   assert.equal(w[0].level, "주의보");
+  assert.equal(
+    w[0].id,
+    '["kma","서울","호우","주의보","2026-07-01T09:00:00+09:00"]',
+  );
   assert.equal(w[0].headline, "서울 호우주의보");
   assert.equal(w[0].source, "kma");
   assert.equal(w[0].issuedAt, "2026-07-01T09:00:00+09:00");
@@ -58,6 +62,16 @@ test("extractWarnings: multiple distinct hazards, deduped", () => {
   });
   const tags = w.map((x) => `${x.type}${x.level}`).sort();
   assert.deepEqual(tags, ["강풍주의보", "호우경보"]);
+});
+
+test("extractWarnings: severity is part of normalized warning identity", () => {
+  const w = extractWarnings("호우주의보 발효, 호우경보 발효", {
+    issuedAt: "2026-07-01T09:00:00+09:00",
+    area: "서울",
+  });
+
+  assert.equal(w.length, 2);
+  assert.notEqual(w[0].id, w[1].id);
 });
 
 test("extractWarnings: a lift (해제) is NOT reported as an active warning", () => {

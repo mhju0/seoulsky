@@ -4,7 +4,8 @@ import { useInView } from "framer-motion";
 import { useId, useRef, useState, type ReactNode } from "react";
 import { useDeferredJson } from "@/hooks/useDeferredJson";
 import { formatClock, formatHeaderDate, timeAgoKo } from "@/lib/format";
-import type { ProviderAvailability, SkyRadar, WeatherIntelligence } from "@/lib/types";
+import { radarApproachSummary } from "@/lib/radar/presentation";
+import type { ProviderAvailability, WeatherIntelligence } from "@/lib/types";
 import ConfidencePanel from "@/components/ConfidencePanel";
 import ProviderComparison from "@/components/ProviderComparison";
 import GlassPanel from "../glass/GlassPanel";
@@ -43,14 +44,6 @@ const CONFIDENCE_LABELS: Record<WeatherIntelligence["confidence"]["level"], stri
   low: "소스 차이 큼",
   "single-source": "비교 제한",
 };
-
-/** Honest one-line radar approach summary — never invents a direction. */
-function radarSummary(radar: SkyRadar | null | undefined): string {
-  if (!radar) return "레이더 관측 없음";
-  if (radar.approaching && radar.fromDirection) return `${radar.fromDirection}쪽에서 비구름 접근 중`;
-  if (radar.precipNearby) return "서울 부근에 강수 관측";
-  return "접근하는 비구름 없음";
-}
 
 function comparedProviderNames(data: WeatherIntelligence): string {
   const compared = data.comparison?.providersCompared ?? [];
@@ -206,7 +199,7 @@ export default function GroundStationSection() {
                 <div className="mt-3 flex flex-col gap-2">
                   {data.warnings.map((warning) => (
                     <p
-                      key={`${warning.type}-${warning.area}-${warning.issuedAt ?? ""}`}
+                      key={warning.id}
                       className="text-sm leading-relaxed text-amber-100/90"
                     >
                       {warning.headline}
@@ -312,7 +305,7 @@ export default function GroundStationSection() {
                     <div className="flex flex-col gap-2">
                       <MetricLabel tone="bright">레이더 접근 관측</MetricLabel>
                       <p className="font-sans text-lg font-light tracking-wide text-white">
-                        {radarSummary(snapshot?.radar)}
+                        {radarApproachSummary(snapshot?.radar)}
                       </p>
                       <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white">
                         © RainViewer

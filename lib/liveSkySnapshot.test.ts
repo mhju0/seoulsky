@@ -90,3 +90,25 @@ test("readLiveSkySnapshot keeps the multi-source and debug flag paths", async ()
   assert.deepEqual(snapshot.precipWeighting?.sources, ["open-meteo", "kma"]);
   assert.equal(snapshot.precipWeighting?.multiSource, true);
 });
+
+test("the emergency multi-source opt-out bypasses remote reliability reads", async () => {
+  let weightReads = 0;
+  let forecastSourceReads = 0;
+  await readLiveSkySnapshot(
+    {
+      ...dependencies,
+      async getWeightsState() {
+        weightReads += 1;
+        return null;
+      },
+      async getForecastSources() {
+        forecastSourceReads += 1;
+        return [];
+      },
+    },
+    { now: () => new Date("2026-07-14T00:15:00.000Z"), multiSourcePrecip: false, reliabilityDebug: false },
+  );
+
+  assert.equal(weightReads, 0);
+  assert.equal(forecastSourceReads, 0);
+});

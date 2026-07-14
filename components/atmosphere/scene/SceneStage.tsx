@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { Component, memo, useMemo, type ReactNode } from "react";
 import type { QualitySettings } from "@/components/three/quality";
+import { selectAtmosphericFieldAdapter } from "@/lib/atmosphere/webglFallback";
 import AtmosphericFieldFallback from "../AtmosphericFieldFallback";
 import { useWeatherField } from "../WeatherFieldContext";
 import FXOverlay, { type FxState } from "./FXOverlay";
@@ -89,7 +90,10 @@ function SceneStage({
     [target, readout.condition],
   );
 
-  const useFallback = !webgl || canvasFailed;
+  const fieldAdapter = selectAtmosphericFieldAdapter({
+    webglSupported: webgl,
+    webglFailed: canvasFailed,
+  });
   // The field idles whenever a still plate covers it (or the tab is hidden).
   const fieldPaused = hidden || plateSrc != null;
 
@@ -97,7 +101,7 @@ function SceneStage({
     <div className="sky-fixed-viewport z-0 bg-[#04060d]">
       {/* 1 — procedural field: the never-blank base + tail of the fallback chain. */}
       <div className="absolute inset-0">
-        {useFallback ? (
+        {fieldAdapter === "css" ? (
           <AtmosphericFieldFallback config={target} reducedMotion={reducedMotion} />
         ) : (
           <FieldBoundary onError={onCanvasError}>
@@ -107,6 +111,7 @@ function SceneStage({
               reducedMotion={reducedMotion}
               paused={fieldPaused}
               pointerEnabled={pointerEnabled}
+              onFailure={onCanvasError}
             />
           </FieldBoundary>
         )}

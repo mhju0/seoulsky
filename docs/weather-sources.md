@@ -26,7 +26,7 @@ The application is usable without keys: Open-Meteo supplies weather and air qual
 - Air quality uses AirKorea, then Open-Meteo, then `null`.
 - Warnings come only from KMA. Forecast probability never creates a warning.
 - Displayed radar imagery comes from KMA API Hub. RainViewer remains a separate approach signal and never supplies the displayed map.
-- With `MULTI_SOURCE_PRECIP=1`, daily precipitation fields may use the gated multi-provider consensus documented in `lib/reliability/README.md`. The default is off.
+- Daily precipitation fields use the gated learned multi-provider consensus documented in `lib/reliability/README.md` by default. Set `MULTI_SOURCE_PRECIP=0` only as an emergency opt-out to the single Open-Meteo baseline.
 - `/api/weather` compares every configured provider that returns a valid current snapshot. Missing measurements are excluded, never treated as zero.
 
 ## Attribution
@@ -37,8 +37,9 @@ The UI must retain the applicable credits: Open-Meteo; MET Norway; 기상청 (KM
 
 - Provider contract and registry: `lib/providers/base.ts`, `lib/providers/registry.ts`
 - Provider implementations: `lib/providers/*`
-- Fusion: `lib/skyFusion.ts`, `app/api/sky/route.ts`
-- Comparison: `lib/compare.ts`, `app/api/weather/route.ts`
+- Fusion: `lib/skyFusion.ts`, `lib/liveSkySnapshot.ts`, `lib/liveSkySnapshot.production.ts`
+- Comparison: `lib/compare.ts`, `lib/weatherIntelligence.ts`, `lib/weatherIntelligence.production.ts`
+- HTTP adapters: `app/api/sky/route.ts`, `app/api/weather/route.ts`
 - Radar rendering: `lib/radar/*`, `app/api/radar/*`
 - Shared cache: `lib/cache.ts`
 

@@ -1,20 +1,82 @@
 import { cachedFetch } from "../cache.ts";
 import { CACHE_TTL_MS } from "../seoul.ts";
-import { readWeights } from "./persistence.ts";
 import type { WeightsState } from "./types.ts";
+import { parseWeightsState } from "./weightsState.ts";
+
+export const DEFAULT_RELIABILITY_WEIGHTS_URL =
+  "https://raw.githubusercontent.com/mhju0/seoulsky/reliability-state/data/reliability/source-weights.json";
+
+const DEFAULT_TIMEOUT_MS = 4_000;
+
+/** Narrow durable-storage seam consumed by the production snapshot pipeline. */
+export interface WeightsStateReader {
+  read(): Promise<WeightsState | null>;
+}
+
+export interface HttpWeightsStateReaderOptions {
+  url: string;
+  fetcher?: typeof fetch;
+  timeoutMs?: number;
+}
 
 /**
- * Server-side, memoized read of the learned precip weights for the fusion layer.
- *
- * - Runs at the fusion layer only (never in a React component, never per
- *   render/frame). Memoized via the shared TTL cache, so the file is read at most
- *   once per CACHE_TTL_MS — weights change at most once/day.
- * - NEVER throws into the render path: readWeights() returns null on a missing or
- *   unparseable file, and cachedFetch wraps a never-throwing fetcher.
- *
- * A null result drives the gate to equal-fallback (byte-for-byte pre-Phase-3).
+ * Read the state branch (or another durable JSON endpoint) without importing
+ * Node filesystem modules into a Next request bundle. All remote bytes are
+ * schema-validated before they can reach the weighting gate.
  */
-export async function loadWeightsStateCached(): Promise<WeightsState | null> {
-  const result = await cachedFetch("reliability-source-weights", CACHE_TTL_MS, readWeights);
-  return result.value;
+export function createHttpWeightsStateReader({
+  url,
+  fetcher = fetch,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+}: HttpWeightsStateReaderOptions): WeightsStateReader {
+  return {
+    async read() {
+      try {
+        const response = await fetcher(url, {
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+        if (!response.ok) return null;
+        return parseWeightsState(await response.json());
+      } catch {
+        return null;
+      }
+    },
+  };
 }
+
+/**
+ * Memoize a durable reader behind the app's shared TTL cache. A failed or
+ * invalid refresh is treated as an upstream failure, which preserves an
+ * expired last-good cache entry; without one, callers receive null and the
+ * pure runtime gate chooses equal weights.
+ */
+export function createRuntimeWeightsLoader(
+  reader: WeightsStateReader,
+  options: { cacheKey?: string; ttlMs?: number } = {},
+): () => Promise<WeightsState | null> {
+  const cacheKey = options.cacheKey ?? "reliability-source-weights";
+  const ttlMs = options.ttlMs ?? CACHE_TTL_MS;
+
+  return async () => {
+    try {
+      const result = await cachedFetch(cacheKey, ttlMs, async () => {
+        const state = await reader.read();
+        if (!state) throw new Error("reliability weights unavailable or invalid");
+        return state;
+      });
+      return result.value;
+    } catch {
+      return null;
+    }
+  };
+}
+
+const configuredUrl = process.env.RELIABILITY_WEIGHTS_URL?.trim();
+const productionReader = createHttpWeightsStateReader({
+  url: configuredUrl || DEFAULT_RELIABILITY_WEIGHTS_URL,
+});
+
+/** Production Vercel adapter; never throws into the public snapshot route. */
+export const loadWeightsStateCached = createRuntimeWeightsLoader(productionReader);

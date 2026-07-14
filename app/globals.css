@@ -44,23 +44,43 @@ html {
   text-shadow: 0 1px 18px color-mix(in srgb, var(--sky-bg-base, #0c1226) 82%, transparent);
 }
 
-/* Primary data-stage material: a cinematic exposure plane, not another card.
-   It carries one controlled glass wash and square film-frame corners so the
-   large editorial compositions contrast with the small diagnostic panels. */
+/* One adaptive liquid-glass material for every data surface. Shape and sheen
+   vary by surface role below; tint, ink, rim, blur and depth stay identical so
+   radar/confidence never become opaque slabs in bright or wintry palettes. */
+.sky-panel,
 .sky-film-surface {
   position: relative;
-  overflow: hidden;
   --color-white: var(--sky-panel-ink, rgb(248, 250, 255));
+  --sky-panel-ink-secondary: color-mix(
+    in srgb,
+    var(--sky-panel-ink, rgb(248, 250, 255)) 75%,
+    transparent
+  );
+  background-color: var(--sky-panel-bg, rgba(12, 16, 30, 0.26));
+  background-image: var(--sky-surface-sheen);
   color: var(--color-white);
-  background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.08), transparent 42%),
-    var(--sky-data-surface-bg, rgba(12, 16, 30, 0.72));
-  border: 1px solid var(--sky-data-surface-border, rgba(255, 255, 255, 0.28));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 32px 80px -56px rgba(3, 6, 16, 0.9);
-  backdrop-filter: blur(26px) saturate(120%);
-  -webkit-backdrop-filter: blur(26px) saturate(120%);
+  border: 1px solid var(--sky-panel-border, rgba(255, 255, 255, 0.22));
+  box-shadow: var(
+    --sky-panel-shadow,
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 22px 52px -24px rgba(0, 0, 0, 0.62)
+  );
+  backdrop-filter: blur(22px) saturate(175%) brightness(1.05);
+  -webkit-backdrop-filter: blur(22px) saturate(175%) brightness(1.05);
+}
+
+.sky-panel {
+  --sky-surface-sheen: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.10) 0%,
+    transparent 40%
+  );
+}
+
+.sky-film-surface {
+  --sky-surface-sheen: linear-gradient(115deg, rgba(255, 255, 255, 0.08), transparent 42%);
+  overflow: hidden;
 }
 
 .sky-film-surface::after {
@@ -103,9 +123,9 @@ html {
   }
 }
 
-/* ---------- readable panel (frosted glass, day/night-aware) ----------
+/* ---------- readable glass surfaces (day/night-aware) ----------
 
-   The one surface behind every HUD reading — an iOS-26 "Liquid Glass" panel. It
+   The surface behind every HUD reading — an iOS-26 "Liquid Glass" material. It
    is barely tinted so the cinematic Han River shows clearly through; legibility
    comes from a luminous specular EDGE (a bright rim + a crisp top inner highlight
    + a faint bottom inner light + a soft drop shadow) and an INK that FLIPS with
@@ -122,36 +142,6 @@ html {
 
    The capsule radius is the `--sky-panel-radius` token, set in @layer components
    below so a per-card `rounded-[…]` utility (GlassPanel's `radius` prop) wins. */
-
-.sky-panel {
-  position: relative;
-  /* Re-scope the in-panel ink (see above). */
-  --color-white: var(--sky-panel-ink, rgb(248, 250, 255));
-  /* Secondary ink: 75% of panel ink — for active supporting labels (section
-     captions, metric labels, data timestamps). Stays adaptive with backdrop
-     brightness. Role-(b) inactive/placeholder text uses lower-opacity
-     text-white/NN classes directly and is NOT routed through this var. */
-  --sky-panel-ink-secondary: color-mix(in srgb, var(--sky-panel-ink, rgb(248, 250, 255)) 75%, transparent);
-  background-color: var(--sky-panel-bg, rgba(12, 16, 30, 0.26));
-  /* Soft top sheen — complements the crisp 1px inner highlight in the shadow. */
-  background-image: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.10) 0%,
-    transparent 40%
-  );
-  color: var(--color-white);
-  border: 1px solid var(--sky-panel-border, rgba(255, 255, 255, 0.22));
-  box-shadow: var(
-    --sky-panel-shadow,
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
-    0 22px 52px -24px rgba(0, 0, 0, 0.62)
-  );
-  /* More see-through than frosted: a moderate blur with a saturation + brightness
-     lift so the glass reads as luminous and liquid, not a flat pane of frost. */
-  backdrop-filter: blur(22px) saturate(175%) brightness(1.05);
-  -webkit-backdrop-filter: blur(22px) saturate(175%) brightness(1.05);
-}
 
 @layer components {
   /* Default capsule rounding. In @layer components so GlassPanel's `radius`

@@ -1,6 +1,12 @@
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { ReliabilityCycleStore } from "./cycle.ts";
+import {
+  weightsStateRegressions,
+  type ReliabilitySnapshot,
+} from "./stateSnapshot.ts";
 import type { DailySkillRecord, ForecastRecord, WeightsState } from "./types.ts";
+import { parseWeightsState } from "./weightsState.ts";
 
 const FORECAST_LOG = "forecast-log.jsonl";
 const DAILY_SKILL = "daily-skill.jsonl";
@@ -8,25 +14,26 @@ const WEIGHTS_FILE = "source-weights.json";
 
 type DatedSourceRecord = { date: string; source: string };
 
-/** Output directory — overridable so cron/CI can point at durable storage. */
+/** Output directory for the batch/local filesystem adapter. */
 export function reliabilityDataDir(): string {
-  return (
-    process.env.RELIABILITY_DATA_DIR?.trim() ||
-    path.join(/* turbopackIgnore: true */ process.cwd(), "data", "reliability")
-  );
+  return process.env.RELIABILITY_DATA_DIR?.trim() || path.join(process.cwd(), "data", "reliability");
 }
 
-function filePath(file: string): string {
-  // Runtime data can point outside the deploy bundle; it is never an importable asset.
-  return path.join(/* turbopackIgnore: true */ reliabilityDataDir(), file);
+function filePath(dataDir: string, file: string): string {
+  return path.join(dataDir, file);
 }
 
-async function readJsonl<T>(file: string): Promise<T[]> {
+function isMissingFile(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+async function readJsonl<T>(dataDir: string, file: string): Promise<T[]> {
   let text: string;
   try {
-    text = await readFile(filePath(file), "utf8");
-  } catch {
-    return [];
+    text = await readFile(filePath(dataDir, file), "utf8");
+  } catch (error) {
+    if (isMissingFile(error)) return [];
+    throw error;
   }
   return text
     .split("\n")
@@ -34,48 +41,144 @@ async function readJsonl<T>(file: string): Promise<T[]> {
     .map((line) => JSON.parse(line) as T);
 }
 
-async function appendJsonl(file: string, rows: readonly object[]): Promise<void> {
+async function appendJsonl(dataDir: string, file: string, rows: readonly object[]): Promise<void> {
   if (rows.length === 0) return;
-  await mkdir(reliabilityDataDir(), { recursive: true });
-  await appendFile(filePath(file), rows.map((row) => JSON.stringify(row)).join("\n") + "\n", "utf8");
+  await mkdir(dataDir, { recursive: true });
+  await appendFile(filePath(dataDir, file), rows.map((row) => JSON.stringify(row)).join("\n") + "\n", "utf8");
 }
 
-async function appendUniqueJsonl<T extends DatedSourceRecord>(file: string, records: readonly T[]): Promise<number> {
-  const existing = await readJsonl<T>(file);
+async function appendUniqueJsonl<T extends DatedSourceRecord>(
+  dataDir: string,
+  file: string,
+  records: readonly T[],
+): Promise<number> {
+  const existing = await readJsonl<T>(dataDir, file);
   const seen = new Set(existing.map((record) => `${record.date}|${record.source}`));
-  const fresh = records.filter((record) => !seen.has(`${record.date}|${record.source}`));
-  await appendJsonl(file, fresh);
+  const fresh: T[] = [];
+  for (const record of records) {
+    const key = `${record.date}|${record.source}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    fresh.push(record);
+  }
+  await appendJsonl(dataDir, file, fresh);
   return fresh.length;
 }
 
-/** Missing and corrupt weight data deliberately degrade to the equal-weight fallback. */
-export async function readWeights(): Promise<WeightsState | null> {
+async function readWeightsAt(dataDir: string, rejectInvalid = false): Promise<WeightsState | null> {
+  let text: string;
   try {
-    return JSON.parse(await readFile(filePath(WEIGHTS_FILE), "utf8")) as WeightsState;
+    text = await readFile(filePath(dataDir, WEIGHTS_FILE), "utf8");
+  } catch (error) {
+    if (isMissingFile(error)) return null;
+    throw error;
+  }
+
+  try {
+    const state = parseWeightsState(JSON.parse(text));
+    if (state) return state;
   } catch {
-    return null;
+    // Rejected below for batch/recovery callers; lenient readers return null.
+  }
+  if (rejectInvalid) throw new Error("Existing invalid reliability weight state; refusing a cold restart");
+  return null;
+}
+
+async function writeWeightsAt(dataDir: string, state: WeightsState): Promise<void> {
+  const parsed = parseWeightsState(state);
+  if (!parsed) throw new Error("Refusing to persist invalid reliability weight state");
+
+  const prior = await readWeightsAt(dataDir, true);
+  const regressions = weightsStateRegressions(prior, parsed);
+  if (regressions.length > 0) {
+    throw new Error(`Refusing to regress reliability weight state: ${regressions.join("; ")}`);
+  }
+
+  await mkdir(dataDir, { recursive: true });
+  const target = filePath(dataDir, WEIGHTS_FILE);
+  const temporary = `${target}.tmp-${process.pid}-${Date.now()}`;
+  await writeFile(temporary, JSON.stringify(parsed, null, 2) + "\n", "utf8");
+  await rename(temporary, target);
+}
+
+/** Node filesystem adapter used only by the batch, recovery tooling, and tests. */
+export function createFileReliabilityStore(dataDir: string): ReliabilityCycleStore {
+  return {
+    appendForecasts(records) {
+      return appendUniqueJsonl(dataDir, FORECAST_LOG, records);
+    },
+    async readForecasts(date) {
+      return (await readJsonl<ForecastRecord>(dataDir, FORECAST_LOG)).filter((record) => record.date === date);
+    },
+    appendDailySkill(records) {
+      return appendUniqueJsonl(dataDir, DAILY_SKILL, records);
+    },
+    readDailySkill() {
+      return readJsonl<DailySkillRecord>(dataDir, DAILY_SKILL);
+    },
+    readWeights() {
+      return readWeightsAt(dataDir, true);
+    },
+    writeWeights(state) {
+      return writeWeightsAt(dataDir, state);
+    },
+  };
+}
+
+/** Read all three durable files for recovery and pre-push monotonic checks. */
+export async function readReliabilitySnapshot(dataDir: string): Promise<ReliabilitySnapshot> {
+  return {
+    forecasts: await readJsonl<ForecastRecord>(dataDir, FORECAST_LOG),
+    dailySkill: await readJsonl<DailySkillRecord>(dataDir, DAILY_SKILL),
+    weights: await readWeightsAt(dataDir, true),
+  };
+}
+
+/** Replace a recovery workspace with an already-validated/merged snapshot. */
+export async function writeReliabilitySnapshot(
+  dataDir: string,
+  snapshot: ReliabilitySnapshot,
+): Promise<void> {
+  await mkdir(dataDir, { recursive: true });
+  const jsonl = (records: readonly object[]) =>
+    records.length === 0 ? "" : records.map((record) => JSON.stringify(record)).join("\n") + "\n";
+  await writeFile(filePath(dataDir, FORECAST_LOG), jsonl(snapshot.forecasts), "utf8");
+  await writeFile(filePath(dataDir, DAILY_SKILL), jsonl(snapshot.dailySkill), "utf8");
+  if (snapshot.weights) {
+    const parsed = parseWeightsState(snapshot.weights);
+    if (!parsed) throw new Error("Refusing to write invalid reliability weight state");
+    await writeFile(filePath(dataDir, WEIGHTS_FILE), JSON.stringify(parsed, null, 2) + "\n", "utf8");
+  } else {
+    await unlink(filePath(dataDir, WEIGHTS_FILE)).catch(() => undefined);
   }
 }
 
-export async function writeWeights(state: WeightsState): Promise<void> {
-  await mkdir(reliabilityDataDir(), { recursive: true });
-  await writeFile(filePath(WEIGHTS_FILE), JSON.stringify(state, null, 2) + "\n", "utf8");
+function defaultStore(): ReliabilityCycleStore {
+  return createFileReliabilityStore(reliabilityDataDir());
 }
 
-/** Append forecasts once per (target date, source), so a re-run stays idempotent. */
+// Backwards-compatible batch/local convenience functions. The web runtime does
+// not import this module; runtimeWeightsSource uses the durable HTTP seam.
 export function appendForecasts(records: readonly ForecastRecord[]): Promise<number> {
-  return appendUniqueJsonl(FORECAST_LOG, records);
+  return defaultStore().appendForecasts(records);
 }
 
-export async function readForecasts(date: string): Promise<ForecastRecord[]> {
-  return (await readJsonl<ForecastRecord>(FORECAST_LOG)).filter((record) => record.date === date);
+export function readForecasts(date: string): Promise<ForecastRecord[]> {
+  return defaultStore().readForecasts(date);
 }
 
 export function readDailySkill(): Promise<DailySkillRecord[]> {
-  return readJsonl<DailySkillRecord>(DAILY_SKILL);
+  return defaultStore().readDailySkill();
 }
 
-/** Append scored rows once per (date, source), so batch reruns remain idempotent. */
 export function appendDailySkill(records: readonly DailySkillRecord[]): Promise<number> {
-  return appendUniqueJsonl(DAILY_SKILL, records);
+  return defaultStore().appendDailySkill(records);
+}
+
+export function readWeights(): Promise<WeightsState | null> {
+  return defaultStore().readWeights();
+}
+
+export function writeWeights(state: WeightsState): Promise<void> {
+  return defaultStore().writeWeights(state);
 }

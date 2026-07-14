@@ -120,6 +120,8 @@ export interface ProviderSnapshot {
  * probabilities. Missing/failed warning fetches degrade silently to [].
  */
 export interface NormalizedWarning {
+  /** Stable identity assigned at normalization; includes severity to keep sibling levels distinct. */
+  id: string;
   /** Hazard type, e.g. "호우" "강풍" "대설" "폭염" "한파" "황사" "건조" "태풍" "기타". */
   type: string;
   /** Severity. 예비특보 = preliminary watch issued ahead of a formal 특보. */

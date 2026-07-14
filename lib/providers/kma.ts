@@ -387,9 +387,8 @@ async function fetchWarnings(): Promise<NormalizedWarning[]> {
       issuedAt: tmFcToIso(latestTm || null),
       area: SEOUL.nameKo,
     })) {
-      const k = `${w.type}|${w.level}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
+      if (seen.has(w.id)) continue;
+      seen.add(w.id);
       out.push(w);
     }
   }
@@ -452,6 +451,16 @@ export async function getKmaWarningStatus(): Promise<WeatherProviderStatus> {
   }
 }
 
+/** Independent fail-safe read for the authoritative warning feed. */
+export async function getKmaWarnings(): Promise<NormalizedWarning[]> {
+  if (!warningServiceKey()) return [];
+  try {
+    return (await getWarningsCached()).value;
+  } catch {
+    return []; // a warning fetch error must never disable forecast data
+  }
+}
+
 export const kmaProvider: WeatherProvider = {
   id: "kma",
   name: "기상청 (KMA)",
@@ -500,22 +509,7 @@ export const kmaProvider: WeatherProvider = {
     }
   },
 
-  async getCurrentWeather() {
-    return (await getSnapshot()).value.current;
-  },
-  async getHourlyForecast() {
-    return (await getSnapshot()).value.hourly;
-  },
-  async getDailyForecast() {
-    return (await getSnapshot()).value.daily;
-  },
-
-  async getWarnings(): Promise<NormalizedWarning[]> {
-    if (!warningServiceKey()) return [];
-    try {
-      return (await getWarningsCached()).value;
-    } catch {
-      return []; // fail safe — a warning fetch error must never reach the public scene
-    }
+  async readForecast() {
+    return (await getSnapshot()).value;
   },
 };

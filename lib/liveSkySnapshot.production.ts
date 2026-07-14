@@ -1,9 +1,11 @@
 import "server-only";
 
 import { getFusedAirQuality } from "./providers/air-quality";
-import { kmaProvider } from "./providers/kma";
+import { getKmaWarnings, kmaProvider } from "./providers/kma";
 import { openMeteoProvider } from "./providers/open-meteo";
 import { getSkyRadar } from "./providers/radar";
+import { readProviderSnapshot } from "./providers/read";
+import { multiSourcePrecipEnabled } from "./reliability/config";
 import { collectForecastSources } from "./reliability/forecastSources";
 import { loadWeightsStateCached } from "./reliability/runtimeWeightsSource";
 import {
@@ -11,46 +13,37 @@ import {
   type LiveSkyDependencies,
   type LiveSkySnapshotOptions,
 } from "./liveSkySnapshot";
-import type { CurrentWeather, NormalizedWarning, SkySnapshot } from "./types";
+import type { CurrentWeather, SkySnapshot } from "./types";
 
 async function getKmaCurrent(): Promise<CurrentWeather | null> {
-  try {
-    const status = await kmaProvider.getProviderStatus();
-    return status.availability === "ok" ? await kmaProvider.getCurrentWeather() : null;
-  } catch {
-    return null;
-  }
-}
-
-async function getWarnings(): Promise<NormalizedWarning[]> {
-  try {
-    return (await kmaProvider.getWarnings?.()) ?? [];
-  } catch {
-    return [];
-  }
+  const snapshot = await readProviderSnapshot(kmaProvider);
+  return snapshot.status.availability === "ok" ? snapshot.current : null;
 }
 
 const dependencies: LiveSkyDependencies = {
   async getOpenMeteo() {
-    const [current, hourly, daily, status] = await Promise.all([
-      openMeteoProvider.getCurrentWeather(),
-      openMeteoProvider.getHourlyForecast?.() ?? Promise.resolve([]),
-      openMeteoProvider.getDailyForecast(),
-      openMeteoProvider.getProviderStatus(),
-    ]);
-    return { current, hourly, daily, status };
+    const snapshot = await readProviderSnapshot(openMeteoProvider);
+    if (snapshot.status.availability !== "ok" || snapshot.current === null) {
+      throw new Error("Open-Meteo forecast unavailable");
+    }
+    return {
+      current: snapshot.current,
+      hourly: snapshot.hourly,
+      daily: snapshot.daily,
+      status: snapshot.status,
+    };
   },
   getAir: getFusedAirQuality,
   getRadar: getSkyRadar,
   getKmaCurrent,
-  getWarnings,
+  getWarnings: getKmaWarnings,
   getWeightsState: loadWeightsStateCached,
   getForecastSources: collectForecastSources,
 };
 
 const options: LiveSkySnapshotOptions = {
   now: () => new Date(),
-  multiSourcePrecip: process.env.MULTI_SOURCE_PRECIP === "1",
+  multiSourcePrecip: multiSourcePrecipEnabled(process.env.MULTI_SOURCE_PRECIP),
   reliabilityDebug: process.env.RELIABILITY_DEBUG === "1",
 };
 

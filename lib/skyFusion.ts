@@ -154,10 +154,10 @@ export function reweightForecastPrecip(
 
 // ── Phase 4: multi-source weighted daily precip consensus ────────────────────
 // Phase 3 carried a single forecast source, so the weighted consensus was the
-// identity. Phase 4 (behind the MULTI_SOURCE_PRECIP flag) feeds MULTIPLE forecast
-// sources here so the learned weights have something to actually blend. Still
-// PRECIP-ONLY and still bounded to FORECAST sources — chooseCurrent (the KMA
-// observation) is never part of this consensus.
+// identity. Phase 4 feeds MULTIPLE forecast sources here by default so the
+// learned weights have something to actually blend (MULTI_SOURCE_PRECIP=0 is the
+// emergency opt-out). Still PRECIP-ONLY and still bounded to FORECAST sources —
+// chooseCurrent (the KMA observation) is never part of this consensus.
 
 /** One forecast source's daily array, as returned this cycle (returned-only). */
 export interface SourceDailyForecast {

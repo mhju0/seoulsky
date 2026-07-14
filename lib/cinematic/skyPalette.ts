@@ -197,13 +197,6 @@ export function buildSkyPalette(
   const panelShadow = backdropIsLight
     ? "inset 0 1px 0 rgba(255,255,255,0.70), inset 0 -1px 0 rgba(255,255,255,0.12), 0 22px 50px -26px rgba(24,35,80,0.30)"
     : "inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(255,255,255,0.06), 0 22px 52px -24px rgba(0,0,0,0.62)";
-  const dataSurfaceBg = backdropIsLight
-    ? "rgba(246, 248, 250, 0.76)"
-    : "rgba(10, 14, 27, 0.76)";
-  const dataSurfaceBorder = backdropIsLight
-    ? "rgba(255, 255, 255, 0.82)"
-    : "rgba(255, 255, 255, 0.28)";
-
   // --- Ambient living-sky bloom colors (per-condition + day/night) ---------
   const tint = COND_TINTS[condition];
   const fogDamp = condition === "fog" ? 0.65 : 1;
@@ -261,8 +254,6 @@ export function buildSkyPalette(
     ["--sky-panel-bg" as string]: panelBg,
     ["--sky-panel-border" as string]: panelBorder,
     ["--sky-panel-shadow" as string]: panelShadow,
-    ["--sky-data-surface-bg" as string]: dataSurfaceBg,
-    ["--sky-data-surface-border" as string]: dataSurfaceBorder,
     // Capsule rounding for every .sky-panel (overridable per-card via the
     // GlassPanel `radius` prop, which emits a Tailwind utility that wins).
     ["--sky-panel-radius" as string]: "28px",

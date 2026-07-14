@@ -6,12 +6,13 @@ import type { SourceDailyForecast } from "../skyFusion";
 
 /**
  * Phase 4 — shared, TTL-cached multi-source forecast fetch for the runtime precip
- * consensus (behind the MULTI_SOURCE_PRECIP flag in app/api/sky/route.ts).
+ * consensus. This path is production-default; MULTI_SOURCE_PRECIP=0 is the
+ * emergency opt-out in lib/liveSkySnapshot.production.ts.
  *
  * REUSE, don't duplicate: the daily forecasts come straight from the existing
- * provider registry (the same getDailyForecast each provider already exposes and
- * the offline pipeline logs) — no parallel fetch logic, no new providers, all keys
- * stay server-side.
+ * provider registry (through the shared normalized provider-read seam that the
+ * offline pipeline also uses) — no parallel fetch logic, no new providers, all
+ * keys stay server-side.
  *
  * Three properties make this safe to put on the live /sky path:
  *  - **Shared TTL cache** (FORECAST_CACHE_TTL_MS): the whole collection is fetched
@@ -25,7 +26,7 @@ import type { SourceDailyForecast } from "../skyFusion";
  *    never imputed (the fusion renormalizes over whoever actually returned).
  *
  * This layer never throws: every fetcher catches, so a fully-failed cycle resolves
- * to `[]` (the route then falls back to the single-source path).
+ * to `[]` (the snapshot pipeline then keeps the single-source baseline).
  */
 
 const FORECAST_SOURCES_KEY = "reliability-runtime-forecast-sources";
@@ -85,9 +86,6 @@ async function collectUncached(
   return results.filter((r): r is SourceDailyForecast => r !== null);
 }
 
-/** In-flight cycle, shared so a concurrent burst collapses to ONE upstream pass. */
-let inflight: Promise<SourceDailyForecast[]> | null = null;
-
 /**
  * The runtime multi-source forecast collection: TTL-cached + single-flight.
  * Returns only the sources that actually returned this cycle (returned-only); an
@@ -99,13 +97,8 @@ export async function collectForecastSources(
   opts: { timeoutMs?: number } = {},
 ): Promise<SourceDailyForecast[]> {
   const timeoutMs = opts.timeoutMs ?? PER_SOURCE_TIMEOUT_MS;
-  const { value } = await cachedFetch(FORECAST_SOURCES_KEY, FORECAST_CACHE_TTL_MS, () => {
-    // cachedFetch may invoke this fetcher more than once under a cold concurrent
-    // burst; the in-flight guard ensures the upstream cycle still runs only once.
-    inflight ??= collectUncached(providerList, timeoutMs).finally(() => {
-      inflight = null;
-    });
-    return inflight;
-  });
+  const { value } = await cachedFetch(FORECAST_SOURCES_KEY, FORECAST_CACHE_TTL_MS, () =>
+    collectUncached(providerList, timeoutMs),
+  );
   return value;
 }

@@ -173,13 +173,7 @@ export const openMeteoProvider: WeatherProvider = {
     }
   },
 
-  async getCurrentWeather() {
-    return (await getSnapshot()).value.current;
-  },
-  async getHourlyForecast() {
-    return (await getSnapshot()).value.hourly;
-  },
-  async getDailyForecast() {
-    return (await getSnapshot()).value.daily;
+  async readForecast() {
+    return (await getSnapshot()).value;
   },
 };

@@ -1,9 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { readWeights } from "./persistence.ts";
 import type { WeightsState } from "./types.ts";
 import {
   effectiveWeights,
@@ -44,15 +40,24 @@ test("equalWeights are uniform and sum to 1", () => {
   assert.equal(w["kma"], 0.5);
 });
 
-test("gate: missing weights file (state null) → equal-fallback", () => {
+test("gate: missing weights state → equal-fallback", () => {
   const g = gatePrecipWeighting(null, SOURCES, new Date());
   assert.equal(g.mode, "equal-fallback");
-  assert.equal(g.reason, "no-weights-file");
+  assert.equal(g.reason, "no-weights-state");
   assert.equal(g.confidence, 0);
   assert.deepEqual(g.weights, equalWeights(SOURCES));
 });
 
-test("gate: stale updatedAt → equal-fallback (cron presumed dead)", () => {
+test("gate: checkpoint beyond bounded clock skew → equal-fallback", () => {
+  const now = new Date("2026-07-14T00:00:00.000Z");
+  const future = new Date(now.getTime() + 86_400_000).toISOString();
+  const g = gatePrecipWeighting(state({ updatedAt: future, eventsScored: 50 }), SOURCES, now);
+  assert.equal(g.mode, "equal-fallback");
+  assert.equal(g.reason, "future-checkpoint");
+  assert.deepEqual(g.weights, equalWeights(SOURCES));
+});
+
+test("gate: stale observation-cycle checkpoint → equal-fallback", () => {
   const tenDaysAgo = new Date(Date.now() - 10 * 86_400_000).toISOString();
   const g = gatePrecipWeighting(state({ updatedAt: tenDaysAgo, eventsScored: 50 }), SOURCES, new Date());
   assert.equal(g.mode, "equal-fallback");
@@ -98,18 +103,4 @@ test("effectiveWeights: confidence 0 → equal, confidence 1 → learned", () =>
   assert.deepEqual(effectiveWeights(s, SOURCES, 0), equalWeights(SOURCES));
   const full = effectiveWeights(s, SOURCES, 1);
   assert.ok(Math.abs(full["open-meteo"] - 0.5 / 0.55) < 1e-12);
-});
-
-test("readWeights never throws and returns null for missing or corrupt files", async () => {
-  const prev = process.env.RELIABILITY_DATA_DIR;
-  const dir = mkdtempSync(path.join(tmpdir(), "reliability-"));
-  process.env.RELIABILITY_DATA_DIR = dir;
-  try {
-    assert.equal(await readWeights(), null, "missing file → null");
-    writeFileSync(path.join(dir, "source-weights.json"), "{ not valid json ", "utf8");
-    assert.equal(await readWeights(), null, "corrupt file → null (never throws)");
-  } finally {
-    process.env.RELIABILITY_DATA_DIR = prev;
-    rmSync(dir, { recursive: true, force: true });
-  }
 });

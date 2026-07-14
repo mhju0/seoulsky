@@ -1,12 +1,8 @@
 import type { ProviderId } from "../types.ts";
 
 /**
- * Data shapes for the precipitation source-reliability system (Phase 1).
- *
- * Phase 1 is offline only: a daily batch logs each forecast source's prediction,
- * fetches the independent KMA observation as ground truth, and writes a per-source
- * daily skill score. Nothing here is read by the runtime /sky pipeline yet — that
- * is Phase 3. See lib/reliability/README.md.
+ * Data shapes shared by the offline precipitation-learning batch and the
+ * schema-validated runtime consumer. See lib/reliability/README.md.
  */
 
 export type RainOutcome = "hit" | "miss" | "false_alarm" | "correct_dry";
@@ -80,8 +76,8 @@ export interface SourceDayScore {
 }
 
 /**
- * Per-source daily skill row written to the daily-skill store. Phase 2's EWMA
- * weight update reads exactly this. Phase 1 only writes it.
+ * Per-source daily skill row written to the daily-skill store. The Hedge weight
+ * update reads exactly this.
  */
 export interface DailySkillRecord {
   date: string;
@@ -112,6 +108,7 @@ export type WeightsMap = Record<string, number>;
  * scheduled runs (see README) — it is the algorithm's only memory.
  */
 export interface WeightsState {
+  /** Last successful independent-observation cycle; runtime freshness checkpoint. */
   updatedAt: string;
   /** Cumulative count of informative (loss-bearing) source-day events applied. */
   eventsScored: number;

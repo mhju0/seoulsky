@@ -20,7 +20,12 @@
 name: precip-reliability
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      recovery_ref:
+        description: "Optional full 40-char known-good commit SHA or remote ref to union before this run"
+        required: false
+        type: string
   schedule:
     # 21:10 UTC ≈ 06:10 KST — after yesterday's KMA ASOS daily data is published.
     - cron: "10 21 * * *"
@@ -47,10 +52,14 @@ jobs:
         # Persists a credential used later to push the state branch.
         uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
       - name: Restore prior learning state from state branch
         run: |
           mkdir -p "$RELIABILITY_DATA_DIR"
-          if git fetch --depth 1 origin "$STATE_BRANCH" 2>/dev/null; then
+          if git fetch --depth 100 origin "$STATE_BRANCH" 2>/dev/null; then
             for f in forecast-log.jsonl daily-skill.jsonl source-weights.json; do
               if git cat-file -e "FETCH_HEAD:data/reliability/$f" 2>/dev/null; then
                 # `git show` of a blob is byte-exact (trailing newline preserved),
@@ -65,9 +74,36 @@ jobs:
             echo "state branch '$STATE_BRANCH' not found — first run / cold start"
           fi
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
+      - name: Union an explicitly selected known-good recovery checkpoint
+        id: recovery
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_ref != '' }}
+        env:
+          RECOVERY_REF: ${{ inputs.recovery_ref }}
+        run: |
+          # Fetch the supplied object directly into FETCH_HEAD. This also works
+          # for a detached known-good commit that is no longer reachable from the
+          # current state-branch tip. Input is constrained to a full SHA or a
+          # syntactically valid ref before it reaches git.
+          if [[ "$RECOVERY_REF" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            FETCH_SPEC="$RECOVERY_REF"
+          elif git check-ref-format "$RECOVERY_REF" >/dev/null 2>&1; then
+            FETCH_SPEC="$RECOVERY_REF"
+          elif git check-ref-format --branch "$RECOVERY_REF" >/dev/null 2>&1; then
+            FETCH_SPEC="$RECOVERY_REF"
+          else
+            echo "invalid recovery_ref; use a full 40-character SHA or valid remote ref" >&2
+            exit 1
+          fi
+          git fetch --no-tags --depth 1 origin "$FETCH_SPEC"
+          RECOVERY_COMMIT="$(git rev-parse --verify 'FETCH_HEAD^{commit}')"
+          RECOVERY_DIR="$RUNNER_TEMP/reliability-recovery"
+          mkdir -p "$RECOVERY_DIR"
+          for f in forecast-log.jsonl daily-skill.jsonl source-weights.json; do
+            if git cat-file -e "$RECOVERY_COMMIT:data/reliability/$f" 2>/dev/null; then
+              git show "$RECOVERY_COMMIT:data/reliability/$f" > "$RECOVERY_DIR/$f"
+            fi
+          done
+          npm run reliability:state -- recover "$RECOVERY_DIR" "$RELIABILITY_DATA_DIR"
 
       - name: Run daily reliability batch
         env:
@@ -88,7 +124,9 @@ jobs:
       - name: Persist learning state back to state branch
         # Always run so the forecast log is saved even on a scoring-skip day; the
         # commit is a no-op when nothing actually changed.
-        if: ${{ always() }}
+        if: ${{ always() && steps.recovery.outcome != 'failure' }}
+        env:
+          RECOVERY_APPLIED: ${{ steps.recovery.outcome == 'success' }}
         run: |
           shopt -s nullglob
           produced=("$RELIABILITY_DATA_DIR"/*.jsonl "$RELIABILITY_DATA_DIR"/*.json)
@@ -97,13 +135,35 @@ jobs:
             exit 0
           fi
 
+          # Re-read the remote tip immediately before persistence. The tested
+          # guard refuses any candidate that loses a forecast/skill row key,
+          # moves events/processed dates backward, or carries older weights.
+          LATEST_DIR="$RUNNER_TEMP/reliability-latest"
+          mkdir -p "$LATEST_DIR"
+          LATEST_REF=""
+          if git fetch --depth 1 origin "$STATE_BRANCH" 2>/dev/null; then
+            LATEST_REF="$(git rev-parse FETCH_HEAD)"
+            for f in forecast-log.jsonl daily-skill.jsonl source-weights.json; do
+              if git cat-file -e "$LATEST_REF:data/reliability/$f" 2>/dev/null; then
+                git show "$LATEST_REF:data/reliability/$f" > "$LATEST_DIR/$f"
+              fi
+            done
+            if [ "$RECOVERY_APPLIED" = "true" ]; then
+              # Only an explicit known-good recovery may repair the content of an
+              # existing (date, source) row. Normal scheduled runs are append-only.
+              npm run reliability:state -- assert-monotonic "$LATEST_DIR" "$RELIABILITY_DATA_DIR" --allow-content-repair
+            else
+              npm run reliability:state -- assert-monotonic "$LATEST_DIR" "$RELIABILITY_DATA_DIR"
+            fi
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           STATE_WT="$(mktemp -d)/state"
-          if git fetch --depth 1 origin "$STATE_BRANCH" 2>/dev/null; then
+          if [ -n "$LATEST_REF" ]; then
             # Update the existing state branch.
-            git worktree add -B "$STATE_BRANCH" "$STATE_WT" FETCH_HEAD
+            git worktree add -B "$STATE_BRANCH" "$STATE_WT" "$LATEST_REF"
           else
             # First run: create an ORPHAN, code-free state branch (data only).
             git worktree add --detach "$STATE_WT" HEAD
