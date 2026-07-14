@@ -18,7 +18,7 @@ import { SectionHeading, SkySection } from "./SectionParts";
  * Section 5 — Ground Station. The data deck where the scroll lands: cross-provider
  * confidence, the source comparison, and the environment sources (air + radar,
  * with the required RainViewer attribution) — all
- * re-skinned into the matte reading panels, all the original data/logic preserved.
+ * re-skinned into frameless etched readouts, all the original data/logic preserved.
  *
  * PERF: the heavier /api/weather intelligence fetch is deferred until this final
  * section is approaching (useInView, ~400px early) and refreshed every 5 min; the
