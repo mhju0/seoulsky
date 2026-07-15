@@ -18,7 +18,7 @@ import { SectionHeading, SkySection } from "./SectionParts";
  * Section 5 — Ground Station. The data deck where the scroll lands: cross-provider
  * confidence, the source comparison, and the environment sources (air + radar,
  * with the required RainViewer attribution) — all
- * re-skinned into frameless etched readouts, all the original data/logic preserved.
+ * re-skinned into lightly outlined etched readouts, all the original data/logic preserved.
  *
  * PERF: the heavier /api/weather intelligence fetch is deferred until this final
  * section is approaching (useInView, ~400px early) and refreshed every 5 min; the
@@ -85,7 +85,7 @@ function DeckPanel({
 }) {
   return (
     <ScrollReveal delay={delay} amount={0.12}>
-      <GlassPanel className="px-5 py-6 sm:px-7 sm:py-7">
+      <GlassPanel className="sky-outline-surface px-5 py-6 sm:px-7 sm:py-7">
         <div className="mb-7 flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <MetricLabel tone="bright">{label}</MetricLabel>
           {sub && <span className="font-mono text-[10px] tracking-[0.2em] text-white">{sub}</span>}
@@ -135,7 +135,7 @@ export default function GroundStationSection() {
       <div ref={deckRef} className="mx-auto flex w-full max-w-[80rem] flex-col gap-4 sm:gap-5">
         {/* Confidence-first summary for normal users. */}
         <ScrollReveal amount={0.1}>
-          <div className="sky-film-surface px-5 py-7 sm:px-8 sm:py-9 lg:px-10">
+          <div className="sky-film-surface sky-outline-surface px-5 py-7 sm:px-8 sm:py-9 lg:px-10">
             <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
               <div>
                 <MetricLabel tone="bright">현재 평가</MetricLabel>
@@ -247,7 +247,7 @@ export default function GroundStationSection() {
         )}
 
         {!data && failed && (
-          <GlassPanel className="px-5 py-6 sm:px-7 sm:py-7">
+          <GlassPanel className="sky-outline-surface px-5 py-6 sm:px-7 sm:py-7">
             <p className="font-sans text-lg font-light text-white">데이터 수신 실패</p>
             <p className="mt-2 max-w-md text-sm leading-relaxed text-white">
               기상 소스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.

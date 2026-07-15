@@ -380,7 +380,7 @@ export default function RadarSection() {
 
       <div ref={sectionRef} className="flex flex-1 flex-col justify-center">
         <ScrollReveal amount={0.12}>
-          <div className="sky-film-surface mx-auto w-full max-w-[80rem] px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+          <div className="sky-film-surface sky-outline-surface mx-auto w-full max-w-[80rem] px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
             {!available || !bounds ? (
               <RadarEmpty near={near} failed={failed} loaded={summary !== null} />
             ) : (

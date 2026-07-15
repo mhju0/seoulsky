@@ -44,11 +44,10 @@ html {
   text-shadow: 0 1px 18px color-mix(in srgb, var(--sky-bg-base, #0c1226) 82%, transparent);
 }
 
-/* One frameless instrument material for every data surface. Content sits etched
-   directly over the cinematic scene — no fill, no border, no drop shadow — so
-   radar and confidence read exactly like the 현재 날씨 and 시간별·7일 sections.
-   Structure comes from internal hairline dividers and ink, keeping the scene
-   continuous through radar, confidence, comparison, error and loading states. */
+/* One transparent instrument material for every data surface. Content sits
+   etched directly over the cinematic scene with no fill or drop shadow.
+   Surfaces stay frameless by default; Radar and 예보 신뢰도 opt into the quiet
+   outline below so their denser information reads as one composed unit. */
 .sky-panel,
 .sky-film-surface {
   position: relative;
@@ -65,6 +64,18 @@ html {
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+/* Page-scale counterpart to the 고급 진단 보기 button: the same single,
+   low-contrast line, relaxed into a softer container radius. The outline uses
+   adaptive panel ink so it remains equally quiet across day and night scenes. */
+.sky-outline-surface {
+  border: 1px solid color-mix(
+    in srgb,
+    var(--sky-panel-ink, rgb(248, 250, 255)) 15%,
+    transparent
+  );
+  border-radius: clamp(1.25rem, 2.2vw, 2rem);
 }
 
 .sky-film-surface {
