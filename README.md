@@ -4,6 +4,10 @@
 [![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
+<p align="center">
+  <img src="public/screenshots/hero.webp" alt="SeoulSky live scene — the Han River and Seoul skyline at night with the current temperature" width="100%">
+</p>
+
 SeoulSky is a Seoul-only weather experience that pairs a cinematic live scene with the practical details needed to plan the day: current conditions, KMA radar, hourly and seven-day forecasts, and transparent forecast confidence. It is designed around one place rather than a generic city-picker dashboard, and it stays useful when optional data providers are unavailable.
 
 **Live demo:** [seoulsky.vercel.app/sky](https://seoulsky.vercel.app/sky)
@@ -25,6 +29,12 @@ The primary route is `/sky`. Press `D` on desktop, or use the detail control on 
 | <img src="public/screenshots/data-current.webp" alt="Current conditions data deck" width="460"> | <img src="public/screenshots/radar.webp" alt="Rain radar view" width="460"> |
 | **Forecast** | **Forecast confidence** |
 | <img src="public/screenshots/forecast.webp" alt="Forecast view" width="460"> | <img src="public/screenshots/confidence.webp" alt="Forecast confidence summary" width="460"> |
+
+The confidence deck expands into a full source comparison — every provider's current reading side by side, so agreement and disagreement are visible rather than hidden behind a single number.
+
+<p align="center">
+  <img src="public/screenshots/confidence-advanced.webp" alt="Per-provider source comparison across Open-Meteo, KMA, MET Norway, Pirate Weather, and WeatherAPI" width="100%">
+</p>
 
 ## Engineering choices
 
