@@ -123,7 +123,10 @@ export async function runReliabilityCycle(
   // successful independent observation even when the day is correctly dry or
   // no prior forecast exists; a missing observation deliberately does not keep
   // learned weights fresh forever.
-  const written = newlyAppliedDates > 0 || priorState === null || observation !== null;
+  // A cold run without ground truth still logs forecasts, but does not persist a
+  // weight checkpoint: its generic run time must never masquerade as a successful
+  // KMA observation check in the runtime diagnostics.
+  const written = newlyAppliedDates > 0 || observation !== null;
   if (written) await dependencies.store.writeWeights(next);
 
   return {

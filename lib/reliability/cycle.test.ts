@@ -125,7 +125,8 @@ test("a missing observation preserves honest omission while still logging foreca
   assert.equal(result.scoring.observation, null);
   assert.equal(result.scoring.appended, 0);
   assert.deepEqual(store.skill, []);
-  assert.equal(store.weights?.eventsScored, 0);
+  assert.equal(result.weighting.written, false);
+  assert.equal(store.weights, null, "a generic run timestamp must not masquerade as a KMA check");
 });
 
 test("a successful correct-dry observation refreshes state health without moving learned weights", async () => {

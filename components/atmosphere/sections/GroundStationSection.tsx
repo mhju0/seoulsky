@@ -7,6 +7,7 @@ import { formatClock, formatHeaderDate, timeAgoKo } from "@/lib/format";
 import { radarApproachSummary } from "@/lib/radar/presentation";
 import type { ProviderAvailability, WeatherIntelligence } from "@/lib/types";
 import ConfidencePanel from "@/components/ConfidencePanel";
+import PrecipLearningPanel from "@/components/PrecipLearningPanel";
 import ProviderComparison from "@/components/ProviderComparison";
 import GlassPanel from "../glass/GlassPanel";
 import { MetricLabel } from "../EtchedType";
@@ -283,6 +284,12 @@ export default function GroundStationSection() {
 
             {advancedOpen && (
               <div id={advancedId} className="flex flex-col gap-4 sm:gap-5">
+                {snapshot && (
+                  <DeckPanel label="강수 학습 상태" sub="완료 예보 기반 · KMA ASOS 검증" delay={0.04}>
+                    <PrecipLearningPanel learning={snapshot.precipLearning} providers={data.providers} />
+                  </DeckPanel>
+                )}
+
                 <DeckPanel label="소스 비교" sub="제공자별 현재 예보" delay={0.05}>
                   <ProviderComparison snapshots={data.providers} comparison={data.comparison} />
                 </DeckPanel>

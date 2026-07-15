@@ -60,6 +60,19 @@ test("readLiveSkySnapshot assembles the stable public payload with injected time
   assert.equal(snapshot.current.temperature, 28);
   assert.equal(snapshot.sun.sunrise, "2026-07-14T05:20:00+09:00");
   assert.deepEqual(snapshot.sources, ["open-meteo"]);
+  assert.deepEqual(snapshot.precipLearning, {
+    enabled: false,
+    multiSource: false,
+    mode: "equal-fallback",
+    reason: "disabled",
+    confidence: 0,
+    eventsScored: 0,
+    datesScored: 0,
+    updatedAt: null,
+    sources: ["open-meteo"],
+    effectiveWeights: { "open-meteo": 1 },
+    learnedWeights: {},
+  });
   assert.equal("precipWeighting" in snapshot, false);
 });
 
@@ -89,6 +102,74 @@ test("readLiveSkySnapshot keeps the multi-source and debug flag paths", async ()
   assert.equal(snapshot.daily[0].precipitationProbability, 50);
   assert.deepEqual(snapshot.precipWeighting?.sources, ["open-meteo", "kma"]);
   assert.equal(snapshot.precipWeighting?.multiSource, true);
+});
+
+test("readLiveSkySnapshot publicly explains learned precipitation weighting without debug mode", async () => {
+  const snapshot = await readLiveSkySnapshot(
+    {
+      ...dependencies,
+      async getWeightsState() {
+        return {
+          updatedAt: "2026-07-13T22:00:00.000Z",
+          eventsScored: 15,
+          processedDates: ["2026-06-19", "2026-06-20", "2026-06-22", "2026-06-25"],
+          weights: { "open-meteo": 0.2, kma: 0.8 },
+        };
+      },
+      async getForecastSources() {
+        return [
+          {
+            source: "open-meteo",
+            daily: [{ date: "2026-07-14", temperatureMax: 31, temperatureMin: 24, precipitationProbability: 20, condition: "partly-cloudy", sunrise: null, sunset: null }],
+          },
+          {
+            source: "kma",
+            daily: [{ date: "2026-07-14", temperatureMax: 30, temperatureMin: 23, precipitationProbability: 80, condition: "rain", sunrise: null, sunset: null }],
+          },
+        ];
+      },
+    },
+    { now: () => new Date("2026-07-14T00:15:00.000Z"), multiSourcePrecip: true, reliabilityDebug: false },
+  );
+
+  assert.equal("precipWeighting" in snapshot, false);
+  assert.equal(snapshot.precipLearning.enabled, true);
+  assert.equal(snapshot.precipLearning.multiSource, true);
+  assert.equal(snapshot.precipLearning.mode, "ramping");
+  assert.equal(snapshot.precipLearning.reason, "ramping");
+  assert.ok(Math.abs(snapshot.precipLearning.confidence - 2 / 3) < 1e-12);
+  assert.equal(snapshot.precipLearning.eventsScored, 15);
+  assert.equal(snapshot.precipLearning.datesScored, 4);
+  assert.equal(snapshot.precipLearning.updatedAt, "2026-07-13T22:00:00.000Z");
+  assert.deepEqual(snapshot.precipLearning.sources, ["open-meteo", "kma"]);
+  assert.deepEqual(snapshot.precipLearning.learnedWeights, { "open-meteo": 0.2, kma: 0.8 });
+  assert.ok(Math.abs(snapshot.precipLearning.effectiveWeights["open-meteo"] - 0.3) < 1e-12);
+  assert.ok(Math.abs(snapshot.precipLearning.effectiveWeights.kma - 0.7) < 1e-12);
+});
+
+test("the public learning summary identifies a one-provider runtime as a single-source fallback", async () => {
+  const snapshot = await readLiveSkySnapshot(
+    {
+      ...dependencies,
+      async getWeightsState() {
+        return {
+          updatedAt: "2026-07-13T22:00:00.000Z",
+          eventsScored: 30,
+          processedDates: ["2026-06-19"],
+          weights: { "open-meteo": 0.4, kma: 0.6 },
+        };
+      },
+      async getForecastSources() {
+        return [{ source: "open-meteo", daily: [] }];
+      },
+    },
+    { now: () => new Date("2026-07-14T00:15:00.000Z"), multiSourcePrecip: true, reliabilityDebug: false },
+  );
+
+  assert.equal(snapshot.precipLearning.enabled, true);
+  assert.equal(snapshot.precipLearning.multiSource, false);
+  assert.deepEqual(snapshot.precipLearning.sources, ["open-meteo"]);
+  assert.deepEqual(snapshot.precipLearning.effectiveWeights, { "open-meteo": 1 });
 });
 
 test("the emergency multi-source opt-out bypasses remote reliability reads", async () => {

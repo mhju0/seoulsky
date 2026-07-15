@@ -36,7 +36,7 @@ Every remote response is schema-validated (timestamp, event count, unique dates,
 - Multi-source learned precipitation weighting defaults to on. `MULTI_SOURCE_PRECIP=0` is the emergency opt-out; when off, `/api/sky` retains the Open-Meteo precipitation baseline byte-for-byte.
 - When enabled, sources fetch concurrently with a per-source timeout. Only returned values participate, and weights renormalize over the available subset.
 - Missing precipitation values are excluded rather than converted to zero. If every optional source fails, the baseline remains unchanged.
-- `RELIABILITY_DEBUG=1` adds non-secret weighting diagnostics to `/api/sky`; leave it unset in production unless actively investigating the model.
+- `/api/sky` always exposes a small, non-secret `precipLearning` summary for the advanced diagnostics: gate mode, evidence depth, last observation check, and exact effective versus stored weights. `RELIABILITY_DEBUG=1` additionally exposes the legacy raw `precipWeighting` block; leave it unset in production unless actively investigating the model.
 
 ## Storage and automation
 
@@ -46,9 +46,9 @@ Runtime files live under `data/reliability/` and are ignored on `main`:
 - `daily-skill.jsonl`
 - `source-weights.json`
 
-`.github/workflows/precip-reliability.yml` runs daily and can also be dispatched manually. It restores and persists only those state files on the orphan `reliability-state` branch. The workflow serializes runs to avoid competing updates. Before every push, a tested monotonic guard re-reads the remote tip and refuses to lose or replace any forecast/skill row, processed date, event count, or newer weight timestamp. Only an explicit known-good recovery may repair the content of an existing row. A rejected push leaves the durable branch unchanged.
+`.github/workflows/precip-reliability.yml` runs daily and can also be dispatched manually. It restores and persists only those state files on the orphan `reliability-state` branch. The workflow serializes runs to avoid competing updates. Before every push, a tested monotonic guard re-reads the remote tip and refuses to lose or replace any forecast/skill row, processed date, event count, or newer weight timestamp. Only an explicit known-good recovery may repair the content of an existing row or replace a reset-only newer timestamp with a checkpoint backed by more events and a superset of processed dates. A rejected push leaves the durable branch unchanged.
 
-For an explicit recovery, dispatch the workflow with `recovery_ref` set to the full 40-character SHA of a known-good commit (including a detached commit no longer reachable from the current tip), or a valid remote ref. Recovery fetches that object directly and unions it with the current branch: known-good values win duplicate row keys, unique newer rows survive, and the more advanced comparable weight checkpoint is retained. An invalid/unfetchable ref or incomparable checkpoint fails closed without entering the persistence step.
+For an explicit recovery, dispatch the workflow with `recovery_ref` set to the full 40-character SHA of a known-good commit (including a detached commit no longer reachable from the current tip), or a valid remote ref. Recovery fetches that object directly and unions it with the current branch: known-good values win duplicate row keys, unique newer rows survive, and the checkpoint with the stronger evidence (event count plus processed-date coverage) is retained even when a reset wrote a later timestamp. An invalid/unfetchable ref or genuinely incomparable checkpoint fails closed without entering the persistence step.
 
 For the July 2026 regression, the verified checkpoint is `29eea596fa3f538856733542c20967fdebdc93b7` (117 forecast rows through July 14, 51 skill rows, and 51 learned events updated July 10). Use that full SHA as `recovery_ref`; do not use its abbreviated form because detached short SHAs cannot be fetched reliably.
 

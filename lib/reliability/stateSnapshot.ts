@@ -9,8 +9,12 @@ export interface ReliabilitySnapshot {
 type DatedSourceRecord = { date: string; source: string };
 
 export interface ReliabilityMonotonicOptions {
-  /** Explicit recovery may replace a corrupt duplicate with its known-good row. */
+  /** Explicit recovery may repair corrupt rows and a reset-only weight timestamp. */
   allowContentRepair?: boolean;
+}
+
+interface WeightsRegressionOptions {
+  allowTimestampRepair?: boolean;
 }
 
 function recordKey(record: DatedSourceRecord): string {
@@ -34,12 +38,16 @@ function replacedKeys<T extends DatedSourceRecord>(previous: readonly T[], candi
 export function weightsStateRegressions(
   previous: WeightsState | null,
   candidate: WeightsState | null,
+  options: WeightsRegressionOptions = {},
 ): string[] {
   if (!previous) return [];
   if (!candidate) return ["weight state is missing"];
 
   const regressions: string[] = [];
-  if (Date.parse(candidate.updatedAt) < Date.parse(previous.updatedAt)) {
+  if (
+    !options.allowTimestampRepair &&
+    Date.parse(candidate.updatedAt) < Date.parse(previous.updatedAt)
+  ) {
     regressions.push(`weight state timestamp moved backward (${candidate.updatedAt} < ${previous.updatedAt})`);
   }
   if (candidate.eventsScored < previous.eventsScored) {
@@ -107,7 +115,11 @@ export function reliabilitySnapshotRegressions(
       `daily-skill history replaced ${replacedSkill.length} existing row(s): ${replacedSkill.join(", ")}`,
     );
   }
-  regressions.push(...weightsStateRegressions(previous.weights, candidate.weights));
+  regressions.push(
+    ...weightsStateRegressions(previous.weights, candidate.weights, {
+      allowTimestampRepair: options.allowContentRepair,
+    }),
+  );
   return regressions;
 }
 
@@ -145,6 +157,22 @@ function selectAdvancedWeights(
 
   if (weightsStateRegressions(additional, preferred).length === 0) return preferred;
   if (weightsStateRegressions(preferred, additional).length === 0) return additional;
+
+  // A state reset can write a fresh timestamp while discarding evidence. During
+  // an explicit recovery, compare the durable evidence independently of that
+  // timestamp so the checkpoint with more events and a superset of dates wins.
+  if (
+    weightsStateRegressions(additional, preferred, { allowTimestampRepair: true })
+      .length === 0
+  ) {
+    return preferred;
+  }
+  if (
+    weightsStateRegressions(preferred, additional, { allowTimestampRepair: true })
+      .length === 0
+  ) {
+    return additional;
+  }
   throw new Error(
     "Reliability recovery checkpoints are incomparable; refusing to guess which learned weights are authoritative",
   );

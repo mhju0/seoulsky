@@ -69,6 +69,33 @@ export async function readLiveSkySnapshot(
   const multiSource = options.multiSourcePrecip && forecastSources.length > 0;
   const weightSources = multiSource ? forecastSources.map((source) => source.source) : PRECIP_FORECAST_SOURCES;
   const weighting = gatePrecipWeighting(weightsState, weightSources, now);
+  const precipLearning: SkySnapshot["precipLearning"] = options.multiSourcePrecip
+    ? {
+        enabled: true,
+        multiSource: weightSources.length > 1,
+        mode: weighting.mode,
+        reason: weighting.reason,
+        confidence: weighting.confidence,
+        eventsScored: weightsState?.eventsScored ?? 0,
+        datesScored: weightsState?.processedDates.length ?? 0,
+        updatedAt: weightsState?.updatedAt ?? null,
+        sources: weightSources,
+        effectiveWeights: weighting.weights,
+        learnedWeights: { ...(weightsState?.weights ?? {}) },
+      }
+    : {
+        enabled: false,
+        multiSource: false,
+        mode: "equal-fallback",
+        reason: "disabled",
+        confidence: 0,
+        eventsScored: 0,
+        datesScored: 0,
+        updatedAt: null,
+        sources: PRECIP_FORECAST_SOURCES,
+        effectiveWeights: { "open-meteo": 1 },
+        learnedWeights: {},
+      };
   const single = reweightForecastPrecip(
     { daily, hourly, currentPrecipitationProbability: current.precipitationProbability ?? null },
     "open-meteo",
@@ -120,6 +147,7 @@ export async function readLiveSkySnapshot(
     warnings,
     observationSource: choice.temperatureSource,
     sources,
+    precipLearning,
     ...(options.reliabilityDebug
       ? {
           precipWeighting: {

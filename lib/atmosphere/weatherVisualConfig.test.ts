@@ -50,6 +50,19 @@ function snap(overrides: Partial<SkySnapshot["current"]> = {}): SkySnapshot {
     warnings: [],
     observationSource: "open-meteo",
     sources: ["open-meteo"],
+    precipLearning: {
+      enabled: false,
+      multiSource: false,
+      mode: "equal-fallback",
+      reason: "disabled",
+      confidence: 0,
+      eventsScored: 0,
+      datesScored: 0,
+      updatedAt: null,
+      sources: ["open-meteo"],
+      effectiveWeights: { "open-meteo": 1 },
+      learnedWeights: {},
+    },
   };
 }
 

@@ -287,10 +287,40 @@ export interface WeatherIntelligence {
 }
 
 /**
+ * Public, non-secret explanation of the historical precipitation weighting used
+ * for the current forecast. This is intentionally separate from same-day source
+ * agreement: it describes completed-forecast evidence and the runtime safety gate.
+ */
+export interface PrecipLearningSummary {
+  /** False only when the emergency MULTI_SOURCE_PRECIP opt-out is active. */
+  enabled: boolean;
+  /** True when returned forecast sources participated in the daily precipitation blend. */
+  multiSource: boolean;
+  mode: "equal-fallback" | "ramping" | "learned";
+  /** Stable machine-readable reason for the current mode. */
+  reason: string;
+  /** 0 = equal weights, 1 = full learned influence. */
+  confidence: number;
+  /** Informative source-day forecasts incorporated into the learned state. */
+  eventsScored: number;
+  /** Distinct completed precipitation dates incorporated into the learned state. */
+  datesScored: number;
+  /** Last successful independent KMA observation cycle. */
+  updatedAt: string | null;
+  /** Forecast sources available to the current runtime blend. */
+  sources: ProviderId[];
+  /** Weights actually used today after safety blending and availability renormalization. */
+  effectiveWeights: Record<string, number>;
+  /** Persisted historical weight profile before runtime safety blending. */
+  learnedWeights: Record<string, number>;
+}
+
+/**
  * Lean fused payload for the cinematic main page (GET /api/sky). Open-Meteo is
  * the weather baseline; air quality is fused in (AirKorea → Open-Meteo AQ). It
- * stays deliberately separate from WeatherIntelligence — the public experience
- * never touches the multi-provider comparison engine, so the scene stays fast.
+ * stays deliberately separate from WeatherIntelligence. The fast payload carries
+ * only a compact precipitation-learning summary; the detailed provider comparison
+ * remains deferred so the cinematic scene stays fast.
  */
 export interface SkySnapshot {
   /** ISO KST timestamp of the observation Open-Meteo reported. */
@@ -347,10 +377,12 @@ export interface SkySnapshot {
   observationSource: ProviderId;
   /** Every source that contributed to this snapshot, for provenance. */
   sources: ProviderId[];
+  /** Safe, always-present learning status consumed by advanced diagnostics. */
+  precipLearning: PrecipLearningSummary;
   /**
    * Debug-only (server-gated behind RELIABILITY_DEBUG): how the learned precip
-   * weights were applied this cycle. Absent in production, so the public payload is
-   * unchanged. Not consumed by any render component.
+   * weights were applied this cycle. Absent in production and not consumed by any
+   * render component; the stable public explanation lives in `precipLearning`.
    */
   precipWeighting?: {
     mode: "equal-fallback" | "ramping" | "learned";

@@ -32,7 +32,7 @@ export type PrecipWeightMode = "equal-fallback" | "ramping" | "learned";
 export interface PrecipWeighting {
   /** equal-fallback (gated) · ramping (partial) · learned (full confidence). */
   mode: PrecipWeightMode;
-  /** Short, debug-only explanation. */
+  /** Stable machine-readable explanation for diagnostics and logging. */
   reason: string;
   /** 0 = pure equal, 1 = pure learned. */
   confidence: number;

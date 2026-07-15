@@ -123,3 +123,50 @@ test("recovery merge keeps the advanced checkpoint and unions newer unique rows"
   assert.deepEqual(recovered.weights, knownGood.weights);
   assert.doesNotThrow(() => assertReliabilitySnapshotMonotonic(regressedButNewerForecast, recovered));
 });
+
+test("explicit recovery trusts stronger evidence even when a reset wrote a newer timestamp", () => {
+  const resetWithNewerTimestamp: ReliabilitySnapshot = {
+    forecasts: [forecast("2026-07-15", "open-meteo")],
+    dailySkill: [skill("2026-06-19", "open-meteo")],
+    weights: weights("2026-07-15T00:00:00.000Z", 1, ["2026-06-19"]),
+  };
+  const olderButMoreCompleteCheckpoint: ReliabilitySnapshot = {
+    forecasts: [forecast("2026-06-19", "open-meteo")],
+    dailySkill: [
+      skill("2026-06-19", "open-meteo"),
+      skill("2026-07-10", "open-meteo"),
+    ],
+    weights: weights("2026-07-10T00:00:00.000Z", 2, ["2026-06-19", "2026-07-10"]),
+  };
+
+  const recovered = mergeReliabilitySnapshots(
+    olderButMoreCompleteCheckpoint,
+    resetWithNewerTimestamp,
+  );
+
+  assert.deepEqual(recovered.weights, olderButMoreCompleteCheckpoint.weights);
+  assert.throws(
+    () => assertReliabilitySnapshotMonotonic(resetWithNewerTimestamp, recovered),
+    /timestamp moved backward/i,
+  );
+  assert.doesNotThrow(() =>
+    assertReliabilitySnapshotMonotonic(resetWithNewerTimestamp, recovered, {
+      allowContentRepair: true,
+    }),
+  );
+});
+
+test("explicit recovery repair still refuses to lose learned events or processed dates", () => {
+  const regressed: ReliabilitySnapshot = {
+    ...knownGood,
+    weights: weights("2026-07-15T00:00:00.000Z", 1, ["2026-07-13"]),
+  };
+
+  assert.throws(
+    () =>
+      assertReliabilitySnapshotMonotonic(knownGood, regressed, {
+        allowContentRepair: true,
+      }),
+    /eventsScored moved backward.*lost 1 processed date/i,
+  );
+});
